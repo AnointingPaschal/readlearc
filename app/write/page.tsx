@@ -3,7 +3,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { ethers } from "ethers";
 import { Zap, Bold, Italic, List, Heading2, Quote, Code, Eye, Send, DollarSign, Tag, Clock, Image, AlertCircle } from "lucide-react";
-import { getProvider, READLEARC_ADDRESS, READLEARC_ABI } from "../lib/web3";
+import { getProvider, READLEARC_ADDRESS, READLEARC_ABI } from "../../lib/web3";
 
 const CATEGORIES = ["Web3", "Development", "Blockchain", "Economics", "Research", "Guide", "AI", "DeFi", "Culture", "Opinion"];
 

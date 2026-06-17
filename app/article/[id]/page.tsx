@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useParams } from "next/navigation";
 import { ethers } from "ethers";
 import { Lock, Unlock, Zap, Clock, Users, ArrowLeft, Heart, Share2, ChevronRight, CheckCircle, Coins, AlertCircle } from "lucide-react";
-import { getProvider, READLEARC_ADDRESS, READLEARC_ABI, USDC_ADDRESS, USDC_ABI } from "../../lib/web3";
+import { getProvider, READLEARC_ADDRESS, READLEARC_ABI, USDC_ADDRESS, USDC_ABI } from "../../../lib/web3";
 import { motion } from "framer-motion";
 
 export default function ArticlePage() {

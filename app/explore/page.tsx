@@ -3,7 +3,7 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import { Search, Filter, Clock, Users, Zap, BookOpen } from "lucide-react";
 import { motion } from "framer-motion";
-import { fetchAllArticles } from "../lib/web3";
+import { fetchAllArticles } from "../../lib/web3";
 
 const CATEGORIES = ["All", "Web3", "Development", "Blockchain", "Economics", "Research", "Guide", "AI", "DeFi"];
 const SORT_OPTIONS = ["Newest", "Most Read", "Lowest Price"];
