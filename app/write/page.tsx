@@ -2,13 +2,16 @@
 import { useState } from "react";
 import Link from "next/link";
 import { ethers } from "ethers";
-import { Zap, Bold, Italic, List, Heading2, Quote, Code, Eye, Send, DollarSign, Clock, AlertCircle, CheckCircle2, ArrowLeft } from "lucide-react";
-import { getProvider, READLEARC_ADDRESS, READLEARC_ABI } from "../../lib/web3";
+import { Zap, Bold, Italic, List, Heading2, Quote, Code, Eye, Send, DollarSign, Clock, AlertCircle, CheckCircle2, ArrowLeft, Wallet, PenLine } from "lucide-react";
+import { READLEARC_ADDRESS, READLEARC_ABI } from "../../lib/web3";
+import { useWallet } from "../../lib/web3Context";
 import Navbar from "../../components/ui/Navbar";
+import { motion } from "framer-motion";
 
 const CATEGORIES = ["Web3", "Development", "Blockchain", "Economics", "Research", "Guide", "AI", "DeFi", "Culture", "Opinion"];
 
 export default function WritePage() {
+  const { isConnected, signer, connect, isConnecting } = useWallet();
   const [title, setTitle] = useState("");
   const [blurb, setBlurb] = useState("");
   const [body, setBody] = useState("");
@@ -25,16 +28,13 @@ export default function WritePage() {
   const readTime = Math.max(1, Math.ceil(wordCount / 200));
 
   async function handlePublish() {
-    if (!title || !blurb || !body || !category) return;
+    if (!title || !blurb || !body || !category || !signer) return;
     setPublishing(true);
     setError("");
 
     try {
       if (!READLEARC_ADDRESS) throw new Error("Contract address not configured in .env.local");
 
-      setStep("wallet");
-      const provider = await getProvider();
-      const signer = await provider.getSigner();
       const contract = new ethers.Contract(READLEARC_ADDRESS, READLEARC_ABI, signer);
 
       setStep("tx");
@@ -52,6 +52,33 @@ export default function WritePage() {
     } finally {
       setPublishing(false);
     }
+  }
+
+  // ── Wallet gate ───────────────────────────────────────────
+  if (!isConnected) {
+    return (
+      <div style={{ minHeight: "100vh", background: "var(--bg)" }}>
+        <Navbar />
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "center", minHeight: "calc(100vh - 64px)", padding: 24 }}>
+          <motion.div initial={{ opacity: 0, y: 24 }} animate={{ opacity: 1, y: 0 }} className="card" style={{ maxWidth: 440, width: "100%", padding: "52px 36px", textAlign: "center" }}>
+            <div style={{ width: 68, height: 68, borderRadius: "50%", background: "var(--brand-muted)", border: "2px solid var(--border-brand)", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 22px" }}>
+              <PenLine size={28} style={{ color: "var(--brand)" }} />
+            </div>
+            <h1 style={{ fontFamily: "Outfit, sans-serif", fontSize: 24, fontWeight: 900, color: "var(--text)", marginBottom: 10, letterSpacing: "-0.02em" }}>Connect to Write</h1>
+            <p style={{ color: "var(--text-3)", fontSize: 14, lineHeight: 1.65, marginBottom: 28 }}>
+              Connect your wallet to publish articles on-chain. Your content will be stored permanently on the Arc blockchain.
+            </p>
+            <button onClick={connect} disabled={isConnecting} className="btn btn-primary btn-lg" style={{ width: "100%" }}>
+              {isConnecting
+                ? <><div style={{ width: 16, height: 16, border: "2px solid rgba(255,255,255,0.3)", borderTopColor: "white", borderRadius: "50%", animation: "rl-spin 0.7s linear infinite" }} /> Connecting…</>
+                : <><Wallet size={17} /> Connect Wallet</>
+              }
+            </button>
+            <style>{`@keyframes rl-spin { to { transform: rotate(360deg); } }`}</style>
+          </motion.div>
+        </div>
+      </div>
+    );
   }
 
   const STEP_LABELS: Record<string, string> = {
@@ -74,8 +101,15 @@ export default function WritePage() {
   return (
     <div style={{ minHeight: "100vh", background: "var(--bg)" }}>
       <Navbar />
+      <style>{`
+        @keyframes rl-spin { to { transform: rotate(360deg); } }
+        @media (max-width: 768px) {
+          .write-layout { grid-template-columns: 1fr !important; }
+          .write-sidebar { order: -1; }
+        }
+      `}</style>
 
-      <div style={{ maxWidth: 1160, margin: "0 auto", padding: "86px 24px 80px" }}>
+      <div style={{ maxWidth: 1100, margin: "0 auto", padding: "76px 16px 60px" }}>
 
         {/* Top bar */}
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 32, flexWrap: "wrap", gap: 12 }}>
@@ -145,7 +179,7 @@ export default function WritePage() {
             </div>
           </div>
         ) : (
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 280px", gap: 24, alignItems: "start" }}>
+          <div className="write-layout" style={{ display: "grid", gridTemplateColumns: "1fr 280px", gap: 20, alignItems: "start" }}>
 
             {/* Main editor area */}
             <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
