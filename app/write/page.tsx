@@ -2,8 +2,9 @@
 import { useState } from "react";
 import Link from "next/link";
 import { ethers } from "ethers";
-import { Zap, Bold, Italic, List, Heading2, Quote, Code, Eye, Send, DollarSign, Tag, Clock, Image, AlertCircle } from "lucide-react";
+import { Zap, Bold, Italic, List, Heading2, Quote, Code, Eye, Send, DollarSign, Clock, AlertCircle, CheckCircle2, ArrowLeft } from "lucide-react";
 import { getProvider, READLEARC_ADDRESS, READLEARC_ABI } from "../../lib/web3";
+import Navbar from "../../components/ui/Navbar";
 
 const CATEGORIES = ["Web3", "Development", "Blockchain", "Economics", "Research", "Guide", "AI", "DeFi", "Culture", "Opinion"];
 
@@ -13,8 +14,6 @@ export default function WritePage() {
   const [body, setBody] = useState("");
   const [price, setPrice] = useState(0.02);
   const [category, setCategory] = useState("");
-  const [tags, setTags] = useState<string[]>([]);
-  const [tagInput, setTagInput] = useState("");
   const [preview, setPreview] = useState(false);
   const [publishing, setPublishing] = useState(false);
   const [published, setPublished] = useState(false);
@@ -25,169 +24,202 @@ export default function WritePage() {
   const wordCount = body.split(/\s+/).filter(Boolean).length;
   const readTime = Math.max(1, Math.ceil(wordCount / 200));
 
-  function addTag() {
-    const t = tagInput.trim().toLowerCase();
-    if (t && !tags.includes(t) && tags.length < 5) {
-      setTags([...tags, t]);
-      setTagInput("");
-    }
-  }
-
-  function removeTag(t: string) {
-    setTags(tags.filter((x) => x !== t));
-  }
-
   async function handlePublish() {
     if (!title || !blurb || !body || !category) return;
     setPublishing(true);
     setError("");
 
     try {
-      if (!READLEARC_ADDRESS) {
-        throw new Error("Contract address not configured in .env.local");
-      }
+      if (!READLEARC_ADDRESS) throw new Error("Contract address not configured in .env.local");
 
       setStep("wallet");
       const provider = await getProvider();
       const signer = await provider.getSigner();
-      
       const contract = new ethers.Contract(READLEARC_ADDRESS, READLEARC_ABI, signer);
 
       setStep("tx");
-      // Convert price to USDC base units (assuming 6 decimals)
       const priceInUSDC = ethers.parseUnits(price.toString(), 6);
-
-      const tx = await contract.publishArticle(
-        title,
-        blurb,
-        body, // 100% on-chain content
-        priceInUSDC,
-        category,
-        readTime
-      );
+      const tx = await contract.publishArticle(title, blurb, body, priceInUSDC, category, readTime);
 
       setStep("mining");
       setTxHash(tx.hash);
-      await tx.wait(); // Wait for 1 confirmation
+      await tx.wait();
 
       setStep("done");
       setPublished(true);
     } catch (err: any) {
-      console.error(err);
-      setError(err.reason || err.message || "An unknown error occurred during transaction");
+      setError(err.reason || err.message || "An unknown error occurred");
     } finally {
       setPublishing(false);
     }
   }
 
-  const STEP_LABELS = {
+  const STEP_LABELS: Record<string, string> = {
     idle: "",
-    wallet: "Awaiting wallet approval...",
-    tx: "Sign transaction in wallet...",
-    mining: "Confirming on-chain (sub-second!)...",
+    wallet: "Awaiting wallet approval…",
+    tx: "Sign transaction in wallet…",
+    mining: "Confirming on-chain…",
     done: "Published! ✓",
   };
 
+  const checklist = [
+    { label: "Title added", done: title.length > 0 },
+    { label: "Preview blurb", done: blurb.length > 0 },
+    { label: "Article body", done: body.length > 50 },
+    { label: "Category selected", done: category.length > 0 },
+    { label: "Price set", done: price > 0 },
+  ];
+  const allDone = checklist.every(c => c.done);
+
   return (
-    <div className="min-h-screen bg-[#0a0a0f]">
-      {/* Navbar */}
-      <nav className="fixed top-0 left-0 right-0 z-50 glass border-b border-white/5">
-        <div className="max-w-7xl mx-auto px-6 h-20 flex items-center justify-between">
-          <Link href="/" className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-arc-500 to-usdc-500 flex items-center justify-center shadow-lg shadow-arc-500/20">
-              <Zap className="w-5 h-5 text-white" />
-            </div>
-            <span className="font-heading font-black text-2xl tracking-tight">Readlearc</span>
-          </Link>
-          <div className="flex items-center gap-3">
+    <div style={{ minHeight: "100vh", background: "var(--bg)" }}>
+      <Navbar />
+
+      <div style={{ maxWidth: 1160, margin: "0 auto", padding: "86px 24px 80px" }}>
+
+        {/* Top bar */}
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 32, flexWrap: "wrap", gap: 12 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+            <Link href="/" className="btn btn-ghost btn-sm">
+              <ArrowLeft size={15} /> Home
+            </Link>
+            <span style={{ color: "var(--border-strong)" }}>›</span>
+            <span style={{ fontSize: 14, fontWeight: 600, color: "var(--text-3)" }}>New Article</span>
+          </div>
+          <div style={{ display: "flex", gap: 10 }}>
             <button
               onClick={() => setPreview(!preview)}
-              className="flex items-center gap-2 px-6 py-2.5 glass border border-white/10 rounded-full text-sm font-bold text-gray-400 hover:text-white transition-all hover:bg-white/5"
+              className="btn btn-ghost btn-sm"
             >
-              <Eye className="w-4 h-4" /> {preview ? "Edit" : "Preview"}
+              <Eye size={15} /> {preview ? "Edit" : "Preview"}
             </button>
             <button
               onClick={handlePublish}
-              disabled={publishing || published || !title || !blurb || !body || !category}
-              className="flex items-center gap-2 px-6 py-2.5 bg-arc-600 hover:bg-arc-500 disabled:bg-arc-800 disabled:text-gray-500 rounded-full text-sm font-bold transition-all shadow-xl hover:shadow-arc-500/40"
+              disabled={publishing || published || !allDone}
+              className="btn btn-primary btn-sm"
+              style={{ fontWeight: 700 }}
             >
-              <Send className="w-4 h-4" />
-              {publishing ? STEP_LABELS[step] : published ? "Published! ✓" : "Publish Article"}
+              {publishing
+                ? <><div style={{ width: 13, height: 13, border: "2px solid rgba(255,255,255,0.3)", borderTopColor: "white", borderRadius: "50%", animation: "spin 0.7s linear infinite" }} /> {STEP_LABELS[step]}</>
+                : published
+                ? <><CheckCircle2 size={15} /> Published!</>
+                : <><Send size={14} /> Publish to Chain</>
+              }
             </button>
           </div>
         </div>
-      </nav>
 
-      <div className="max-w-5xl mx-auto px-6 pt-32 pb-20">
+        {/* Error */}
         {error && (
-          <div className="mb-8 p-4 bg-red-500/10 border border-red-500/20 rounded-2xl flex items-center gap-3 text-red-400">
-            <AlertCircle className="w-5 h-5 flex-shrink-0" />
-            <span className="text-sm">{error}</span>
+          <div style={{
+            marginBottom: 20, padding: "14px 18px",
+            background: "rgba(239,68,68,0.07)", border: "1px solid rgba(239,68,68,0.2)",
+            borderRadius: "var(--radius)", display: "flex", gap: 10, alignItems: "flex-start",
+          }}>
+            <AlertCircle size={16} style={{ color: "#ef4444", flexShrink: 0, marginTop: 1 }} />
+            <span style={{ fontSize: 14, color: "#ef4444" }}>{error}</span>
           </div>
         )}
 
+        {/* Published success */}
         {published ? (
-          <div className="text-center py-24 glass rounded-[3rem] border-white/5">
-            <div className="w-24 h-24 rounded-full bg-usdc-500/10 flex items-center justify-center mx-auto mb-8 shadow-inner border border-usdc-500/20">
-              <Zap className="w-10 h-10 text-usdc-400" />
+          <div className="card" style={{ padding: "72px 32px", textAlign: "center" }}>
+            <div style={{
+              width: 72, height: 72, borderRadius: "50%",
+              background: "rgba(5,150,105,0.1)", border: "1px solid rgba(5,150,105,0.2)",
+              display: "flex", alignItems: "center", justifyContent: "center",
+              margin: "0 auto 24px",
+            }}>
+              <CheckCircle2 size={32} style={{ color: "#059669" }} />
             </div>
-            <h2 className="font-heading text-5xl font-black mb-4 tracking-tight">Article Published! 🎉</h2>
-            <p className="text-gray-400 mb-2 text-lg">Your article is fully stored and live on the Arc blockchain.</p>
-            <p className="text-xs text-gray-600 font-mono mb-10 bg-black/50 inline-block px-4 py-2 rounded-full border border-white/5">
-              Tx: {txHash.slice(0, 10)}...{txHash.slice(-8)}
+            <h2 style={{ fontFamily: "Outfit, sans-serif", fontSize: 36, fontWeight: 900, color: "var(--text)", marginBottom: 10 }}>
+              Article Published! 🎉
+            </h2>
+            <p style={{ color: "var(--text-3)", fontSize: 16, marginBottom: 8 }}>Your article is live on the Arc blockchain.</p>
+            <p style={{ fontSize: 12, color: "var(--text-4)", fontFamily: "JetBrains Mono, monospace", marginBottom: 32 }}>
+              Tx: {txHash.slice(0, 12)}…{txHash.slice(-8)}
             </p>
-            <div className="flex gap-4 justify-center">
-              <Link href="/explore" className="px-8 py-4 bg-arc-600 hover:bg-arc-500 rounded-full font-bold transition-all shadow-lg hover:-translate-y-0.5">
-                Go to Explore
-              </Link>
-              <Link href="/dashboard" className="px-8 py-4 glass border border-white/10 rounded-full font-bold hover:bg-white/5 text-gray-300 transition-all hover:-translate-y-0.5">
-                Go to Dashboard
-              </Link>
+            <div style={{ display: "flex", gap: 12, justifyContent: "center", flexWrap: "wrap" }}>
+              <Link href="/explore" className="btn btn-primary">Go to Explore</Link>
+              <Link href="/dashboard" className="btn btn-secondary">Dashboard</Link>
             </div>
           </div>
         ) : (
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-10">
-            {/* Main editor */}
-            <div className="lg:col-span-2 space-y-8">
-              {/* Publish progress */}
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 280px", gap: 24, alignItems: "start" }}>
+
+            {/* Main editor area */}
+            <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
+
+              {/* Publishing progress banner */}
               {publishing && (
-                <div className="glass-arc rounded-2xl p-5 flex items-center gap-4 border border-arc-500/30 shadow-lg">
-                  <div className="w-5 h-5 border-2 border-arc-400/30 border-t-arc-400 rounded-full animate-spin" />
-                  <span className="text-sm font-medium text-arc-300">{STEP_LABELS[step]}</span>
+                <div style={{
+                  padding: "14px 18px",
+                  background: "var(--brand-muted)", border: "1.5px solid var(--border-brand)",
+                  borderRadius: "var(--radius)",
+                  display: "flex", alignItems: "center", gap: 10,
+                }}>
+                  <div style={{
+                    width: 14, height: 14, border: "2px solid rgba(109,40,217,0.3)",
+                    borderTopColor: "var(--brand)", borderRadius: "50%",
+                    animation: "spin 0.7s linear infinite",
+                  }} />
+                  <span style={{ fontSize: 14, color: "var(--brand)", fontWeight: 600 }}>{STEP_LABELS[step]}</span>
                 </div>
               )}
 
               {/* Title */}
               <input
                 type="text"
-                placeholder="Article title..."
+                placeholder="Your article title…"
                 value={title}
-                onChange={(e) => setTitle(e.target.value)}
-                className="w-full bg-transparent text-5xl font-heading font-black text-white placeholder:text-gray-800 focus:outline-none leading-tight tracking-tight"
+                onChange={e => setTitle(e.target.value)}
+                style={{
+                  width: "100%", border: "none", outline: "none",
+                  fontFamily: "Outfit, sans-serif",
+                  fontSize: "clamp(28px, 4vw, 40px)",
+                  fontWeight: 900, letterSpacing: "-0.02em",
+                  color: "var(--text)", background: "transparent",
+                  lineHeight: 1.15,
+                }}
               />
 
-              {/* Preview blurb */}
-              <div className="glass rounded-3xl p-6 border-white/5 bg-white/2">
-                <label className="text-xs text-gray-500 uppercase tracking-widest font-bold mb-3 block">Preview Blurb (Stored Publicly)</label>
+              {/* Blurb */}
+              <div className="card-flat" style={{ padding: "18px 20px" }}>
+                <label style={{ fontSize: 11, fontWeight: 700, color: "var(--text-4)", textTransform: "uppercase", letterSpacing: "0.07em", display: "block", marginBottom: 10 }}>
+                  Preview Blurb
+                </label>
                 <textarea
-                  placeholder="Write a teaser that makes readers want to pay to read more..."
+                  placeholder="Write a teaser that makes readers want to pay to read more…"
                   value={blurb}
-                  onChange={(e) => setBlurb(e.target.value)}
+                  onChange={e => setBlurb(e.target.value)}
                   maxLength={300}
                   rows={3}
-                  className="w-full bg-transparent text-gray-300 placeholder:text-gray-700 focus:outline-none text-lg resize-none font-light leading-relaxed"
+                  style={{
+                    width: "100%", border: "none", outline: "none",
+                    background: "transparent",
+                    color: "var(--text-2)", fontSize: 15, lineHeight: 1.65,
+                    resize: "none", fontFamily: "Inter, sans-serif",
+                  }}
                 />
-                <div className="text-right text-xs font-mono text-gray-600 mt-2">{blurb.length}/300</div>
+                <div style={{ textAlign: "right", fontSize: 11, color: "var(--text-4)", fontFamily: "JetBrains Mono, monospace", marginTop: 6 }}>
+                  {blurb.length}/300
+                </div>
               </div>
 
-              {/* Editor toolbar */}
-              {!preview && (
-                <div className="glass rounded-3xl border border-white/5 overflow-hidden">
-                  <div className="flex flex-wrap items-center gap-1 px-4 py-3 bg-white/5 border-b border-white/5">
+              {/* Editor / Preview */}
+              {!preview ? (
+                <div className="card" style={{ overflow: "hidden", padding: 0 }}>
+                  {/* Toolbar */}
+                  <div style={{
+                    padding: "10px 16px",
+                    borderBottom: "1px solid var(--border)",
+                    background: "var(--bg-alt)",
+                    display: "flex", alignItems: "center", gap: 2, flexWrap: "wrap",
+                  }}>
                     {[
                       { icon: Bold, label: "Bold" },
                       { icon: Italic, label: "Italic" },
-                      { icon: Heading2, label: "H2" },
+                      { icon: Heading2, label: "Heading" },
                       { icon: List, label: "List" },
                       { icon: Quote, label: "Quote" },
                       { icon: Code, label: "Code" },
@@ -195,86 +227,104 @@ export default function WritePage() {
                       <button
                         key={label}
                         title={label}
-                        className="p-2 rounded-xl text-gray-400 hover:text-white hover:bg-white/10 transition-all"
+                        style={{
+                          width: 32, height: 32, borderRadius: "var(--radius-sm)",
+                          border: "none", background: "transparent",
+                          color: "var(--text-3)", cursor: "pointer",
+                          display: "flex", alignItems: "center", justifyContent: "center",
+                          transition: "all 0.15s ease",
+                        }}
+                        onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.background = "var(--border)"; (e.currentTarget as HTMLButtonElement).style.color = "var(--text)"; }}
+                        onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background = "transparent"; (e.currentTarget as HTMLButtonElement).style.color = "var(--text-3)"; }}
                       >
-                        <Icon className="w-4 h-4" />
+                        <Icon size={15} strokeWidth={2} />
                       </button>
                     ))}
-                    <div className="ml-auto flex items-center gap-3 text-xs font-medium text-gray-500 bg-black/30 px-3 py-1.5 rounded-full border border-white/5">
-                      <Clock className="w-3.5 h-3.5" /> {readTime} min read · {wordCount} words
+                    <div style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 6, fontSize: 12, color: "var(--text-4)", fontWeight: 500 }}>
+                      <Clock size={12} /> {readTime} min · {wordCount} words
                     </div>
                   </div>
                   <textarea
-                    placeholder="Write your full article here. It will be stored entirely on-chain..."
+                    placeholder="Write your full article here. It will be stored entirely on-chain…"
                     value={body}
-                    onChange={(e) => setBody(e.target.value)}
-                    rows={20}
-                    className="w-full bg-transparent p-8 text-gray-300 placeholder:text-gray-800 focus:outline-none text-lg leading-loose resize-none font-light"
+                    onChange={e => setBody(e.target.value)}
+                    rows={22}
+                    className="editor-area"
+                    style={{ padding: "24px", fontSize: 16, lineHeight: 1.8, resize: "none", display: "block" }}
                   />
                 </div>
-              )}
-
-              {preview && (
-                <div className="glass rounded-3xl border border-white/5 p-10 bg-white/2">
-                  <h1 className="font-heading text-4xl font-black mb-6 tracking-tight">{title || "Your title here"}</h1>
-                  <p className="text-gray-300 text-xl leading-relaxed mb-8 border-l-4 border-arc-500 pl-6 font-light">{blurb || "Your preview blurb..."}</p>
-                  <div className="h-px bg-white/10 mb-8" />
-                  <div className="text-gray-400 text-lg leading-loose whitespace-pre-wrap font-light">{body || "Your article body..."}</div>
+              ) : (
+                <div className="card" style={{ padding: "40px 36px" }}>
+                  <h1 style={{ fontFamily: "Outfit, sans-serif", fontSize: 32, fontWeight: 900, color: "var(--text)", marginBottom: 16, letterSpacing: "-0.02em" }}>
+                    {title || "Your title here"}
+                  </h1>
+                  <p style={{ fontSize: 17, color: "var(--text-2)", lineHeight: 1.7, marginBottom: 24, borderLeft: "3px solid var(--brand)", paddingLeft: 18 }}>
+                    {blurb || "Your preview blurb…"}
+                  </p>
+                  <hr className="divider" style={{ marginBottom: 24 }} />
+                  <div style={{ fontSize: 16, color: "var(--text-2)", lineHeight: 1.85, whiteSpace: "pre-wrap" }}>
+                    {body || "Your article body…"}
+                  </div>
                 </div>
               )}
             </div>
 
-            {/* Sidebar settings */}
-            <div className="space-y-6">
+            {/* Sidebar */}
+            <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+
               {/* Price */}
-              <div className="glass rounded-3xl p-6 border-white/5">
-                <div className="flex items-center gap-2 mb-4">
-                  <DollarSign className="w-5 h-5 text-usdc-400" />
-                  <h3 className="font-bold text-sm text-gray-300">Article Price</h3>
+              <div className="card" style={{ padding: "22px 20px" }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 16 }}>
+                  <DollarSign size={16} style={{ color: "#059669" }} />
+                  <h3 style={{ fontSize: 13, fontWeight: 700, color: "var(--text-2)" }}>Article Price</h3>
                 </div>
-                <div className="flex items-center gap-2 mb-4 bg-black/30 p-4 rounded-2xl border border-white/5">
-                  <span className="text-gray-500 font-bold">$</span>
+                <div style={{
+                  display: "flex", alignItems: "center", gap: 6,
+                  background: "var(--bg-alt)", border: "1.5px solid var(--border)",
+                  borderRadius: "var(--radius)", padding: "10px 14px", marginBottom: 12,
+                }}>
+                  <span style={{ color: "var(--text-4)", fontWeight: 700, fontSize: 15 }}>$</span>
                   <input
-                    type="number"
-                    min={0.01}
-                    max={1.0}
-                    step={0.01}
-                    value={price}
-                    onChange={(e) => setPrice(parseFloat(e.target.value))}
-                    className="flex-1 bg-transparent text-3xl font-black text-usdc-400 focus:outline-none"
+                    type="number" min={0.01} max={1.0} step={0.01} value={price}
+                    onChange={e => setPrice(parseFloat(e.target.value))}
+                    style={{
+                      flex: 1, border: "none", outline: "none",
+                      background: "transparent",
+                      fontFamily: "Outfit, sans-serif",
+                      fontSize: 28, fontWeight: 900, color: "#059669",
+                    }}
                   />
-                  <span className="text-gray-500 font-bold text-sm">USDC</span>
+                  <span style={{ color: "var(--text-4)", fontSize: 12, fontWeight: 700 }}>USDC</span>
                 </div>
                 <input
-                  type="range"
-                  min={0.01}
-                  max={1.0}
-                  step={0.01}
-                  value={price}
-                  onChange={(e) => setPrice(parseFloat(e.target.value))}
-                  className="w-full accent-usdc-500 h-2 bg-gray-800 rounded-lg appearance-none cursor-pointer"
+                  type="range" min={0.01} max={1.0} step={0.01} value={price}
+                  onChange={e => setPrice(parseFloat(e.target.value))}
+                  style={{ width: "100%", accentColor: "#059669", cursor: "pointer", marginBottom: 6 }}
                 />
-                <div className="flex justify-between text-xs font-medium text-gray-600 mt-2 mb-6">
+                <div style={{ display: "flex", justifyContent: "space-between", fontSize: 11, color: "var(--text-4)", marginBottom: 14 }}>
                   <span>$0.01</span><span>$1.00</span>
                 </div>
-                <div className="pt-4 border-t border-white/5 text-sm font-medium text-gray-500">
-                  You earn: <span className="text-usdc-400 font-bold">${(price * 0.85).toFixed(3)} USDC</span> per read
+                <div style={{ paddingTop: 12, borderTop: "1px solid var(--border)", fontSize: 13, color: "var(--text-3)" }}>
+                  You earn: <strong style={{ color: "#059669" }}>${(price * 0.85).toFixed(3)} USDC</strong> per read
                 </div>
               </div>
 
               {/* Category */}
-              <div className="glass rounded-3xl p-6 border-white/5">
-                <h3 className="font-bold text-sm mb-4 text-gray-300">Category</h3>
-                <div className="grid grid-cols-2 gap-2">
-                  {CATEGORIES.map((cat) => (
+              <div className="card" style={{ padding: "22px 20px" }}>
+                <h3 style={{ fontSize: 13, fontWeight: 700, color: "var(--text-2)", marginBottom: 14 }}>Category</h3>
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 6 }}>
+                  {CATEGORIES.map(cat => (
                     <button
                       key={cat}
                       onClick={() => setCategory(cat)}
-                      className={`px-4 py-2.5 rounded-xl text-xs font-bold transition-all ${
-                        category === cat
-                          ? "bg-arc-600 text-white shadow-lg shadow-arc-500/20"
-                          : "bg-black/30 border border-white/5 text-gray-500 hover:border-arc-500/30 hover:text-white hover:bg-white/5"
-                      }`}
+                      style={{
+                        padding: "8px 10px", borderRadius: "var(--radius-sm)",
+                        border: category === cat ? "1.5px solid var(--brand)" : "1.5px solid var(--border)",
+                        background: category === cat ? "var(--brand-muted)" : "transparent",
+                        color: category === cat ? "var(--brand)" : "var(--text-3)",
+                        fontSize: 12, fontWeight: 600, cursor: "pointer",
+                        transition: "all 0.15s ease",
+                      }}
                     >
                       {cat}
                     </button>
@@ -283,21 +333,25 @@ export default function WritePage() {
               </div>
 
               {/* Checklist */}
-              <div className="glass rounded-3xl p-6 border-white/5">
-                <h3 className="font-bold text-sm mb-4 text-gray-300">Publish Checklist</h3>
-                <div className="space-y-3">
-                  {[
-                    { label: "Title", done: title.length > 0 },
-                    { label: "Preview blurb", done: blurb.length > 0 },
-                    { label: "Article body", done: body.length > 50 },
-                    { label: "Category selected", done: category.length > 0 },
-                    { label: "Price set", done: price > 0 },
-                  ].map((item) => (
-                    <div key={item.label} className="flex items-center gap-3 text-sm font-medium">
-                      <div className={`w-5 h-5 rounded-full flex items-center justify-center text-xs border ${item.done ? "bg-usdc-500/10 border-usdc-500/30 text-usdc-400" : "bg-black/50 border-white/5 text-gray-700"}`}>
-                        {item.done ? "✓" : "·"}
+              <div className="card" style={{ padding: "22px 20px" }}>
+                <h3 style={{ fontSize: 13, fontWeight: 700, color: "var(--text-2)", marginBottom: 14 }}>Publish Checklist</h3>
+                <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                  {checklist.map(item => (
+                    <div key={item.label} style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                      <div style={{
+                        width: 20, height: 20, borderRadius: "50%",
+                        border: `1.5px solid ${item.done ? "#059669" : "var(--border-strong)"}`,
+                        background: item.done ? "rgba(5,150,105,0.1)" : "transparent",
+                        display: "flex", alignItems: "center", justifyContent: "center",
+                        flexShrink: 0,
+                        fontSize: 11, color: item.done ? "#059669" : "var(--text-4)",
+                        fontWeight: 800,
+                      }}>
+                        {item.done ? "✓" : ""}
                       </div>
-                      <span className={item.done ? "text-gray-300" : "text-gray-600"}>{item.label}</span>
+                      <span style={{ fontSize: 13, fontWeight: 500, color: item.done ? "var(--text-2)" : "var(--text-4)" }}>
+                        {item.label}
+                      </span>
                     </div>
                   ))}
                 </div>
@@ -306,6 +360,13 @@ export default function WritePage() {
           </div>
         )}
       </div>
+
+      <style jsx global>{`
+        @keyframes spin { to { transform: rotate(360deg); } }
+        @media (max-width: 768px) {
+          .write-grid { grid-template-columns: 1fr !important; }
+        }
+      `}</style>
     </div>
   );
 }

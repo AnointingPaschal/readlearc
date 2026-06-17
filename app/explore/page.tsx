@@ -1,25 +1,16 @@
 "use client";
 import { useState, useEffect } from "react";
 import Link from "next/link";
-import { Search, Filter, Clock, Users, Zap, BookOpen } from "lucide-react";
+import { Search, Filter, Clock, Users, BookOpen, SlidersHorizontal } from "lucide-react";
 import { motion } from "framer-motion";
 import { fetchAllArticles } from "../../lib/web3";
+import Navbar from "../../components/ui/Navbar";
 
 const CATEGORIES = ["All", "Web3", "Development", "Blockchain", "Economics", "Research", "Guide", "AI", "DeFi"];
 const SORT_OPTIONS = ["Newest", "Most Read", "Lowest Price"];
 
-const staggerContainer = {
-  hidden: { opacity: 0 },
-  visible: {
-    opacity: 1,
-    transition: { staggerChildren: 0.1 }
-  }
-};
-
-const fadeUp = {
-  hidden: { opacity: 0, y: 20 },
-  visible: { opacity: 1, y: 0 }
-};
+const fadeUp: any = { hidden: { opacity: 0, y: 16 }, visible: { opacity: 1, y: 0 } };
+const stagger: any = { hidden: { opacity: 0 }, visible: { opacity: 1, transition: { staggerChildren: 0.07 } } };
 
 export default function ExplorePage() {
   const [search, setSearch] = useState("");
@@ -29,21 +20,15 @@ export default function ExplorePage() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    async function loadData() {
-      try {
-        const data = await fetchAllArticles();
-        setArticles(data);
-      } catch (e) {
-        console.error(e);
-      } finally {
-        setLoading(false);
-      }
-    }
-    loadData();
+    fetchAllArticles()
+      .then(d => setArticles(d))
+      .catch(console.error)
+      .finally(() => setLoading(false));
   }, []);
 
-  const filtered = articles.filter((a) => {
-    const matchSearch = a.title.toLowerCase().includes(search.toLowerCase()) || a.blurb.toLowerCase().includes(search.toLowerCase());
+  const filtered = articles.filter(a => {
+    const matchSearch = a.title.toLowerCase().includes(search.toLowerCase()) ||
+      a.blurb.toLowerCase().includes(search.toLowerCase());
     const matchCat = activeCategory === "All" || a.category === activeCategory;
     return matchSearch && matchCat;
   }).sort((a, b) => {
@@ -54,127 +39,170 @@ export default function ExplorePage() {
   });
 
   return (
-    <div className="min-h-screen bg-[#0a0a0f] selection:bg-arc-500/30">
-      {/* Navbar */}
-      <nav className="fixed top-0 left-0 right-0 z-50 glass border-b border-white/5">
-        <div className="max-w-7xl mx-auto px-6 h-20 flex items-center justify-between">
-          <Link href="/" className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-arc-500 to-usdc-500 flex items-center justify-center shadow-lg shadow-arc-500/20">
-              <Zap className="w-5 h-5 text-white" />
-            </div>
-            <span className="font-heading font-black text-2xl tracking-tight">Readlearc</span>
-          </Link>
-          <div className="hidden md:flex items-center gap-8 text-sm font-medium text-gray-400">
-            <Link href="/explore" className="text-white">Explore</Link>
-            <Link href="/write" className="hover:text-white transition-colors">Write</Link>
-            <Link href="/dashboard" className="hover:text-white transition-colors">Dashboard</Link>
-          </div>
-          <Link href="/wallet" className="px-6 py-2.5 text-sm font-bold bg-white text-black hover:bg-gray-200 rounded-full transition-all shadow-xl hover:scale-105 active:scale-95">
-            Connect
-          </Link>
-        </div>
-      </nav>
+    <div style={{ minHeight: "100vh", background: "var(--bg)" }}>
+      <Navbar />
 
-      <div className="max-w-7xl mx-auto px-6 pt-32 pb-20">
+      <div style={{ maxWidth: 1200, margin: "0 auto", padding: "96px 24px 80px" }}>
         {/* Header */}
-        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="mb-10">
-          <h1 className="font-heading text-5xl font-black mb-4 tracking-tight">Explore Articles</h1>
-          <p className="text-gray-400 text-lg">Discover stories stored permanently on-chain. Pay in USDC, read instantly.</p>
+        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} style={{ marginBottom: 40 }}>
+          <h1 style={{
+            fontFamily: "Outfit, sans-serif",
+            fontSize: "clamp(32px, 5vw, 52px)",
+            fontWeight: 900,
+            letterSpacing: "-0.03em",
+            color: "var(--text)",
+            marginBottom: 8,
+          }}>
+            Explore Articles
+          </h1>
+          <p style={{ color: "var(--text-3)", fontSize: 16 }}>
+            Discover stories stored permanently on-chain. Pay in USDC, read instantly.
+          </p>
         </motion.div>
 
-        {/* Search + Filter bar */}
-        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }} className="flex flex-col md:flex-row gap-4 mb-8">
-          <div className="relative flex-1">
-            <Search className="absolute left-5 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-500" />
+        {/* Search + Sort row */}
+        <motion.div
+          initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}
+          style={{ display: "flex", gap: 12, marginBottom: 20, flexWrap: "wrap" }}
+        >
+          <div style={{ position: "relative", flex: 1, minWidth: 220 }}>
+            <Search size={17} style={{
+              position: "absolute", left: 14, top: "50%", transform: "translateY(-50%)",
+              color: "var(--text-4)", pointerEvents: "none",
+            }} />
             <input
               type="text"
-              placeholder="Search articles, topics, authors..."
+              placeholder="Search articles, topics…"
               value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              className="w-full pl-14 pr-6 py-4 glass rounded-2xl border border-white/5 bg-white/5 text-white placeholder:text-gray-600 focus:outline-none focus:border-arc-500/50 focus:bg-white/10 transition-all font-light"
+              onChange={e => setSearch(e.target.value)}
+              className="input input-search"
+              style={{ fontSize: 14 }}
             />
           </div>
-          <div className="flex items-center gap-3">
-            <Filter className="w-5 h-5 text-gray-500 hidden sm:block" />
+
+          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            <SlidersHorizontal size={16} style={{ color: "var(--text-4)" }} />
             <select
               value={sortBy}
-              onChange={(e) => setSortBy(e.target.value)}
-              className="glass rounded-2xl border border-white/5 bg-white/5 text-white px-6 py-4 font-medium focus:outline-none focus:border-arc-500/50 appearance-none cursor-pointer hover:bg-white/10 transition-all"
+              onChange={e => setSortBy(e.target.value)}
+              className="input"
+              style={{ width: "auto", paddingLeft: 14, paddingRight: 36, fontSize: 14, cursor: "pointer", backgroundImage: "none" }}
             >
-              {SORT_OPTIONS.map((o) => <option key={o} value={o} className="bg-[#111827]">{o}</option>)}
+              {SORT_OPTIONS.map(o => <option key={o} value={o}>{o}</option>)}
             </select>
           </div>
         </motion.div>
 
-        {/* Categories */}
-        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }} className="flex gap-3 flex-wrap mb-12">
-          {CATEGORIES.map((cat) => (
+        {/* Category pills */}
+        <motion.div
+          initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.15 }}
+          style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 40 }}
+        >
+          {CATEGORIES.map(cat => (
             <button
               key={cat}
               onClick={() => setActiveCategory(cat)}
-              className={`px-5 py-2.5 rounded-full text-sm font-bold transition-all ${
-                activeCategory === cat
-                  ? "bg-white text-black shadow-lg hover:scale-105"
-                  : "glass border border-white/5 text-gray-400 hover:border-arc-500/30 hover:text-white hover:bg-white/5"
-              }`}
+              style={{
+                padding: "7px 16px",
+                borderRadius: "var(--radius-full)",
+                border: activeCategory === cat ? "1.5px solid var(--brand)" : "1.5px solid var(--border)",
+                background: activeCategory === cat ? "var(--brand-muted)" : "var(--bg-card)",
+                color: activeCategory === cat ? "var(--brand)" : "var(--text-3)",
+                fontWeight: 600,
+                fontSize: 13,
+                cursor: "pointer",
+                boxShadow: activeCategory === cat ? "var(--shadow-sm)" : "none",
+                transition: "all 0.15s ease",
+              }}
             >
               {cat}
             </button>
           ))}
         </motion.div>
 
+        {/* Articles grid */}
         {loading ? (
-          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(300px, 1fr))", gap: 20 }}>
             {[1,2,3,4,5,6].map(i => (
-              <div key={i} className="glass rounded-3xl p-6 h-64 skeleton border-white/5"></div>
+              <div key={i} className="skeleton" style={{ height: 260, borderRadius: 20 }} />
             ))}
           </div>
         ) : filtered.length === 0 ? (
-          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="text-center py-32 glass rounded-3xl border border-white/5 bg-white/2">
-            <BookOpen className="w-16 h-16 text-gray-700 mx-auto mb-6" />
-            <p className="text-white text-2xl font-bold mb-2">No articles found</p>
-            <p className="text-gray-500">Try adjusting your search or category filter.</p>
+          <motion.div
+            initial={{ opacity: 0 }} animate={{ opacity: 1 }}
+            className="card"
+            style={{ padding: "80px 32px", textAlign: "center" }}
+          >
+            <BookOpen size={44} style={{ color: "var(--text-4)", margin: "0 auto 16px" }} />
+            <h3 style={{ fontSize: 18, fontWeight: 700, color: "var(--text-2)", marginBottom: 8 }}>
+              {articles.length === 0 ? "No articles yet" : "No articles match your search"}
+            </h3>
+            <p style={{ color: "var(--text-4)", fontSize: 14 }}>
+              {articles.length === 0
+                ? "Deploy the contract and publish the first article."
+                : "Try adjusting your search or category filter."}
+            </p>
           </motion.div>
         ) : (
           <>
-            <p className="text-sm font-medium text-gray-600 mb-6">{filtered.length} articles found on-chain</p>
-            <motion.div 
-              variants={staggerContainer}
-              initial="hidden"
-              animate="visible"
-              className="grid md:grid-cols-2 lg:grid-cols-3 gap-8"
+            <p style={{ fontSize: 13, color: "var(--text-4)", fontWeight: 500, marginBottom: 20 }}>
+              {filtered.length} article{filtered.length !== 1 ? "s" : ""} on-chain
+            </p>
+            <motion.div
+              variants={stagger} initial="hidden" animate="visible"
+              style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(300px, 1fr))", gap: 20 }}
             >
-              {filtered.map((article) => (
-                <motion.div variants={fadeUp} key={article.id}>
-                  <Link
-                    href={`/article/${article.id}`}
-                    className="block h-full glass rounded-3xl p-8 hover:bg-white/5 transition-all hover:-translate-y-2 hover:shadow-2xl hover:shadow-arc-500/10 group border-white/5"
-                  >
-                    <div className="flex items-start justify-between mb-6">
-                      <span className="text-xs font-bold text-arc-400 bg-arc-500/10 px-3 py-1.5 rounded-full border border-arc-500/20 uppercase tracking-wider">
-                        {article.category}
-                      </span>
-                      <span className="price-badge">${article.price} USDC</span>
-                    </div>
-
-                    <h3 className="font-heading text-2xl font-bold text-white mb-4 group-hover:text-arc-400 transition-colors leading-tight">
-                      {article.title}
-                    </h3>
-
-                    <p className="text-gray-400 leading-relaxed mb-8 line-clamp-3 font-light">{article.blurb}</p>
-
-                    <div className="flex items-center justify-between pt-6 border-t border-white/10 mt-auto">
-                      <div className="flex items-center gap-3">
-                        <div className="w-8 h-8 rounded-full bg-gradient-to-br from-arc-500 to-usdc-500 shadow-inner" />
-                        <span className="text-sm font-semibold text-gray-300">@{article.author.handle}</span>
+              {filtered.map(article => (
+                <motion.div key={article.id} variants={fadeUp}>
+                  <Link href={`/article/${article.id}`} style={{ textDecoration: "none", display: "block", height: "100%" }}>
+                    <div className="card" style={{ padding: "26px 22px", height: "100%", display: "flex", flexDirection: "column", gap: 12 }}>
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                        <span className="badge badge-brand" style={{ textTransform: "capitalize" }}>
+                          {article.category}
+                        </span>
+                        <span className="price-tag">${article.price} USDC</span>
                       </div>
-                      <div className="flex items-center gap-4 text-xs font-medium text-gray-500">
-                        <span className="flex items-center gap-1.5">
-                          <Clock className="w-4 h-4" /> {article.readTime}m
-                        </span>
-                        <span className="flex items-center gap-1.5">
-                          <Users className="w-4 h-4" /> {article.reads}
-                        </span>
+
+                      <h3 style={{
+                        fontFamily: "Outfit, sans-serif",
+                        fontSize: 19, fontWeight: 700,
+                        color: "var(--text)", lineHeight: 1.3,
+                        display: "-webkit-box", WebkitLineClamp: 2,
+                        WebkitBoxOrient: "vertical", overflow: "hidden",
+                      }}>
+                        {article.title}
+                      </h3>
+
+                      <p style={{
+                        color: "var(--text-3)", fontSize: 14, lineHeight: 1.6, flex: 1,
+                        display: "-webkit-box", WebkitLineClamp: 3,
+                        WebkitBoxOrient: "vertical", overflow: "hidden",
+                      }}>
+                        {article.blurb}
+                      </p>
+
+                      <div style={{
+                        paddingTop: 14,
+                        borderTop: "1px solid var(--border)",
+                        display: "flex", justifyContent: "space-between", alignItems: "center",
+                      }}>
+                        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                          <div style={{
+                            width: 26, height: 26, borderRadius: "50%",
+                            background: "linear-gradient(135deg, var(--brand), var(--accent))",
+                          }} />
+                          <span style={{ fontSize: 13, fontWeight: 600, color: "var(--text-2)" }}>
+                            @{article.author?.handle}
+                          </span>
+                        </div>
+                        <div style={{ display: "flex", gap: 12, fontSize: 12, color: "var(--text-4)", fontWeight: 500 }}>
+                          <span style={{ display: "flex", alignItems: "center", gap: 3 }}>
+                            <Clock size={11} /> {article.readTime}m
+                          </span>
+                          <span style={{ display: "flex", alignItems: "center", gap: 3 }}>
+                            <Users size={11} /> {article.reads}
+                          </span>
+                        </div>
                       </div>
                     </div>
                   </Link>

@@ -3,9 +3,13 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { ethers } from "ethers";
-import { Lock, Unlock, Zap, Clock, Users, ArrowLeft, Heart, Share2, ChevronRight, CheckCircle, Coins, AlertCircle } from "lucide-react";
+import {
+  Lock, Unlock, Zap, Clock, Users, ArrowLeft,
+  Heart, Share2, CheckCircle2, Coins, AlertCircle
+} from "lucide-react";
 import { getProvider, READLEARC_ADDRESS, READLEARC_ABI, USDC_ADDRESS, USDC_ABI } from "../../../lib/web3";
 import { motion } from "framer-motion";
+import Navbar from "../../../components/ui/Navbar";
 
 export default function ArticlePage() {
   const params = useParams();
@@ -25,7 +29,7 @@ export default function ArticlePage() {
     async function loadData() {
       try {
         if (!READLEARC_ADDRESS) return;
-        
+
         let provider;
         let userAddress = "";
         if (typeof window !== "undefined" && (window as any).ethereum) {
@@ -37,8 +41,6 @@ export default function ArticlePage() {
         }
 
         const contract = new ethers.Contract(READLEARC_ADDRESS, READLEARC_ABI, provider);
-        
-        // Get metadata
         const meta = await contract.getArticleMetadata(articleId);
         setArticle({
           id: meta.id.toString(),
@@ -53,7 +55,6 @@ export default function ArticlePage() {
           publishedAt: new Date(Number(meta.timestamp) * 1000).toLocaleDateString(),
         });
 
-        // Check if paid
         if (userAddress) {
           const paid = await contract.hasReadReceipt(userAddress, articleId);
           setIsPaid(paid);
@@ -74,42 +75,32 @@ export default function ArticlePage() {
   async function handlePay() {
     setIsPaying(true);
     setError("");
-    
     try {
       const provider = await getProvider();
       const signer = await provider.getSigner();
-      
       const usdc = new ethers.Contract(USDC_ADDRESS, USDC_ABI, signer);
       const contract = new ethers.Contract(READLEARC_ADDRESS, READLEARC_ABI, signer);
-
       const priceInUnits = ethers.parseUnits(article.price.toString(), 6);
 
-      // Check allowance
-      setStep("Checking USDC approval...");
+      setStep("Checking USDC approval…");
       const allowance = await usdc.allowance(signer.address, READLEARC_ADDRESS);
-      
       if (allowance < priceInUnits) {
-        setStep("Approving USDC...");
+        setStep("Approving USDC…");
         const approveTx = await usdc.approve(READLEARC_ADDRESS, priceInUnits);
         await approveTx.wait();
       }
 
-      setStep("Signing payment transaction...");
+      setStep("Signing payment…");
       const tx = await contract.payToRead(articleId, ethers.ZeroAddress);
-      
-      setStep("Confirming on Arc network...");
+      setStep("Confirming on Arc…");
       setTxHash(tx.hash);
       await tx.wait();
 
       setPaymentDone(true);
-      
-      // Fetch full content
       const full = await contract.getFullArticle(articleId);
       setFullContent(full.content);
       setIsPaid(true);
-
     } catch (err: any) {
-      console.error(err);
       setError(err.reason || err.message || "Transaction failed");
     } finally {
       setIsPaying(false);
@@ -117,191 +108,297 @@ export default function ArticlePage() {
     }
   }
 
+  // ── Loading state ──────────────────────────────────────────────
   if (loading) {
     return (
-      <div className="min-h-screen bg-[#0a0a0f] flex flex-col items-center justify-center">
-        <div className="w-10 h-10 border-2 border-arc-500/30 border-t-arc-500 rounded-full animate-spin mb-4" />
-        <p className="text-gray-500 font-medium">Fetching on-chain data...</p>
+      <div style={{ minHeight: "100vh", background: "var(--bg)", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 16 }}>
+        <div style={{ width: 36, height: 36, border: "3px solid var(--border)", borderTopColor: "var(--brand)", borderRadius: "50%", animation: "spin 0.7s linear infinite" }} />
+        <p style={{ color: "var(--text-3)", fontSize: 14, fontWeight: 500 }}>Fetching on-chain data…</p>
+        <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
       </div>
     );
   }
 
+  // ── Not found ──────────────────────────────────────────────────
   if (!article) {
     return (
-      <div className="min-h-screen bg-[#0a0a0f] flex flex-col items-center justify-center">
-        <p className="text-white text-xl">Article not found.</p>
-        <Link href="/explore" className="text-arc-400 mt-4 hover:underline">Go back to Explore</Link>
+      <div style={{ minHeight: "100vh", background: "var(--bg)", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 12 }}>
+        <h2 style={{ fontSize: 22, fontWeight: 700, color: "var(--text)" }}>Article not found</h2>
+        <Link href="/explore" className="btn btn-primary btn-sm">← Back to Explore</Link>
+        <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-[#0a0a0f] selection:bg-arc-500/30">
-      {/* Navbar */}
-      <nav className="fixed top-0 left-0 right-0 z-50 glass border-b border-white/5">
-        <div className="max-w-7xl mx-auto px-6 h-20 flex items-center justify-between">
-          <Link href="/explore" className="flex items-center gap-2 text-gray-400 hover:text-white font-medium transition-colors">
-            <ArrowLeft className="w-4 h-4" /> Explore
-          </Link>
-          <Link href="/" className="flex items-center gap-3">
-            <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-arc-500 to-usdc-500 flex items-center justify-center shadow-lg">
-              <Zap className="w-4 h-4 text-white" />
-            </div>
-            <span className="font-heading font-bold text-xl tracking-tight hidden sm:block">Readlearc</span>
-          </Link>
-          <div className="flex items-center gap-4">
-            <button className="w-10 h-10 glass rounded-full flex items-center justify-center hover:bg-white/10 transition-all">
-              <Share2 className="w-4 h-4 text-gray-400" />
-            </button>
-            <Link href="/wallet" className="px-6 py-2.5 text-sm font-bold bg-white text-black hover:bg-gray-200 rounded-full transition-all shadow-xl hover:scale-105">
-              Wallet
-            </Link>
-          </div>
-        </div>
-      </nav>
+    <div style={{ minHeight: "100vh", background: "var(--bg)" }}>
+      <Navbar />
+      <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
 
-      <div className="max-w-3xl mx-auto px-6 pt-36 pb-32">
+      <div style={{ maxWidth: 760, margin: "0 auto", padding: "96px 24px 80px" }}>
+
+        {/* Back nav */}
+        <motion.div initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} style={{ marginBottom: 32 }}>
+          <Link href="/explore" className="btn btn-ghost btn-sm" style={{ color: "var(--text-3)" }}>
+            <ArrowLeft size={15} /> Back to Explore
+          </Link>
+        </motion.div>
+
+        {/* Error */}
         {error && (
-          <div className="mb-8 p-4 bg-red-500/10 border border-red-500/20 rounded-2xl flex items-center gap-3 text-red-400">
-            <AlertCircle className="w-5 h-5 flex-shrink-0" />
-            <span className="text-sm font-medium">{error}</span>
+          <div style={{
+            marginBottom: 20, padding: "14px 18px",
+            background: "rgba(239,68,68,0.07)", border: "1px solid rgba(239,68,68,0.2)",
+            borderRadius: "var(--radius)", display: "flex", gap: 10, alignItems: "flex-start",
+          }}>
+            <AlertCircle size={16} style={{ color: "#ef4444", flexShrink: 0, marginTop: 1 }} />
+            <span style={{ fontSize: 14, color: "#ef4444" }}>{error}</span>
           </div>
         )}
 
-        {/* Category + meta */}
-        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="flex items-center flex-wrap gap-4 mb-8">
-          <span className="text-xs font-bold text-arc-400 bg-arc-500/10 px-4 py-1.5 rounded-full border border-arc-500/20 uppercase tracking-widest shadow-inner">
-            {article.category}
+        {/* Meta row */}
+        <motion.div
+          initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}
+          style={{ display: "flex", flexWrap: "wrap", gap: 8, alignItems: "center", marginBottom: 20 }}
+        >
+          <span className="badge badge-brand" style={{ textTransform: "capitalize" }}>{article.category}</span>
+          <span style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 13, color: "var(--text-4)", fontWeight: 500 }}>
+            <Clock size={13} /> {article.readTime} min read
           </span>
-          <span className="flex items-center gap-1.5 text-sm font-medium text-gray-500 bg-white/5 px-3 py-1.5 rounded-full"><Clock className="w-4 h-4" /> {article.readTime} min read</span>
-          <span className="flex items-center gap-1.5 text-sm font-medium text-gray-500 bg-white/5 px-3 py-1.5 rounded-full"><Users className="w-4 h-4" /> {article.reads} reads</span>
+          <span style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 13, color: "var(--text-4)", fontWeight: 500 }}>
+            <Users size={13} /> {article.reads} reads
+          </span>
         </motion.div>
 
         {/* Title */}
-        <motion.h1 initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }} className="font-heading text-5xl md:text-6xl font-black text-white mb-8 leading-[1.1] tracking-tight">
+        <motion.h1
+          initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.08 }}
+          style={{
+            fontFamily: "Outfit, sans-serif",
+            fontSize: "clamp(28px, 5vw, 48px)",
+            fontWeight: 900,
+            letterSpacing: "-0.03em",
+            lineHeight: 1.1,
+            color: "var(--text)",
+            marginBottom: 28,
+          }}
+        >
           {article.title}
         </motion.h1>
 
-        {/* Author */}
-        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }} className="flex items-center justify-between mb-12 p-6 glass rounded-[2rem] border border-white/5 bg-white/2">
-          <div className="flex items-center gap-5">
-            <div className="w-14 h-14 rounded-full bg-gradient-to-br from-arc-500 to-usdc-500 shadow-inner flex-shrink-0" />
+        {/* Author card */}
+        <motion.div
+          initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.15 }}
+          className="card-flat"
+          style={{ padding: "18px 20px", display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 36, borderRadius: "var(--radius)" }}
+        >
+          <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
+            <div style={{
+              width: 44, height: 44, borderRadius: "50%",
+              background: "linear-gradient(135deg, var(--brand), var(--accent))",
+              flexShrink: 0,
+            }} />
             <div>
-              <div className="flex items-center gap-2 mb-1">
-                <span className="font-bold text-white text-lg">{article.author.name}</span>
-                <CheckCircle className="w-5 h-5 text-usdc-400" />
+              <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 2 }}>
+                <span style={{ fontWeight: 700, fontSize: 15, color: "var(--text)" }}>{article.author.name}</span>
+                <CheckCircle2 size={14} style={{ color: "var(--accent)" }} />
               </div>
-              <span className="text-sm font-medium text-gray-500">@{article.author.handle} · {article.publishedAt}</span>
+              <span style={{ fontSize: 13, color: "var(--text-4)", fontWeight: 500 }}>
+                @{article.author.handle} · {article.publishedAt}
+              </span>
             </div>
           </div>
-          <Link href={`/explore`} className="hidden sm:block text-sm font-bold text-arc-400 hover:text-arc-300 transition-colors bg-arc-500/10 px-5 py-2 rounded-full">
-            Follow
-          </Link>
+          <button
+            onClick={() => {
+              if (navigator.share) {
+                navigator.share({ title: article.title, url: window.location.href });
+              } else {
+                navigator.clipboard.writeText(window.location.href);
+              }
+            }}
+            style={{
+              width: 36, height: 36, borderRadius: "50%",
+              border: "1.5px solid var(--border)",
+              background: "var(--bg-card)",
+              cursor: "pointer",
+              display: "flex", alignItems: "center", justifyContent: "center",
+              color: "var(--text-3)",
+            }}
+            title="Share"
+          >
+            <Share2 size={15} />
+          </button>
         </motion.div>
 
-        {/* Preview blurb — always visible */}
-        <motion.p initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.3 }} className="text-2xl text-gray-300 leading-relaxed mb-12 font-light border-l-4 border-arc-500 pl-6">
+        {/* Blurb — always visible */}
+        <motion.p
+          initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.2 }}
+          style={{
+            fontSize: "clamp(16px, 2vw, 19px)",
+            color: "var(--text-2)",
+            lineHeight: 1.75,
+            marginBottom: 36,
+            borderLeft: "3px solid var(--brand)",
+            paddingLeft: 20,
+            fontWeight: 400,
+          }}
+        >
           {article.blurb}
         </motion.p>
 
+        <hr className="divider" style={{ marginBottom: 36 }} />
+
+        {/* ── Locked state ──────────────────────────────────────── */}
         {!isPaid ? (
-          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.4 }}>
-            {/* Locked content preview */}
-            <div className="relative mb-12 overflow-hidden rounded-3xl">
-              <div className="paywall-blur text-gray-500 leading-loose text-lg select-none pointer-events-none p-8 border border-white/5 bg-white/2">
+          <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.25 }}>
+
+            {/* Blurred content preview */}
+            <div style={{ position: "relative", borderRadius: "var(--radius-lg)", overflow: "hidden", marginBottom: 32 }}>
+              <div className="paywall-blur" style={{ padding: "28px 24px", background: "var(--bg-alt)", fontSize: 16, lineHeight: 1.85, color: "var(--text-2)" }}>
                 <p>The internet promised to democratize publishing. Instead, it created a system where platforms extract 70–90% of creator revenue through advertising.</p>
-                <p className="mt-6">When you read an article on a traditional blog, the economic relationship is inverted. You, the reader, are not the customer — you are the product. Your attention is sold to advertisers.</p>
-                <p className="mt-6">This makes something previously impossible, suddenly trivial: paying $0.02 to read one article...</p>
+                <p style={{ marginTop: 16 }}>When you read an article on a traditional blog, the economic relationship is inverted. You, the reader, are not the customer — you are the product.</p>
+                <p style={{ marginTop: 16 }}>This makes something previously impossible, suddenly trivial: paying $0.02 to read one article, with every cent going to the writer…</p>
               </div>
-              {/* Gradient fade */}
-              <div className="absolute inset-0 bg-gradient-to-b from-transparent via-[#0a0a0f]/80 to-[#0a0a0f] flex items-end justify-center pb-12">
-                <div className="w-16 h-16 rounded-full bg-arc-600/20 flex items-center justify-center backdrop-blur-md border border-arc-500/30">
-                  <Lock className="w-8 h-8 text-arc-400" />
+              {/* Fade overlay */}
+              <div style={{
+                position: "absolute", inset: 0,
+                background: "linear-gradient(to bottom, transparent 20%, var(--bg) 100%)",
+                display: "flex", alignItems: "flex-end", justifyContent: "center",
+                paddingBottom: 24,
+              }}>
+                <div style={{
+                  width: 52, height: 52, borderRadius: "50%",
+                  background: "var(--brand-muted)",
+                  border: "1.5px solid var(--border-brand)",
+                  display: "flex", alignItems: "center", justifyContent: "center",
+                }}>
+                  <Lock size={22} style={{ color: "var(--brand)" }} />
                 </div>
               </div>
             </div>
 
-            {/* Paywall CTA */}
-            <div className="glass-arc rounded-[3rem] p-10 md:p-14 text-center border-arc-500/30 shadow-2xl relative overflow-hidden">
-              <div className="absolute inset-0 bg-gradient-to-b from-arc-500/10 to-transparent pointer-events-none" />
-              
-              <h3 className="font-heading text-4xl font-black mb-4 relative z-10 tracking-tight">Unlock Full Article</h3>
-              <p className="text-gray-400 text-lg mb-10 max-w-md mx-auto font-light leading-relaxed relative z-10">
-                Pay once in USDC and own permanent on-chain access. Your payment goes directly to the writer instantly.
+            {/* Paywall card */}
+            <div className="card" style={{ padding: "48px 36px", textAlign: "center", borderColor: "var(--border-brand)" }}>
+              <h3 style={{ fontFamily: "Outfit, sans-serif", fontSize: 28, fontWeight: 900, color: "var(--text)", marginBottom: 12, letterSpacing: "-0.02em" }}>
+                Unlock Full Article
+              </h3>
+              <p style={{ color: "var(--text-3)", fontSize: 15, lineHeight: 1.65, maxWidth: 420, margin: "0 auto 32px" }}>
+                Pay once in USDC and own permanent on-chain read access. Your payment goes directly to the writer.
               </p>
 
-              <div className="flex flex-wrap items-center justify-center gap-4 md:gap-8 mb-10 text-sm font-bold text-gray-400 relative z-10">
-                <span className="flex items-center gap-2 bg-black/40 px-4 py-2 rounded-full border border-white/5"><Zap className="w-4 h-4 text-arc-400" /> Sub-second</span>
-                <span className="flex items-center gap-2 bg-black/40 px-4 py-2 rounded-full border border-white/5"><CheckCircle className="w-4 h-4 text-usdc-400" /> 85% to writer</span>
-                <span className="flex items-center gap-2 bg-black/40 px-4 py-2 rounded-full border border-white/5"><Coins className="w-4 h-4 text-blue-400" /> On-chain proof</span>
+              {/* Feature chips */}
+              <div style={{ display: "flex", flexWrap: "wrap", justifyContent: "center", gap: 8, marginBottom: 32 }}>
+                {[
+                  { icon: Zap, label: "Sub-second settlement", color: "var(--brand)" },
+                  { icon: CheckCircle2, label: "85% to writer", color: "var(--accent)" },
+                  { icon: Coins, label: "On-chain proof", color: "#0284c7" },
+                ].map(({ icon: Icon, label, color }) => (
+                  <span key={label} style={{
+                    display: "inline-flex", alignItems: "center", gap: 6,
+                    padding: "7px 14px",
+                    background: "var(--bg-alt)", border: "1px solid var(--border)",
+                    borderRadius: "var(--radius-full)",
+                    fontSize: 13, fontWeight: 600, color: "var(--text-3)",
+                  }}>
+                    <Icon size={13} style={{ color }} strokeWidth={2.5} />
+                    {label}
+                  </span>
+                ))}
               </div>
 
+              {/* Pay button */}
               <button
                 onClick={handlePay}
                 disabled={isPaying || paymentDone}
-                className="w-full max-w-sm mx-auto flex items-center justify-center gap-3 px-8 py-5 bg-white text-black hover:bg-gray-200 disabled:bg-gray-800 disabled:text-gray-500 rounded-full font-black text-xl transition-all shadow-xl hover:scale-105 active:scale-95 relative z-10"
+                className="btn btn-primary"
+                style={{
+                  width: "100%", maxWidth: 340, height: 54, fontSize: 16, fontWeight: 800,
+                  margin: "0 auto", display: "flex",
+                }}
               >
                 {paymentDone ? (
-                  <><CheckCircle className="w-6 h-6 text-usdc-500" /> Confirmed!</>
+                  <><CheckCircle2 size={18} /> Confirmed!</>
                 ) : isPaying ? (
-                  <><div className="w-6 h-6 border-4 border-gray-300 border-t-black rounded-full animate-spin" /> {step || "Processing..."}</>
+                  <>
+                    <div style={{ width: 16, height: 16, border: "2px solid rgba(255,255,255,0.3)", borderTopColor: "white", borderRadius: "50%", animation: "spin 0.7s linear infinite" }} />
+                    {step || "Processing…"}
+                  </>
                 ) : (
-                  <><Unlock className="w-6 h-6" /> Pay ${article.price} USDC</>
+                  <><Unlock size={18} /> Pay ${article.price} USDC</>
                 )}
               </button>
 
               {txHash && (
-                <p className="mt-6 text-xs font-mono text-gray-500 relative z-10">
-                  Tx: {txHash.slice(0,10)}...{txHash.slice(-8)}
+                <p style={{ marginTop: 14, fontSize: 12, color: "var(--text-4)", fontFamily: "JetBrains Mono, monospace" }}>
+                  Tx: {txHash.slice(0, 12)}…{txHash.slice(-8)}
                 </p>
               )}
             </div>
           </motion.div>
+
         ) : (
-          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.8 }}>
-            {/* On-chain access badge */}
-            <div className="bg-usdc-500/10 border border-usdc-500/30 rounded-2xl p-5 flex items-center gap-4 mb-12 backdrop-blur-sm">
-              <div className="w-12 h-12 rounded-full bg-usdc-500/20 flex items-center justify-center flex-shrink-0">
-                <CheckCircle className="w-6 h-6 text-usdc-400" />
+          /* ── Unlocked state ───────────────────────────────────── */
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.6 }}>
+
+            {/* Access badge */}
+            <div style={{
+              display: "flex", alignItems: "center", gap: 14,
+              padding: "16px 20px",
+              background: "rgba(5,150,105,0.07)",
+              border: "1px solid rgba(5,150,105,0.2)",
+              borderRadius: "var(--radius)",
+              marginBottom: 32,
+            }}>
+              <div style={{
+                width: 40, height: 40, borderRadius: "50%",
+                background: "rgba(5,150,105,0.12)",
+                border: "1px solid rgba(5,150,105,0.25)",
+                display: "flex", alignItems: "center", justifyContent: "center",
+                flexShrink: 0,
+              }}>
+                <CheckCircle2 size={20} style={{ color: "#059669" }} />
               </div>
               <div>
-                <p className="text-lg font-bold text-white mb-1">Access granted on-chain</p>
-                <p className="text-xs font-mono text-gray-500">Verified Read Receipt on Arc Testnet</p>
+                <p style={{ fontWeight: 700, fontSize: 14, color: "var(--text)", marginBottom: 2 }}>Access granted on-chain</p>
+                <p style={{ fontSize: 12, color: "var(--text-4)", fontFamily: "JetBrains Mono, monospace" }}>Verified Read Receipt · Arc Testnet</p>
               </div>
             </div>
 
-            {/* Full unlocked content */}
-            <div className="prose prose-invert prose-lg max-w-none mb-16">
-              <div
-                className="text-gray-300 leading-loose font-light space-y-6"
-                dangerouslySetInnerHTML={{
-                  __html: fullContent
-                    .trim()
-                    .replace(/\*\*(.*?)\*\*/g, "<strong class='text-white font-bold'>$1</strong>")
-                    .split("\n\n")
-                    .map((p) => p.startsWith("-") ? `<ul class="list-disc pl-6 space-y-2"><li>${p.split("\n").join("</li><li>").replace(/- /g,"")}</li></ul>` : `<p>${p}</p>`)
-                    .join("")
-                }}
-              />
-            </div>
+            {/* Full article content */}
+            <div style={{ fontSize: 17, lineHeight: 1.85, color: "var(--text-2)", marginBottom: 56 }}
+              dangerouslySetInnerHTML={{
+                __html: fullContent
+                  .trim()
+                  .replace(/\*\*(.*?)\*\*/g, "<strong style='color:var(--text);font-weight:700'>$1</strong>")
+                  .split("\n\n")
+                  .map(p => p.startsWith("-")
+                    ? `<ul style='padding-left:24px;margin:16px 0;'><li style='margin:6px 0'>${p.split("\n").map(l => l.replace(/^- ?/, "")).join("</li><li style='margin:6px 0'>")}</li></ul>`
+                    : `<p style='margin-bottom:20px'>${p}</p>`
+                  )
+                  .join("")
+              }}
+            />
 
             {/* Tip section */}
-            <div className="glass rounded-[3rem] p-12 text-center border-white/5 bg-white/2">
-              <h3 className="font-heading text-3xl font-black mb-3">Loved this article?</h3>
-              <p className="text-gray-400 text-lg mb-8 font-light">100% of tips go directly to {article.author.name}</p>
-              <div className="flex flex-wrap items-center justify-center gap-4">
-                {[0.50, 1.00, 5.00].map((amount) => (
+            <div className="card-flat" style={{ padding: "40px 32px", textAlign: "center", borderRadius: "var(--radius-xl)" }}>
+              <h3 style={{ fontFamily: "Outfit, sans-serif", fontSize: 24, fontWeight: 800, color: "var(--text)", marginBottom: 8 }}>
+                Loved this article?
+              </h3>
+              <p style={{ color: "var(--text-3)", fontSize: 14, marginBottom: 24 }}>
+                100% of tips go directly to {article.author.name}
+              </p>
+              <div style={{ display: "flex", flexWrap: "wrap", justifyContent: "center", gap: 10 }}>
+                {[0.50, 1.00, 5.00].map(amount => (
                   <button
                     key={amount}
-                    className="px-6 py-3 glass border border-white/10 rounded-full hover:bg-white/10 hover:text-white text-gray-300 font-bold transition-all shadow-sm"
+                    className="btn btn-secondary"
+                    style={{ fontWeight: 700 }}
                   >
                     ${amount.toFixed(2)}
                   </button>
                 ))}
-                <button
-                  className="px-8 py-3 bg-usdc-600 hover:bg-usdc-500 rounded-full text-white font-black flex items-center gap-2 transition-all shadow-lg hover:-translate-y-1"
-                >
-                  <Heart className="w-5 h-5" /> Tip Writer
+                <button className="btn btn-primary" style={{ fontWeight: 700 }}>
+                  <Heart size={15} /> Tip Writer
                 </button>
               </div>
             </div>
