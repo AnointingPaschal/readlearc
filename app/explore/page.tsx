@@ -1,149 +1,187 @@
 "use client";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
-import { Search, Filter, Clock, Users, Star, Zap, BookOpen } from "lucide-react";
+import { Search, Filter, Clock, Users, Zap, BookOpen } from "lucide-react";
+import { motion } from "framer-motion";
+import { fetchAllArticles } from "../lib/web3";
 
 const CATEGORIES = ["All", "Web3", "Development", "Blockchain", "Economics", "Research", "Guide", "AI", "DeFi"];
+const SORT_OPTIONS = ["Newest", "Most Read", "Lowest Price"];
 
-const ARTICLES = [
-  { id: "1", title: "The Future of Decentralized Content Monetization", blurb: "How Arc blockchain and USDC nanopayments are rewriting the economics of online publishing — giving writers 85¢ of every dollar.", price: 0.02, readTime: 5, author: { handle: "vitalik_reads", name: "Alex Chen" }, category: "Web3", reads: 1240, featured: true },
-  { id: "2", title: "Building AI Agents with Circle's Developer Stack", blurb: "A deep dive into Circle Agent Wallets and how autonomous payment agents are transforming DeFi user experience at scale.", price: 0.05, readTime: 8, author: { handle: "circledev", name: "Maria Santos" }, category: "Development", reads: 897, featured: false },
-  { id: "3", title: "Why Sub-Second Finality Changes Everything", blurb: "When transactions confirm in under a second, the entire mental model for micropayments collapses into something elegant and inevitable.", price: 0.01, readTime: 3, author: { handle: "arcbuilder", name: "James Wu" }, category: "Blockchain", reads: 2103, featured: true },
-  { id: "4", title: "The Writer's Guide to On-Chain Earnings", blurb: "From your first article to your first $100 USDC withdrawal — everything you need to know about earning on Readlearc.", price: 0.03, readTime: 6, author: { handle: "cryptowriter", name: "Priya Patel" }, category: "Guide", reads: 543, featured: false },
-  { id: "5", title: "Quadratic Pricing: The Math Behind Viral Articles", blurb: "Our pricing algorithm rewards widely-read articles with lower per-read costs, maximizing both writer income and reader reach.", price: 0.04, readTime: 7, author: { handle: "mathcrypto", name: "David Kim" }, category: "Economics", reads: 678, featured: false },
-  { id: "6", title: "USDC vs Traditional Ad Revenue: A 90-Day Study", blurb: "We analyzed 200 creators who switched from ad-based platforms to Readlearc. The results will surprise you.", price: 0.02, readTime: 4, author: { handle: "datawriter", name: "Emma Thompson" }, category: "Research", reads: 1456, featured: false },
-  { id: "7", title: "Circle CCTP: Cross-Chain USDC for the Masses", blurb: "Understanding how Circle's Cross-Chain Transfer Protocol makes USDC truly universal across all EVM networks.", price: 0.03, readTime: 5, author: { handle: "bridgebuilder", name: "Liam O'Brien" }, category: "DeFi", reads: 832, featured: false },
-  { id: "8", title: "Proof-of-Readership NFTs: A New Creator Economy", blurb: "What happens when every article you finish mints you a free on-chain badge? We explore the implications.", price: 0.02, readTime: 4, author: { handle: "nftwriter", name: "Sofia Garcia" }, category: "Web3", reads: 1120, featured: false },
-  { id: "9", title: "OpenRouter and the AI Content Layer", blurb: "How Readlearc uses OpenRouter to power article summarization, content moderation, and personalized recommendations.", price: 0.04, readTime: 6, author: { handle: "aibuilder", name: "Chen Wei" }, category: "AI", reads: 445, featured: false },
-];
+const staggerContainer = {
+  hidden: { opacity: 0 },
+  visible: {
+    opacity: 1,
+    transition: { staggerChildren: 0.1 }
+  }
+};
 
-const SORT_OPTIONS = ["Newest", "Most Read", "Lowest Price", "Highest Earning"];
+const fadeUp = {
+  hidden: { opacity: 0, y: 20 },
+  visible: { opacity: 1, y: 0 }
+};
 
 export default function ExplorePage() {
   const [search, setSearch] = useState("");
   const [activeCategory, setActiveCategory] = useState("All");
   const [sortBy, setSortBy] = useState("Newest");
+  const [articles, setArticles] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  const filtered = ARTICLES.filter((a) => {
+  useEffect(() => {
+    async function loadData() {
+      try {
+        const data = await fetchAllArticles();
+        setArticles(data);
+      } catch (e) {
+        console.error(e);
+      } finally {
+        setLoading(false);
+      }
+    }
+    loadData();
+  }, []);
+
+  const filtered = articles.filter((a) => {
     const matchSearch = a.title.toLowerCase().includes(search.toLowerCase()) || a.blurb.toLowerCase().includes(search.toLowerCase());
     const matchCat = activeCategory === "All" || a.category === activeCategory;
     return matchSearch && matchCat;
+  }).sort((a, b) => {
+    if (sortBy === "Newest") return Number(b.timestamp) - Number(a.timestamp);
+    if (sortBy === "Most Read") return Number(b.reads) - Number(a.reads);
+    if (sortBy === "Lowest Price") return Number(a.price) - Number(b.price);
+    return 0;
   });
 
   return (
-    <div className="min-h-screen bg-[#0a0a0f]">
+    <div className="min-h-screen bg-[#0a0a0f] selection:bg-arc-500/30">
       {/* Navbar */}
       <nav className="fixed top-0 left-0 right-0 z-50 glass border-b border-white/5">
-        <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
-          <Link href="/" className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-arc-500 to-usdc-500 flex items-center justify-center">
-              <Zap className="w-4 h-4 text-white" />
+        <div className="max-w-7xl mx-auto px-6 h-20 flex items-center justify-between">
+          <Link href="/" className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-arc-500 to-usdc-500 flex items-center justify-center shadow-lg shadow-arc-500/20">
+              <Zap className="w-5 h-5 text-white" />
             </div>
-            <span className="font-heading font-bold text-xl">Readlearc</span>
+            <span className="font-heading font-black text-2xl tracking-tight">Readlearc</span>
           </Link>
-          <div className="hidden md:flex items-center gap-8 text-sm text-gray-400">
-            <Link href="/explore" className="text-white font-medium">Explore</Link>
+          <div className="hidden md:flex items-center gap-8 text-sm font-medium text-gray-400">
+            <Link href="/explore" className="text-white">Explore</Link>
             <Link href="/write" className="hover:text-white transition-colors">Write</Link>
+            <Link href="/dashboard" className="hover:text-white transition-colors">Dashboard</Link>
           </div>
-          <Link href="/wallet" className="px-4 py-2 text-sm font-semibold bg-arc-600 hover:bg-arc-500 rounded-lg transition-all">
-            Connect Wallet
+          <Link href="/wallet" className="px-6 py-2.5 text-sm font-bold bg-white text-black hover:bg-gray-200 rounded-full transition-all shadow-xl hover:scale-105 active:scale-95">
+            Connect
           </Link>
         </div>
       </nav>
 
-      <div className="max-w-7xl mx-auto px-6 pt-28 pb-20">
+      <div className="max-w-7xl mx-auto px-6 pt-32 pb-20">
         {/* Header */}
-        <div className="mb-8">
-          <h1 className="font-heading text-4xl font-bold mb-2">Explore Articles</h1>
-          <p className="text-gray-500">Discover stories worth paying for. Pay in USDC, read instantly.</p>
-        </div>
+        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="mb-10">
+          <h1 className="font-heading text-5xl font-black mb-4 tracking-tight">Explore Articles</h1>
+          <p className="text-gray-400 text-lg">Discover stories stored permanently on-chain. Pay in USDC, read instantly.</p>
+        </motion.div>
 
         {/* Search + Filter bar */}
-        <div className="flex flex-col md:flex-row gap-4 mb-8">
+        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }} className="flex flex-col md:flex-row gap-4 mb-8">
           <div className="relative flex-1">
-            <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
+            <Search className="absolute left-5 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-500" />
             <input
               type="text"
               placeholder="Search articles, topics, authors..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="w-full pl-11 pr-4 py-3 glass rounded-xl border border-white/10 bg-transparent text-white placeholder:text-gray-600 focus:outline-none focus:border-arc-500/50 text-sm"
+              className="w-full pl-14 pr-6 py-4 glass rounded-2xl border border-white/5 bg-white/5 text-white placeholder:text-gray-600 focus:outline-none focus:border-arc-500/50 focus:bg-white/10 transition-all font-light"
             />
           </div>
           <div className="flex items-center gap-3">
-            <Filter className="w-4 h-4 text-gray-500" />
+            <Filter className="w-5 h-5 text-gray-500 hidden sm:block" />
             <select
               value={sortBy}
               onChange={(e) => setSortBy(e.target.value)}
-              className="glass rounded-xl border border-white/10 bg-[#1a1f2e] text-gray-300 px-4 py-3 text-sm focus:outline-none focus:border-arc-500/50"
+              className="glass rounded-2xl border border-white/5 bg-white/5 text-white px-6 py-4 font-medium focus:outline-none focus:border-arc-500/50 appearance-none cursor-pointer hover:bg-white/10 transition-all"
             >
-              {SORT_OPTIONS.map((o) => <option key={o}>{o}</option>)}
+              {SORT_OPTIONS.map((o) => <option key={o} value={o} className="bg-[#111827]">{o}</option>)}
             </select>
           </div>
-        </div>
+        </motion.div>
 
         {/* Categories */}
-        <div className="flex gap-2 flex-wrap mb-10">
+        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }} className="flex gap-3 flex-wrap mb-12">
           {CATEGORIES.map((cat) => (
             <button
               key={cat}
               onClick={() => setActiveCategory(cat)}
-              className={`px-4 py-2 rounded-full text-sm font-medium transition-all ${
+              className={`px-5 py-2.5 rounded-full text-sm font-bold transition-all ${
                 activeCategory === cat
-                  ? "bg-arc-600 text-white shadow-arc"
-                  : "glass border border-white/10 text-gray-400 hover:border-arc-500/30 hover:text-white"
+                  ? "bg-white text-black shadow-lg hover:scale-105"
+                  : "glass border border-white/5 text-gray-400 hover:border-arc-500/30 hover:text-white hover:bg-white/5"
               }`}
             >
               {cat}
             </button>
           ))}
-        </div>
+        </motion.div>
 
-        {/* Results count */}
-        <p className="text-sm text-gray-600 mb-6">{filtered.length} articles found</p>
-
-        {/* Articles grid */}
-        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {filtered.map((article) => (
-            <Link
-              key={article.id}
-              href={`/article/${article.id}`}
-              className="glass rounded-2xl p-5 hover:border-arc-500/30 transition-all hover:-translate-y-1 hover:shadow-card group"
-            >
-              {article.featured && (
-                <div className="flex items-center gap-1 text-xs text-yellow-400 mb-3 font-medium">
-                  <Star className="w-3 h-3 fill-yellow-400" /> Featured
-                </div>
-              )}
-              <div className="flex items-center justify-between mb-4">
-                <span className="text-xs font-semibold text-arc-400 bg-arc-500/10 px-3 py-1 rounded-full border border-arc-500/20">
-                  {article.category}
-                </span>
-                <span className="price-badge">${article.price} USDC</span>
-              </div>
-              <h3 className="font-heading text-lg font-semibold text-white mb-2 group-hover:text-arc-300 transition-colors leading-snug">
-                {article.title}
-              </h3>
-              <p className="text-gray-500 text-sm leading-relaxed mb-4 line-clamp-2">{article.blurb}</p>
-              <div className="flex items-center justify-between pt-4 border-t border-white/5">
-                <div className="flex items-center gap-2">
-                  <div className="w-6 h-6 rounded-full bg-gradient-to-br from-arc-500 to-usdc-500" />
-                  <span className="text-sm text-gray-400">@{article.author.handle}</span>
-                </div>
-                <div className="flex items-center gap-3 text-xs text-gray-600">
-                  <span className="flex items-center gap-1"><Clock className="w-3 h-3" /> {article.readTime}m</span>
-                  <span className="flex items-center gap-1"><Users className="w-3 h-3" /> {article.reads.toLocaleString()}</span>
-                </div>
-              </div>
-            </Link>
-          ))}
-        </div>
-
-        {filtered.length === 0 && (
-          <div className="text-center py-20">
-            <BookOpen className="w-12 h-12 text-gray-700 mx-auto mb-4" />
-            <p className="text-gray-600 text-lg">No articles match your search.</p>
+        {loading ? (
+          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {[1,2,3,4,5,6].map(i => (
+              <div key={i} className="glass rounded-3xl p-6 h-64 skeleton border-white/5"></div>
+            ))}
           </div>
+        ) : filtered.length === 0 ? (
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="text-center py-32 glass rounded-3xl border border-white/5 bg-white/2">
+            <BookOpen className="w-16 h-16 text-gray-700 mx-auto mb-6" />
+            <p className="text-white text-2xl font-bold mb-2">No articles found</p>
+            <p className="text-gray-500">Try adjusting your search or category filter.</p>
+          </motion.div>
+        ) : (
+          <>
+            <p className="text-sm font-medium text-gray-600 mb-6">{filtered.length} articles found on-chain</p>
+            <motion.div 
+              variants={staggerContainer}
+              initial="hidden"
+              animate="visible"
+              className="grid md:grid-cols-2 lg:grid-cols-3 gap-8"
+            >
+              {filtered.map((article) => (
+                <motion.div variants={fadeUp} key={article.id}>
+                  <Link
+                    href={`/article/${article.id}`}
+                    className="block h-full glass rounded-3xl p-8 hover:bg-white/5 transition-all hover:-translate-y-2 hover:shadow-2xl hover:shadow-arc-500/10 group border-white/5"
+                  >
+                    <div className="flex items-start justify-between mb-6">
+                      <span className="text-xs font-bold text-arc-400 bg-arc-500/10 px-3 py-1.5 rounded-full border border-arc-500/20 uppercase tracking-wider">
+                        {article.category}
+                      </span>
+                      <span className="price-badge">${article.price} USDC</span>
+                    </div>
+
+                    <h3 className="font-heading text-2xl font-bold text-white mb-4 group-hover:text-arc-400 transition-colors leading-tight">
+                      {article.title}
+                    </h3>
+
+                    <p className="text-gray-400 leading-relaxed mb-8 line-clamp-3 font-light">{article.blurb}</p>
+
+                    <div className="flex items-center justify-between pt-6 border-t border-white/10 mt-auto">
+                      <div className="flex items-center gap-3">
+                        <div className="w-8 h-8 rounded-full bg-gradient-to-br from-arc-500 to-usdc-500 shadow-inner" />
+                        <span className="text-sm font-semibold text-gray-300">@{article.author.handle}</span>
+                      </div>
+                      <div className="flex items-center gap-4 text-xs font-medium text-gray-500">
+                        <span className="flex items-center gap-1.5">
+                          <Clock className="w-4 h-4" /> {article.readTime}m
+                        </span>
+                        <span className="flex items-center gap-1.5">
+                          <Users className="w-4 h-4" /> {article.reads}
+                        </span>
+                      </div>
+                    </div>
+                  </Link>
+                </motion.div>
+              ))}
+            </motion.div>
+          </>
         )}
       </div>
     </div>
