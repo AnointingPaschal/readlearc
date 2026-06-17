@@ -45,7 +45,7 @@ export default function WritersAdminPage() {
                   <td className="py-3 px-4">
                     <div className="flex items-center gap-2 text-sm font-medium text-white">
                       @{w.handle}
-                      {w.verified && <UserCheck className="w-4 h-4 text-usdc-400" title="Verified Writer" />}
+                      {w.verified && <span title="Verified Writer" className="flex items-center"><UserCheck className="w-4 h-4 text-usdc-400" /></span>}
                     </div>
                   </td>
                   <td className="py-3 px-4 text-right text-xs text-gray-300">{w.articles}</td>
