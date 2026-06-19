@@ -25,6 +25,7 @@ export default function WritePage() {
   const [articleId, setArticleId] = useState("");
   const [step,      setStep]      = useState("");
   const [error,     setError]     = useState("");
+  const [isResearch,setIsResearch] = useState(false);
 
   const words    = body.split(/\s+/).filter(Boolean).length;
   const readTime = Math.max(1, Math.ceil(words/200));
@@ -45,7 +46,7 @@ export default function WritePage() {
       const c = new ethers.Contract(CONTRACT_ADDRESS, CONTRACT_ABI, signer);
       setStep("Sign in wallet…");
       const priceUnits = ethers.parseUnits(price.toFixed(6), 6);
-      const tx = await c.publishArticle(title, blurb, body, priceUnits, category, readTime);
+      const tx = await c.publishArticle(title, blurb, body, priceUnits, category, readTime, isResearch);
       setStep("Confirming on Arc…");
       const receipt = await tx.wait();
       setTxHash(tx.hash);
@@ -149,6 +150,25 @@ export default function WritePage() {
 
             {/* Sidebar */}
             <div style={{ display:"flex", flexDirection:"column", gap:12, position:"sticky", top:80 }}>
+              {/* Content Type */}
+              <div className="card" style={{ padding:"16px" }}>
+                <h3 style={{ fontSize:13, fontWeight:700, color:"var(--text-2)", marginBottom:10 }}>Content Type</h3>
+                <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:6 }}>
+                  {[
+                    { id:false, label:"Article",  desc:"Standard post" },
+                    { id:true,  label:"Research", desc:"Paper format"  },
+                  ].map(t => (
+                    <button key={String(t.id)} onClick={() => setIsResearch(t.id)}
+                      style={{ padding:"10px 8px", borderRadius:"var(--r)", textAlign:"center", cursor:"pointer", transition:"all .15s",
+                        border:`1.5px solid ${isResearch===t.id?"var(--brand)":"var(--border)"}`,
+                        background:isResearch===t.id?"var(--brand-muted)":"transparent" }}>
+                      <div style={{ fontSize:12, fontWeight:700, color:isResearch===t.id?"var(--brand)":"var(--text-2)" }}>{t.label}</div>
+                      <div style={{ fontSize:10, color:"var(--text-4)", marginTop:2 }}>{t.desc}</div>
+                    </button>
+                  ))}
+                </div>
+              </div>
+
               {/* Price */}
               <div className="card" style={{ padding:"18px" }}>
                 <div style={{ display:"flex", alignItems:"center", gap:7, marginBottom:14 }}><DollarSign size={14} style={{ color:"#059669" }}/><h3 style={{ fontSize:13, fontWeight:700, color:"var(--text-2)" }}>Article Price</h3></div>
