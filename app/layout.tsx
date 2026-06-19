@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import "./globals.css";
 import { ThemeProvider } from "../lib/theme";
+import { WalletProvider } from "../lib/web3Context";
 
 export const metadata: Metadata = {
   title: "Readlearc — Pay per word. Own every read.",
@@ -49,7 +50,9 @@ export default function RootLayout({
       </head>
       <body className="antialiased" style={{ minHeight: "100vh", background: "var(--bg)", color: "var(--text)" }}>
         <ThemeProvider>
-          {children}
+          <WalletProvider>
+            {children}
+          </WalletProvider>
         </ThemeProvider>
       </body>
     </html>
