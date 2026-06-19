@@ -1,439 +1,199 @@
 "use client";
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { BookOpen, Zap, Shield, TrendingUp, Users, DollarSign, ChevronRight, Clock, Coins, ArrowRight } from "lucide-react";
+import { ArrowRight, Zap, BookOpen, DollarSign, Users, CheckCircle2 } from "lucide-react";
 import { motion } from "framer-motion";
-import { fetchAllArticles } from "../lib/web3";
 import Navbar from "../components/ui/Navbar";
+import SetupBanner from "../components/ui/SetupBanner";
+import { fetchArticles, IS_CONFIGURED, type Article } from "../lib/chain";
 
-const STATS = [
-  { label: "Articles Published", value: "12,847", icon: BookOpen },
-  { label: "USDC Paid to Writers", value: "$48,291", icon: DollarSign },
-  { label: "Active Readers", value: "9,340", icon: Users },
-  { label: "Avg. Settlement Time", value: "0.8s", icon: Zap },
-];
+const fade  = { hidden:{opacity:0,y:20}, show:{opacity:1,y:0,transition:{duration:.5}} };
+const stagger = { hidden:{}, show:{transition:{staggerChildren:.08}} };
 
-const HOW_IT_WORKS = [
-  {
-    step: "01",
-    title: "Writer Publishes",
-    desc: "Write your article, set a USDC price, and publish entirely on-chain on the Arc network.",
-    icon: BookOpen,
-    accent: "#6d28d9",
-    accentBg: "rgba(109,40,217,0.08)",
-  },
-  {
-    step: "02",
-    title: "Reader Discovers",
-    desc: "Browse the feed, see the preview blurb and price. Pay with your wallet — instant nanopayment.",
-    icon: Coins,
-    accent: "#059669",
-    accentBg: "rgba(5,150,105,0.08)",
-  },
-  {
-    step: "03",
-    title: "Instant Settlement",
-    desc: "USDC is split atomically on-chain: 85% to writer, 10% to platform, 5% to referrer. No delay.",
-    icon: Zap,
-    accent: "#0284c7",
-    accentBg: "rgba(2,132,199,0.08)",
-  },
-  {
-    step: "04",
-    title: "Content Unlocks",
-    desc: "Payment verified on-chain. Full article renders immediately. Proof-of-read recorded forever.",
-    icon: Shield,
-    accent: "#d97706",
-    accentBg: "rgba(217,119,6,0.08)",
-  },
-];
-
-const fadeUp: any = {
-  hidden: { opacity: 0, y: 24 },
-  visible: { opacity: 1, y: 0, transition: { duration: 0.55, ease: "easeOut" } },
-};
-
-const stagger: any = {
-  hidden: { opacity: 0 },
-  visible: { opacity: 1, transition: { staggerChildren: 0.1 } },
-};
-
-export default function LandingPage() {
-  const [articles, setArticles] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
+export default function Home() {
+  const [articles, setArticles] = useState<Article[]>([]);
+  const [loading,  setLoading]  = useState(true);
 
   useEffect(() => {
-    fetchAllArticles()
-      .then(d => setArticles(d.slice(0, 6)))
-      .catch(console.error)
-      .finally(() => setLoading(false));
+    fetchArticles(6).then(setArticles).finally(() => setLoading(false));
   }, []);
 
   return (
-    <div style={{ minHeight: "100vh", background: "var(--bg)" }}>
+    <div style={{ minHeight:"100vh", background:"var(--bg)" }}>
+      <SetupBanner />
       <Navbar />
 
-      {/* ─── Hero ──────────────────────────────────────────────── */}
-      <section style={{ paddingTop: "clamp(96px, 12vw, 128px)", paddingBottom: "clamp(48px, 6vw, 80px)", position: "relative", overflow: "hidden" }}>
-        {/* subtle grid */}
-        <div className="hero-grid" style={{
-          position: "absolute", inset: 0, opacity: 0.6, pointerEvents: "none",
-        }} />
-        {/* glow blobs */}
-        <div style={{
-          position: "absolute", top: -100, left: "50%", transform: "translateX(-50%)",
-          width: 700, height: 400,
-          background: "radial-gradient(ellipse, rgba(109,40,217,0.12) 0%, transparent 70%)",
-          pointerEvents: "none",
-        }} />
+      {/* Hero */}
+      <section style={{ paddingTop:"clamp(100px,14vw,140px)", paddingBottom:"clamp(60px,8vw,100px)", position:"relative", overflow:"hidden" }}>
+        <div style={{ position:"absolute", inset:0, backgroundImage:"linear-gradient(var(--border) 1px,transparent 1px),linear-gradient(90deg,var(--border) 1px,transparent 1px)", backgroundSize:"60px 60px", opacity:.5, pointerEvents:"none" }} />
+        <div style={{ position:"absolute", top:-120, left:"50%", transform:"translateX(-50%)", width:800, height:500, background:"radial-gradient(ellipse,rgba(109,40,217,.1) 0%,transparent 70%)", pointerEvents:"none" }} />
 
-        <div style={{ maxWidth: 960, margin: "0 auto", padding: "0 24px", textAlign: "center", position: "relative" }}>
-          <motion.div initial="hidden" animate="visible" variants={stagger} style={{ display: "flex", flexDirection: "column", alignItems: "center" }}>
-
-            <motion.div variants={fadeUp}>
-              <span className="badge badge-brand" style={{ marginBottom: 24 }}>
-                <Zap size={11} strokeWidth={3} />
-                Built on Arc · Circle USDC · 100% On-Chain
+        <div style={{ maxWidth:960, margin:"0 auto", padding:"0 20px", textAlign:"center", position:"relative" }}>
+          <motion.div initial="hidden" animate="show" variants={stagger}>
+            <motion.div variants={fade}>
+              <span className="badge badge-brand" style={{ marginBottom:20, display:"inline-flex" }}>
+                <Zap size={10} strokeWidth={3}/> Built on Arc · Circle USDC · 100% On-Chain
               </span>
             </motion.div>
 
-            <motion.h1
-              variants={fadeUp}
-              style={{
-                fontFamily: "Outfit, sans-serif",
-                fontSize: "clamp(44px, 7vw, 88px)",
-                fontWeight: 900,
-                lineHeight: 1.05,
-                letterSpacing: "-0.03em",
-                color: "var(--text)",
-                marginBottom: 24,
-              }}
-            >
-              Pay per word.<br />
-              <span className="gradient-text">Own every read.</span>
+            <motion.h1 variants={fade} style={{ fontFamily:"Outfit,sans-serif", fontSize:"clamp(40px,7vw,84px)", fontWeight:900, lineHeight:1.05, letterSpacing:"-0.03em", color:"var(--text)", marginBottom:22 }}>
+              Pay per word.<br /><span className="grad-text">Own every read.</span>
             </motion.h1>
 
-            <motion.p
-              variants={fadeUp}
-              style={{
-                fontSize: "clamp(16px, 2vw, 20px)",
-                color: "var(--text-3)",
-                maxWidth: 560,
-                lineHeight: 1.65,
-                marginBottom: 40,
-                fontWeight: 400,
-              }}
-            >
-              The first pay-per-read platform where writers earn instantly in USDC
-              and readers own cryptographic proof of every article they unlock.
+            <motion.p variants={fade} style={{ fontSize:"clamp(15px,2vw,19px)", color:"var(--text-3)", maxWidth:520, margin:"0 auto 36px", lineHeight:1.7 }}>
+              The first pay-per-read platform where writers earn instantly in USDC and readers own cryptographic proof of every article they unlock.
             </motion.p>
 
-            <motion.div variants={fadeUp} className="hero-btn-row" style={{ display: "flex", gap: 12, flexWrap: "wrap", justifyContent: "center", marginBottom: "clamp(40px, 6vw, 72px)" }}>
-              <Link href="/explore" className="btn btn-primary btn-lg">
-                Start Reading <ArrowRight size={18} strokeWidth={2.5} />
-              </Link>
-              <Link href="/write" className="btn btn-secondary btn-lg">
-                Start Writing <TrendingUp size={18} />
-              </Link>
+            <motion.div variants={fade} style={{ display:"flex", gap:12, justifyContent:"center", flexWrap:"wrap", marginBottom:64 }}>
+              <Link href="/explore" className="btn btn-primary btn-lg">Start Reading <ArrowRight size={17}/></Link>
+              <Link href="/write"   className="btn btn-secondary btn-lg">Start Writing</Link>
             </motion.div>
 
-            {/* Stats row */}
-            <motion.div
-              variants={stagger}
-              style={{
-                display: "grid",
-                gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))",
-                gap: 16,
-                width: "100%",
-              }}
-            >
-              {STATS.map(stat => (
-                <motion.div
-                  key={stat.label}
-                  variants={fadeUp}
-                  className="card"
-                  style={{ padding: "24px 20px", textAlign: "center", cursor: "default" }}
-                >
-                  <stat.icon size={20} style={{ color: "var(--brand)", marginBottom: 10 }} />
-                  <div style={{ fontFamily: "Outfit, sans-serif", fontSize: 28, fontWeight: 800, color: "var(--text)", letterSpacing: "-0.02em" }}>
-                    {stat.value}
-                  </div>
-                  <div style={{ fontSize: 12, color: "var(--text-4)", fontWeight: 500, marginTop: 4 }}>
-                    {stat.label}
-                  </div>
+            {/* Stats */}
+            <motion.div variants={stagger} style={{ display:"grid", gridTemplateColumns:"repeat(auto-fit,minmax(150px,1fr))", gap:14 }}>
+              {[
+                { icon:BookOpen,   label:"Articles",         value: IS_CONFIGURED ? "Live" : "—"  },
+                { icon:DollarSign, label:"Writer Share",     value:"85%"  },
+                { icon:Users,      label:"Readers",          value:"Open" },
+                { icon:Zap,        label:"Settlement",       value:"<1s"  },
+              ].map(s => (
+                <motion.div key={s.label} variants={fade} className="card" style={{ padding:"20px 16px", textAlign:"center" }}>
+                  <s.icon size={18} style={{ color:"var(--brand)", marginBottom:8 }} />
+                  <div style={{ fontFamily:"Outfit,sans-serif", fontSize:26, fontWeight:900, color:"var(--text)", letterSpacing:"-0.02em" }}>{s.value}</div>
+                  <div style={{ fontSize:12, color:"var(--text-4)", fontWeight:500, marginTop:4 }}>{s.label}</div>
                 </motion.div>
               ))}
             </motion.div>
-
           </motion.div>
         </div>
       </section>
 
-      {/* ─── Trending Articles ─────────────────────────────────── */}
-      <section style={{ padding: "80px 24px", background: "var(--bg-alt)" }}>
-        <div style={{ maxWidth: 1200, margin: "0 auto" }}>
-          <motion.div
-            initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }}
-            style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between", marginBottom: 40, gap: 16, flexWrap: "wrap" }}
-          >
+      {/* Latest articles */}
+      <section style={{ padding:"80px 20px", background:"var(--bg-alt)" }}>
+        <div style={{ maxWidth:1200, margin:"0 auto" }}>
+          <div style={{ display:"flex", alignItems:"flex-end", justifyContent:"space-between", marginBottom:36, flexWrap:"wrap", gap:12 }}>
             <div>
-              <h2 style={{ fontFamily: "Outfit, sans-serif", fontSize: "clamp(28px, 4vw, 40px)", fontWeight: 800, color: "var(--text)", letterSpacing: "-0.02em" }}>
-                Trending Now
-              </h2>
-              <p style={{ color: "var(--text-3)", marginTop: 6, fontSize: 15 }}>
-                Pay in USDC. Read instantly. Verified on-chain.
-              </p>
+              <h2 style={{ fontFamily:"Outfit,sans-serif", fontSize:"clamp(24px,4vw,36px)", fontWeight:900, color:"var(--text)", letterSpacing:"-0.02em" }}>Latest Articles</h2>
+              <p style={{ color:"var(--text-3)", marginTop:4, fontSize:14 }}>Pay in USDC · Read instantly · Verified on-chain</p>
             </div>
-            <Link href="/explore" className="btn btn-ghost btn-sm" style={{ color: "var(--brand)", fontWeight: 700 }}>
-              View all <ChevronRight size={14} />
-            </Link>
-          </motion.div>
+            <Link href="/explore" className="btn btn-ghost btn-sm" style={{ color:"var(--brand)", fontWeight:700 }}>View all <ArrowRight size={13}/></Link>
+          </div>
 
           {loading ? (
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(300px, 1fr))", gap: 20 }}>
-              {[1,2,3].map(i => (
-                <div key={i} className="skeleton" style={{ height: 260, borderRadius: 20 }} />
-              ))}
+            <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fill,minmax(300px,1fr))", gap:16 }}>
+              {[1,2,3].map(i => <div key={i} className="skeleton" style={{ height:240, borderRadius:20 }} />)}
             </div>
           ) : articles.length === 0 ? (
-            <motion.div
-              initial={{ opacity: 0 }} animate={{ opacity: 1 }}
-              className="card"
-              style={{ padding: "64px 32px", textAlign: "center", borderStyle: "dashed" }}
-            >
-              <BookOpen size={40} style={{ color: "var(--text-4)", margin: "0 auto 16px" }} />
-              <h3 style={{ fontSize: 18, fontWeight: 700, color: "var(--text-2)", marginBottom: 8 }}>No articles yet</h3>
-              <p style={{ color: "var(--text-4)", fontSize: 14 }}>Deploy the contract and publish the first article!</p>
-              <Link href="/write" className="btn btn-primary" style={{ marginTop: 24 }}>
-                Write First Article
-              </Link>
-            </motion.div>
+            <div className="card" style={{ padding:"64px 24px", textAlign:"center" }}>
+              <BookOpen size={36} style={{ color:"var(--text-4)", marginBottom:12 }} />
+              <p style={{ fontSize:15, fontWeight:600, color:"var(--text-3)", marginBottom:6 }}>
+                {IS_CONFIGURED ? "No articles published yet" : "Configure contract to see articles"}
+              </p>
+              <p style={{ fontSize:13, color:"var(--text-4)", marginBottom:20 }}>
+                {IS_CONFIGURED ? "Be the first to publish!" : "Set your environment variables in Vercel."}
+              </p>
+              {IS_CONFIGURED && <Link href="/write" className="btn btn-primary btn-sm">Write First Article</Link>}
+            </div>
           ) : (
-            <motion.div
-              initial="hidden" whileInView="visible" viewport={{ once: true }} variants={stagger}
-              style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(300px, 1fr))", gap: 20 }}
-            >
-              {articles.map((article, i) => (
-                <motion.div key={article.id} variants={fadeUp}>
-                  <Link href={`/article/${article.id}`} style={{ textDecoration: "none", display: "block" }}>
-                    <div className="card" style={{ padding: "28px 24px", height: "100%", display: "flex", flexDirection: "column", gap: 12 }}>
-                      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-                        <span className="badge badge-brand" style={{ textTransform: "capitalize" }}>{article.category}</span>
-                        <span className="price-tag">${article.price} USDC</span>
-                      </div>
-                      <h3 style={{
-                        fontFamily: "Outfit, sans-serif",
-                        fontSize: 20, fontWeight: 700,
-                        color: "var(--text)", lineHeight: 1.3,
-                        display: "-webkit-box", WebkitLineClamp: 2,
-                        WebkitBoxOrient: "vertical", overflow: "hidden",
-                      }}>
-                        {article.title}
-                      </h3>
-                      <p style={{
-                        color: "var(--text-3)", fontSize: 14, lineHeight: 1.6, flex: 1,
-                        display: "-webkit-box", WebkitLineClamp: 3,
-                        WebkitBoxOrient: "vertical", overflow: "hidden",
-                      }}>
-                        {article.blurb}
-                      </p>
-                      <div style={{ paddingTop: 16, borderTop: "1px solid var(--border)", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-                        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                          <div style={{
-                            width: 28, height: 28, borderRadius: "50%",
-                            background: "linear-gradient(135deg, var(--brand), var(--accent))",
-                          }} />
-                          <Link href={`/profile/${article.author?.address}`} onClick={e => e.stopPropagation()} style={{ fontSize: 13, fontWeight: 600, color: "var(--text-2)", textDecoration: "none" }}>
-                            @{article.author?.address?.slice(0,6)}…{article.author?.address?.slice(-4)}
-                          </Link>
-                        </div>
-                        <div style={{ display: "flex", gap: 12, fontSize: 12, color: "var(--text-4)", fontWeight: 500 }}>
-                          <span style={{ display: "flex", alignItems: "center", gap: 4 }}>
-                            <Clock size={12} /> {article.readTime}m
-                          </span>
-                          <span style={{ display: "flex", alignItems: "center", gap: 4 }}>
-                            <Users size={12} /> {article.reads}
-                          </span>
-                        </div>
-                      </div>
+            <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fill,minmax(300px,1fr))", gap:16 }}>
+              {articles.map(a => (
+                <Link key={a.id} href={`/article/${a.id}`} style={{ textDecoration:"none", display:"block" }}>
+                  <div className="card card-hover" style={{ padding:"24px 20px", height:"100%", display:"flex", flexDirection:"column", gap:12 }}>
+                    <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center" }}>
+                      <span className="badge badge-brand" style={{ textTransform:"capitalize" }}>{a.category}</span>
+                      <span className="price-tag">${a.price} USDC</span>
                     </div>
-                  </Link>
-                </motion.div>
+                    <h3 style={{ fontFamily:"Outfit,sans-serif", fontSize:17, fontWeight:700, color:"var(--text)", lineHeight:1.35, display:"-webkit-box", WebkitLineClamp:2, WebkitBoxOrient:"vertical" as any, overflow:"hidden" }}>{a.title}</h3>
+                    <p style={{ color:"var(--text-3)", fontSize:13, lineHeight:1.6, flex:1, display:"-webkit-box", WebkitLineClamp:3, WebkitBoxOrient:"vertical" as any, overflow:"hidden" }}>{a.blurb}</p>
+                    <div style={{ paddingTop:12, borderTop:"1px solid var(--border)", display:"flex", justifyContent:"space-between", alignItems:"center", fontSize:12, color:"var(--text-4)" }}>
+                      <Link href={`/profile/${a.authorAddress}`} onClick={e => e.stopPropagation()} style={{ color:"var(--brand)", textDecoration:"none", fontWeight:600, fontFamily:"JetBrains Mono,monospace", fontSize:11 }}>{a.authorShort}</Link>
+                      <span>{a.readTime}m read · {a.reads} reads</span>
+                    </div>
+                  </div>
+                </Link>
               ))}
-            </motion.div>
+            </div>
           )}
         </div>
       </section>
 
-      {/* ─── How it Works ─────────────────────────────────────── */}
-      <section style={{ padding: "80px 24px" }}>
-        <div style={{ maxWidth: 1200, margin: "0 auto" }}>
-          <motion.div
-            initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }}
-            style={{ textAlign: "center", marginBottom: 56 }}
-          >
-            <h2 style={{ fontFamily: "Outfit, sans-serif", fontSize: "clamp(28px, 4vw, 40px)", fontWeight: 800, color: "var(--text)", letterSpacing: "-0.02em", marginBottom: 12 }}>
-              How Readlearc Works
-            </h2>
-            <p style={{ color: "var(--text-3)", fontSize: 16, maxWidth: 520, margin: "0 auto", lineHeight: 1.65 }}>
-              Built on Arc — Circle's USDC-native L1. Payments settle in under a second.
-            </p>
-          </motion.div>
-
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 20 }}>
-            {HOW_IT_WORKS.map((item, i) => (
-              <motion.div
-                key={item.step}
-                initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true }} transition={{ delay: i * 0.1 }}
-                className="card"
-                style={{ padding: "28px 24px" }}
-              >
-                <div style={{
-                  width: 48, height: 48, borderRadius: 14,
-                  background: item.accentBg,
-                  display: "flex", alignItems: "center", justifyContent: "center",
-                  marginBottom: 16, border: `1px solid ${item.accent}22`,
-                }}>
-                  <item.icon size={22} style={{ color: item.accent }} strokeWidth={2} />
+      {/* How it works */}
+      <section style={{ padding:"80px 20px" }}>
+        <div style={{ maxWidth:1000, margin:"0 auto" }}>
+          <h2 style={{ fontFamily:"Outfit,sans-serif", fontSize:"clamp(24px,4vw,36px)", fontWeight:900, color:"var(--text)", letterSpacing:"-0.02em", textAlign:"center", marginBottom:48 }}>How it works</h2>
+          <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fit,minmax(200px,1fr))", gap:16 }}>
+            {[
+              { step:"01", title:"Writer Publishes",  desc:"Write your article, set a USDC price, publish entirely on-chain.",                color:"#6d28d9", bg:"rgba(109,40,217,.08)" },
+              { step:"02", title:"Reader Discovers",  desc:"Browse the feed, see the preview. Pay with your wallet — instant nanopayment.", color:"#059669", bg:"rgba(5,150,105,.08)"  },
+              { step:"03", title:"Instant Settlement",desc:"USDC splits atomically: 85% writer · 10% platform · 5% referrer.",             color:"#0284c7", bg:"rgba(2,132,199,.08)"  },
+              { step:"04", title:"Content Unlocks",   desc:"Payment verified on-chain. Full article renders. Proof-of-read recorded.",      color:"#d97706", bg:"rgba(217,119,6,.08)"  },
+            ].map(s => (
+              <div key={s.step} className="card" style={{ padding:"24px 20px" }}>
+                <div style={{ width:44, height:44, borderRadius:12, background:s.bg, border:`1px solid ${s.color}22`, display:"flex", alignItems:"center", justifyContent:"center", marginBottom:14 }}>
+                  <span style={{ fontFamily:"JetBrains Mono,monospace", fontSize:13, fontWeight:700, color:s.color }}>{s.step}</span>
                 </div>
-                <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.1em", color: "var(--text-4)", marginBottom: 8, textTransform: "uppercase", fontFamily: "JetBrains Mono, monospace" }}>
-                  Step {item.step}
-                </div>
-                <h3 style={{ fontFamily: "Outfit, sans-serif", fontSize: 17, fontWeight: 700, color: "var(--text)", marginBottom: 8 }}>
-                  {item.title}
-                </h3>
-                <p style={{ fontSize: 14, color: "var(--text-3)", lineHeight: 1.65 }}>{item.desc}</p>
-              </motion.div>
+                <h3 style={{ fontFamily:"Outfit,sans-serif", fontSize:16, fontWeight:700, color:"var(--text)", marginBottom:8 }}>{s.title}</h3>
+                <p style={{ fontSize:13, color:"var(--text-3)", lineHeight:1.65 }}>{s.desc}</p>
+              </div>
             ))}
           </div>
         </div>
       </section>
 
-      {/* ─── Revenue Split ─────────────────────────────────────── */}
-      <section style={{ padding: "80px 24px", background: "var(--bg-alt)" }}>
-        <div style={{ maxWidth: 800, margin: "0 auto" }}>
-          <motion.div
-            initial={{ opacity: 0, scale: 0.97 }} whileInView={{ opacity: 1, scale: 1 }} viewport={{ once: true }}
-            className="card"
-            style={{ padding: "clamp(28px, 5vw, 56px) clamp(20px, 5vw, 48px)", textAlign: "center", background: "var(--bg-card)" }}
-          >
-            <span className="badge badge-brand" style={{ marginBottom: 24 }}>
-              <Zap size={11} strokeWidth={3} />
-              Atomic On-Chain Splitting
-            </span>
-
-            <h2 style={{ fontFamily: "Outfit, sans-serif", fontSize: "clamp(32px, 5vw, 52px)", fontWeight: 900, color: "var(--text)", letterSpacing: "-0.03em", marginBottom: 12 }}>
-              Writers keep <span className="gradient-text">85%</span>
-            </h2>
-            <p style={{ color: "var(--text-3)", fontSize: 16, marginBottom: 48, lineHeight: 1.65 }}>
-              Every read triggers a smart contract. No escrow, no middlemen, no minimums.
-            </p>
-
-            <div style={{ display: "flex", justifyContent: "center", gap: 48, marginBottom: 40, flexWrap: "wrap" }}>
-              {[
-                { pct: "85%", label: "Writer", color: "#059669" },
-                { pct: "10%", label: "Platform", color: "#6d28d9" },
-                { pct: "5%", label: "Referrer", color: "#0284c7" },
-              ].map(({ pct, label, color }) => (
-                <div key={label} style={{ textAlign: "center" }}>
-                  <div style={{ fontFamily: "Outfit, sans-serif", fontSize: 52, fontWeight: 900, color, lineHeight: 1, marginBottom: 6 }}>
-                    {pct}
-                  </div>
-                  <div style={{ fontSize: 12, fontWeight: 700, color: "var(--text-4)", textTransform: "uppercase", letterSpacing: "0.08em" }}>
-                    {label}
-                  </div>
+      {/* Revenue split */}
+      <section style={{ padding:"80px 20px", background:"var(--bg-alt)" }}>
+        <div style={{ maxWidth:700, margin:"0 auto", textAlign:"center" }}>
+          <div className="card" style={{ padding:"clamp(32px,5vw,56px) clamp(20px,5vw,48px)" }}>
+            <span className="badge badge-brand" style={{ marginBottom:20, display:"inline-flex" }}><Zap size={10} strokeWidth={3}/> Atomic On-Chain Splitting</span>
+            <h2 style={{ fontFamily:"Outfit,sans-serif", fontSize:"clamp(32px,5vw,52px)", fontWeight:900, color:"var(--text)", letterSpacing:"-0.03em", marginBottom:10 }}>Writers keep <span className="grad-text">85%</span></h2>
+            <p style={{ color:"var(--text-3)", fontSize:15, marginBottom:40 }}>Every read triggers a smart contract. No escrow, no middlemen, no minimums.</p>
+            <div style={{ display:"flex", justifyContent:"center", gap:48, marginBottom:32, flexWrap:"wrap" }}>
+              {[["85%","Writer","#059669"],["10%","Platform","#6d28d9"],["5%","Referrer","#0284c7"]].map(([pct,label,color]) => (
+                <div key={label} style={{ textAlign:"center" }}>
+                  <div style={{ fontFamily:"Outfit,sans-serif", fontSize:48, fontWeight:900, color, lineHeight:1, marginBottom:6 }}>{pct}</div>
+                  <div style={{ fontSize:11, fontWeight:700, color:"var(--text-4)", textTransform:"uppercase", letterSpacing:".08em" }}>{label}</div>
                 </div>
               ))}
             </div>
-
-            <div className="split-bar">
-              <div style={{ width: "85%", background: "#059669" }} />
-              <div style={{ width: "10%", background: "#6d28d9" }} />
-              <div style={{ width: "5%", background: "#0284c7" }} />
-            </div>
-
-            <p style={{ marginTop: 16, fontSize: 12, color: "var(--text-4)", fontFamily: "JetBrains Mono, monospace" }}>
-              Executed via Readlearc.sol on Arc Testnet
-            </p>
-          </motion.div>
-        </div>
-      </section>
-
-      {/* ─── CTA ───────────────────────────────────────────────── */}
-      <section style={{ padding: "96px 24px" }}>
-        <div style={{ maxWidth: 700, margin: "0 auto", textAlign: "center" }}>
-          <motion.h2
-            initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }}
-            style={{ fontFamily: "Outfit, sans-serif", fontSize: "clamp(36px, 6vw, 64px)", fontWeight: 900, color: "var(--text)", letterSpacing: "-0.03em", marginBottom: 20 }}
-          >
-            Start earning in <span className="gradient-text">USDC</span>
-          </motion.h2>
-          <motion.p
-            initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ delay: 0.1 }}
-            style={{ color: "var(--text-3)", fontSize: 17, lineHeight: 1.65, marginBottom: 40 }}
-          >
-            Join the decentralized publishing revolution. No ads, no paywall bypasses, just fair nanopayments settled in milliseconds.
-          </motion.p>
-          <motion.div
-            initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ delay: 0.2 }}
-            style={{ display: "flex", gap: 12, justifyContent: "center", flexWrap: "wrap" }}
-          >
-            <Link href="/write" className="btn btn-primary btn-lg">
-              Publish Article
-            </Link>
-            <Link href="/explore" className="btn btn-secondary btn-lg">
-              Explore Network
-            </Link>
-          </motion.div>
-        </div>
-      </section>
-
-      {/* ─── Footer ────────────────────────────────────────────── */}
-      <footer style={{ borderTop: "1px solid var(--border)", padding: "40px 24px", background: "var(--bg-alt)" }}>
-        <div style={{ maxWidth: 1200, margin: "0 auto" }}>
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 24, marginBottom: 24 }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-              <div style={{
-                width: 32, height: 32, borderRadius: 9,
-                background: "linear-gradient(135deg, var(--brand), var(--accent))",
-                display: "flex", alignItems: "center", justifyContent: "center",
-              }}>
-                <Zap size={15} color="white" strokeWidth={2.5} />
-              </div>
-              <span style={{ fontFamily: "Outfit, sans-serif", fontWeight: 800, fontSize: 17, color: "var(--text)" }}>Readlearc</span>
-            </div>
-            <div style={{ display: "flex", gap: 24, flexWrap: "wrap" }}>
-              {[
-                { href: "/explore", label: "Explore" },
-                { href: "/write", label: "Write" },
-                { href: "/admin", label: "Admin" },
-              ].map(({ href, label }) => (
-                <Link key={href} href={href} style={{ fontSize: 14, color: "var(--text-4)", textDecoration: "none", fontWeight: 500 }}>
-                  {label}
-                </Link>
-              ))}
-              <a href="https://explorer.arc.io/testnet" target="_blank" rel="noopener noreferrer" style={{ fontSize: 14, color: "var(--text-4)", textDecoration: "none", fontWeight: 500 }}>
-                Arc Explorer ↗
-              </a>
+            <div style={{ height:10, borderRadius:"var(--rfull)", overflow:"hidden", display:"flex" }}>
+              <div style={{ width:"85%", background:"#059669" }} />
+              <div style={{ width:"10%", background:"#6d28d9" }} />
+              <div style={{ width:"5%",  background:"#0284c7" }} />
             </div>
           </div>
-          <div style={{ borderTop: "1px solid var(--border)", paddingTop: 20, display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 12 }}>
-            <span style={{ fontSize: 13, color: "var(--text-4)" }}>© 2026 Readlearc Protocol.</span>
-            <span style={{ fontSize: 13, color: "var(--text-4)", display: "flex", alignItems: "center", gap: 6 }}>
-              <span style={{ width: 7, height: 7, borderRadius: "50%", background: "#059669", display: "inline-block" }} />
-              All systems operational
-            </span>
+        </div>
+      </section>
+
+      {/* CTA */}
+      <section style={{ padding:"96px 20px" }}>
+        <div style={{ maxWidth:600, margin:"0 auto", textAlign:"center" }}>
+          <h2 style={{ fontFamily:"Outfit,sans-serif", fontSize:"clamp(32px,6vw,60px)", fontWeight:900, color:"var(--text)", letterSpacing:"-0.03em", marginBottom:18 }}>Start earning in <span className="grad-text">USDC</span></h2>
+          <p style={{ color:"var(--text-3)", fontSize:16, lineHeight:1.7, marginBottom:36 }}>Join the decentralized publishing revolution. No ads, no middlemen — just fair nanopayments settled in milliseconds.</p>
+          <div style={{ display:"flex", gap:12, justifyContent:"center", flexWrap:"wrap" }}>
+            <Link href="/write"   className="btn btn-primary btn-lg">Publish Article</Link>
+            <Link href="/explore" className="btn btn-secondary btn-lg">Explore Network</Link>
+          </div>
+        </div>
+      </section>
+
+      {/* Footer */}
+      <footer style={{ borderTop:"1px solid var(--border)", padding:"32px 20px", background:"var(--bg-alt)" }}>
+        <div style={{ maxWidth:1200, margin:"0 auto", display:"flex", alignItems:"center", justifyContent:"space-between", flexWrap:"wrap", gap:16 }}>
+          <div style={{ display:"flex", alignItems:"center", gap:8 }}>
+            <div style={{ width:28, height:28, borderRadius:8, background:"linear-gradient(135deg,var(--brand),var(--accent))", display:"flex", alignItems:"center", justifyContent:"center" }}><Zap size={13} color="white" strokeWidth={2.5}/></div>
+            <span style={{ fontFamily:"Outfit,sans-serif", fontWeight:800, fontSize:15, color:"var(--text)" }}>Readlearc</span>
+          </div>
+          <div style={{ display:"flex", gap:20, flexWrap:"wrap" }}>
+            {[{href:"/explore",label:"Explore"},{href:"/write",label:"Write"},{href:"/admin",label:"Admin"}].map(l => (
+              <Link key={l.href} href={l.href} style={{ fontSize:13, color:"var(--text-4)", textDecoration:"none" }}>{l.label}</Link>
+            ))}
+          </div>
+          <div style={{ display:"flex", alignItems:"center", gap:6, fontSize:12, color:"var(--text-4)" }}>
+            <span style={{ width:6, height:6, borderRadius:"50%", background:"#059669", display:"inline-block" }} />
+            Arc Testnet · All systems operational
           </div>
         </div>
       </footer>
-
-      <style jsx global>{`
-        @media (max-width: 480px) {
-          .hero-btn-row { flex-direction: column !important; align-items: stretch !important; }
-          .hero-btn-row a { text-align: center; justify-content: center; }
-        }
-      `}</style>
     </div>
   );
 }
