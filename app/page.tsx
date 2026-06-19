@@ -243,9 +243,9 @@ export default function LandingPage() {
                             width: 28, height: 28, borderRadius: "50%",
                             background: "linear-gradient(135deg, var(--brand), var(--accent))",
                           }} />
-                          <span style={{ fontSize: 13, fontWeight: 600, color: "var(--text-2)" }}>
-                            @{article.author?.handle}
-                          </span>
+                          <Link href={`/profile/${article.author?.address}`} onClick={e => e.stopPropagation()} style={{ fontSize: 13, fontWeight: 600, color: "var(--text-2)", textDecoration: "none" }}>
+                            @{article.author?.address?.slice(0,6)}…{article.author?.address?.slice(-4)}
+                          </Link>
                         </div>
                         <div style={{ display: "flex", gap: 12, fontSize: 12, color: "var(--text-4)", fontWeight: 500 }}>
                           <span style={{ display: "flex", alignItems: "center", gap: 4 }}>

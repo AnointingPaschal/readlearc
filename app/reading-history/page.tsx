@@ -1,107 +1,191 @@
 "use client";
+import { useState, useEffect } from "react";
 import Link from "next/link";
-import { Zap, BookOpen, CheckCircle, ExternalLink, Calendar } from "lucide-react";
+import { BookOpen, CheckCircle2, Clock, ExternalLink, Wallet, Search } from "lucide-react";
+import { motion } from "framer-motion";
+import { useWallet } from "../../lib/web3Context";
+import { fetchReadingHistory, ARC_EXPLORER } from "../../lib/web3";
+import Navbar from "../../components/ui/Navbar";
 
-const HISTORY = [
-  { id: "1", title: "The Future of Decentralized Content Monetization", author: "Alex Chen", handle: "vitalik_reads", paidAt: "June 17, 2026", amount: 0.02, txHash: "0x7f3c...d291", readTime: 5 },
-  { id: "2", title: "Building AI Agents with Circle's Developer Stack", author: "Maria Santos", handle: "circledev", paidAt: "June 15, 2026", amount: 0.05, txHash: "0xa1b2...f3e4", readTime: 8 },
-  { id: "3", title: "Why Sub-Second Finality Changes Everything", author: "James Wu", handle: "arcbuilder", paidAt: "June 14, 2026", amount: 0.01, txHash: "0x9d4e...c1a0", readTime: 3 },
-  { id: "4", title: "The Writer's Guide to On-Chain Earnings", author: "Priya Patel", handle: "cryptowriter", paidAt: "June 12, 2026", amount: 0.03, txHash: "0x3f8a...7b92", readTime: 6 },
-  { id: "5", title: "USDC vs Traditional Ad Revenue: A 90-Day Study", author: "Emma Thompson", handle: "datawriter", paidAt: "June 10, 2026", amount: 0.02, txHash: "0x2c9f...e4d7", readTime: 4 },
-];
+function ConnectGate() {
+  const { connect, isConnecting } = useWallet();
+  return (
+    <div style={{ minHeight: "100vh", background: "var(--bg)" }}>
+      <Navbar />
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "center", minHeight: "calc(100vh - 64px)", padding: 20 }}>
+        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="card" style={{ maxWidth: 420, width: "100%", padding: "48px 28px", textAlign: "center" }}>
+          <div style={{ width: 60, height: 60, borderRadius: "50%", background: "var(--brand-muted)", border: "2px solid var(--border-brand)", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 18px" }}>
+            <BookOpen size={26} style={{ color: "var(--brand)" }} />
+          </div>
+          <h1 style={{ fontFamily: "Outfit, sans-serif", fontSize: 22, fontWeight: 900, color: "var(--text)", marginBottom: 10 }}>Connect to see your reading history</h1>
+          <p style={{ color: "var(--text-3)", fontSize: 14, lineHeight: 1.65, marginBottom: 24 }}>Every article you unlock is recorded on-chain. Connect your wallet to view your permanent read receipts.</p>
+          <button onClick={connect} disabled={isConnecting} className="btn btn-primary btn-lg" style={{ width: "100%", justifyContent: "center" }}>
+            {isConnecting ? "Connecting…" : <><Wallet size={16} /> Connect Wallet</>}
+          </button>
+        </motion.div>
+      </div>
+    </div>
+  );
+}
 
 export default function ReadingHistoryPage() {
-  const totalSpent = HISTORY.reduce((a, b) => a + b.amount, 0);
+  const { address, isConnected, provider } = useWallet();
+  const [history,  setHistory]  = useState<any[]>([]);
+  const [loading,  setLoading]  = useState(true);
+  const [search,   setSearch]   = useState("");
+  const [refreshKey, setRefreshKey] = useState(0);
+
+  useEffect(() => {
+    if (!isConnected || !provider) { setLoading(false); return; }
+    setLoading(true);
+    fetchReadingHistory(address, provider)
+      .then(setHistory)
+      .catch(console.error)
+      .finally(() => setLoading(false));
+  }, [isConnected, address, provider, refreshKey]);
+
+  if (!isConnected) return <ConnectGate />;
+
+  const filtered = history.filter(h =>
+    !search || h.title.toLowerCase().includes(search.toLowerCase()) || h.category.toLowerCase().includes(search.toLowerCase())
+  );
+
+  const totalSpent = history.reduce((s, h) => s + parseFloat(h.pricePaid || "0"), 0);
+  const totalTime  = history.reduce((s, h) => s + parseInt(h.readTime || "0"), 0);
 
   return (
-    <div className="min-h-screen bg-[#0a0a0f]">
-      <nav className="fixed top-0 left-0 right-0 z-50 glass border-b border-white/5">
-        <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
-          <Link href="/" className="flex items-center gap-2">
-            <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-arc-500 to-usdc-500 flex items-center justify-center">
-              <Zap className="w-3.5 h-3.5 text-white" />
-            </div>
-            <span className="font-heading font-bold">Readlearc</span>
-          </Link>
-          <div className="flex gap-6 text-sm text-gray-400">
-            <Link href="/explore" className="hover:text-white transition-colors">Explore</Link>
-            <Link href="/wallet" className="hover:text-white transition-colors">Wallet</Link>
-          </div>
-        </div>
-      </nav>
+    <div style={{ minHeight: "100vh", background: "var(--bg)" }}>
+      <Navbar />
+      <style>{`@keyframes rl-spin{to{transform:rotate(360deg)}}`}</style>
 
-      <div className="max-w-3xl mx-auto px-6 pt-28 pb-20">
-        <div className="flex items-center justify-between mb-8">
-          <div>
-            <h1 className="font-heading text-3xl font-bold mb-1">Reading History</h1>
-            <p className="text-gray-500 text-sm">Your on-chain proof of every article read</p>
-          </div>
-          <div className="glass rounded-xl p-4 text-right">
-            <div className="text-xl font-black text-usdc-400">${totalSpent.toFixed(2)} USDC</div>
-            <div className="text-xs text-gray-500">Total spent · {HISTORY.length} articles</div>
-          </div>
-        </div>
+      <div style={{ maxWidth: 760, margin: "0 auto", padding: "80px 16px 60px" }}>
 
-        {/* Stats */}
-        <div className="grid grid-cols-3 gap-4 mb-8">
-          <div className="glass rounded-xl p-4 text-center">
-            <BookOpen className="w-5 h-5 text-arc-400 mx-auto mb-2" />
-            <div className="text-xl font-bold">{HISTORY.length}</div>
-            <div className="text-xs text-gray-500">Articles Read</div>
-          </div>
-          <div className="glass rounded-xl p-4 text-center">
-            <CheckCircle className="w-5 h-5 text-usdc-400 mx-auto mb-2" />
-            <div className="text-xl font-bold text-usdc-400">{HISTORY.length}</div>
-            <div className="text-xs text-gray-500">On-chain Proofs</div>
-          </div>
-          <div className="glass rounded-xl p-4 text-center">
-            <Calendar className="w-5 h-5 text-blue-400 mx-auto mb-2" />
-            <div className="text-xl font-bold">{HISTORY.reduce((a, b) => a + b.readTime, 0)}m</div>
-            <div className="text-xs text-gray-500">Time Reading</div>
-          </div>
-        </div>
+        {/* Header */}
+        <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} style={{ marginBottom: 24 }}>
+          <h1 style={{ fontFamily: "Outfit, sans-serif", fontSize: "clamp(22px,4vw,30px)", fontWeight: 900, color: "var(--text)", letterSpacing: "-0.02em", marginBottom: 4 }}>Reading History</h1>
+          <p style={{ color: "var(--text-4)", fontSize: 13 }}>Permanent on-chain proof of every article you've unlocked</p>
+        </motion.div>
 
-        {/* History list */}
-        <div className="space-y-4">
-          {HISTORY.map((item) => (
-            <div key={item.id} className="glass rounded-xl p-5 hover:border-arc-500/20 transition-all">
-              <div className="flex items-start justify-between gap-4">
-                <div className="flex-1">
-                  <Link href={`/article/${item.id}`} className="font-semibold text-white hover:text-arc-300 transition-colors">
-                    {item.title}
-                  </Link>
-                  <div className="flex items-center gap-3 mt-1">
-                    <Link href={`/profile/${item.handle}`} className="text-xs text-gray-500 hover:text-gray-400">@{item.handle}</Link>
-                    <span className="text-xs text-gray-700">·</span>
-                    <span className="text-xs text-gray-600">{item.paidAt}</span>
-                    <span className="text-xs text-gray-700">·</span>
-                    <span className="text-xs text-gray-600">{item.readTime} min</span>
-                  </div>
-                  <div className="flex items-center gap-2 mt-2">
-                    <CheckCircle className="w-3 h-3 text-usdc-400" />
-                    <a
-                      href={`https://explorer.arc.io/testnet/tx/${item.txHash}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-xs text-arc-500 hover:text-arc-400 flex items-center gap-1 font-mono"
-                    >
-                      {item.txHash} <ExternalLink className="w-2.5 h-2.5" />
-                    </a>
-                  </div>
-                </div>
-                <div className="flex-shrink-0 text-right">
-                  <div className="text-sm font-bold text-gray-300">-${item.amount.toFixed(2)}</div>
-                  <div className="text-xs text-gray-600">USDC</div>
-                </div>
+        {/* Summary strip */}
+        {!loading && history.length > 0 && (
+          <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.05 }}
+            style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(140px,1fr))", gap: 12, marginBottom: 24 }}
+          >
+            {[
+              { label: "Articles Read",   value: history.length.toString(),        color: "var(--brand)", bg: "var(--brand-muted)" },
+              { label: "On-chain Proofs", value: history.length.toString(),        color: "#059669",    bg: "rgba(5,150,105,0.08)" },
+              { label: "USDC Spent",      value: `$${totalSpent.toFixed(4)}`,      color: "#d97706",    bg: "rgba(217,119,6,0.08)" },
+              { label: "Time Reading",    value: `${totalTime}m`,                  color: "#0284c7",    bg: "rgba(2,132,199,0.08)" },
+            ].map(k => (
+              <div key={k.label} className="card" style={{ padding: "14px 16px" }}>
+                <div style={{ fontFamily: "Outfit, sans-serif", fontSize: 22, fontWeight: 900, color: k.color, lineHeight: 1 }}>{k.value}</div>
+                <div style={{ fontSize: 10, color: "var(--text-4)", fontWeight: 600, marginTop: 4, textTransform: "uppercase", letterSpacing: "0.05em" }}>{k.label}</div>
               </div>
-            </div>
-          ))}
-        </div>
+            ))}
+          </motion.div>
+        )}
 
-        <div className="mt-8 glass-arc rounded-xl p-5 text-center">
-          <p className="text-sm text-gray-400">
-            All reads are permanently recorded on <span className="text-arc-400">Arc blockchain</span>. Your reading history is verifiable, portable, and owned by you.
-          </p>
+        {/* Search */}
+        {history.length > 0 && (
+          <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }} style={{ position: "relative", marginBottom: 20 }}>
+            <Search size={15} style={{ position: "absolute", left: 14, top: "50%", transform: "translateY(-50%)", color: "var(--text-4)", pointerEvents: "none" }} />
+            <input
+              type="text"
+              placeholder="Search your reads…"
+              value={search}
+              onChange={e => setSearch(e.target.value)}
+              className="input input-search"
+              style={{ fontSize: 14 }}
+            />
+          </motion.div>
+        )}
+
+        {/* List */}
+        {loading ? (
+          <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+            {[1,2,3,4].map(i => <div key={i} className="skeleton" style={{ height: 90, borderRadius: 14 }} />)}
+          </div>
+        ) : filtered.length === 0 ? (
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="card" style={{ padding: "56px 24px", textAlign: "center" }}>
+            <BookOpen size={36} style={{ color: "var(--text-4)", marginBottom: 12 }} />
+            <p style={{ fontSize: 15, fontWeight: 600, color: "var(--text-3)", marginBottom: 6 }}>
+              {history.length === 0 ? "No articles read yet" : "No results match your search"}
+            </p>
+            <p style={{ fontSize: 13, color: "var(--text-4)", marginBottom: 20 }}>
+              {history.length === 0
+                ? "Unlock an article and your on-chain read receipt will appear here."
+                : "Try a different search term."}
+            </p>
+            {history.length === 0 && <Link href="/explore" className="btn btn-primary btn-sm">Explore Articles</Link>}
+          </motion.div>
+        ) : (
+          <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+            {filtered.map((item, i) => (
+              <motion.div key={`${item.txHash}-${i}`} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.04 * i }}>
+                <div className="card" style={{ padding: "16px 18px" }}>
+                  <div style={{ display: "flex", alignItems: "flex-start", gap: 12 }}>
+
+                    {/* Proof icon */}
+                    <div style={{ width: 36, height: 36, borderRadius: "50%", background: "rgba(5,150,105,0.08)", border: "1px solid rgba(5,150,105,0.2)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, marginTop: 2 }}>
+                      <CheckCircle2 size={17} style={{ color: "#059669" }} />
+                    </div>
+
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 10, marginBottom: 6 }}>
+                        <Link href={`/article/${item.id}`} style={{
+                          fontSize: 14, fontWeight: 700, color: "var(--text)", textDecoration: "none",
+                          display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical" as any, overflow: "hidden", lineHeight: 1.35,
+                        }}>
+                          {item.title}
+                        </Link>
+                        <div style={{ flexShrink: 0, textAlign: "right" }}>
+                          <div style={{ fontSize: 14, fontWeight: 700, color: "var(--text-2)" }}>-${parseFloat(item.pricePaid).toFixed(4)}</div>
+                          <div style={{ fontSize: 10, color: "var(--text-4)" }}>USDC</div>
+                        </div>
+                      </div>
+
+                      <div style={{ display: "flex", gap: 12, flexWrap: "wrap", alignItems: "center" }}>
+                        <span className="badge badge-brand" style={{ textTransform: "capitalize", fontSize: 10 }}>{item.category}</span>
+                        <span style={{ display: "flex", alignItems: "center", gap: 3, fontSize: 11, color: "var(--text-4)" }}>
+                          <Clock size={10} /> {item.readTime}m read
+                        </span>
+                        <Link href={`/profile/${item.authorAddress}`} style={{ fontSize: 11, color: "var(--brand)", fontWeight: 600, textDecoration: "none" }}>
+                          {item.authorAddress.slice(0,6)}…{item.authorAddress.slice(-4)}
+                        </Link>
+                      </div>
+
+                      {/* TX proof */}
+                      <div style={{ marginTop: 8, display: "flex", alignItems: "center", gap: 6 }}>
+                        <CheckCircle2 size={10} style={{ color: "#059669", flexShrink: 0 }} />
+                        <a
+                          href={`${ARC_EXPLORER}/tx/${item.txHash}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          style={{ fontSize: 10, color: "var(--text-4)", fontFamily: "JetBrains Mono, monospace", display: "flex", alignItems: "center", gap: 4, textDecoration: "none", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}
+                        >
+                          {item.txHash} <ExternalLink size={9} style={{ flexShrink: 0 }} />
+                        </a>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </motion.div>
+            ))}
+          </div>
+        )}
+
+        {/* Refresh */}
+        {!loading && history.length > 0 && (
+          <div style={{ marginTop: 20, textAlign: "center" }}>
+            <button onClick={() => setRefreshKey(k => k + 1)} className="btn btn-ghost btn-sm" style={{ fontSize: 12 }}>
+              Refresh from chain
+            </button>
+          </div>
+        )}
+
+        {/* Chain proof note */}
+        <div style={{ marginTop: 28, padding: "14px 16px", background: "var(--bg-alt)", border: "1px solid var(--border)", borderRadius: "var(--radius)", fontSize: 12, color: "var(--text-4)", lineHeight: 1.65, textAlign: "center" }}>
+          All read receipts are permanently recorded on <strong style={{ color: "var(--brand)" }}>Arc blockchain</strong>. Your reading history is verifiable, portable, and owned by you — not Readlearc.
         </div>
       </div>
     </div>

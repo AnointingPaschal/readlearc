@@ -192,7 +192,7 @@ export default function ExplorePage() {
                             background: "linear-gradient(135deg, var(--brand), var(--accent))",
                           }} />
                           <span style={{ fontSize: 13, fontWeight: 600, color: "var(--text-2)" }}>
-                            @{article.author?.handle}
+                            @{article.author?.address?.slice(0,6)}…{article.author?.address?.slice(-4)}
                           </span>
                         </div>
                         <div style={{ display: "flex", gap: 12, fontSize: 12, color: "var(--text-4)", fontWeight: 500 }}>
