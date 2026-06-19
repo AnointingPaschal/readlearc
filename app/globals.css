@@ -526,8 +526,44 @@ img { transition: opacity 0.3s ease; }
 /* admin number input centered */
 .admin-input-num { text-align: center; font-weight: 700; font-size: 18px; font-family: "Outfit", sans-serif; color: var(--brand); }
 
-@media(max-width:1023px) {
-  .admin-sidebar-inner { transform: translateX(-100%); }
-  .admin-sidebar-inner.open { transform: translateX(0); }
-  div[style*="marginLeft: 224"] { margin-left: 0 !important; }
+
+
+/* ─── Admin layout responsive ─────────────────────────────────── */
+.admin-main {
+  flex: 1;
+  margin-left: 224px;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  transition: margin-left 0.25s ease;
+}
+
+.admin-menu-btn  { display: none !important; }
+.admin-close-btn { display: none !important; }
+
+.admin-kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 12px;
+}
+
+@media (min-width: 640px) {
+  .admin-kpi-grid { grid-template-columns: repeat(3, 1fr); }
+}
+@media (min-width: 900px) {
+  .admin-kpi-grid { grid-template-columns: repeat(6, 1fr); }
+}
+
+@media (max-width: 1023px) {
+  .admin-sidebar-inner {
+    transform: translateX(-100%) !important;
+  }
+  .admin-sidebar-inner.open {
+    transform: translateX(0) !important;
+  }
+  .admin-main {
+    margin-left: 0 !important;
+  }
+  .admin-menu-btn  { display: flex !important; }
+  .admin-close-btn { display: flex !important; }
 }

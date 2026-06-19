@@ -59,7 +59,7 @@ export default function AdminDashboard() {
       </div>
 
       {/* KPIs */}
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(180px,1fr))", gap: 12 }}>
+      <div className="admin-kpi-grid">
         {KPI.map(k => (
           <div key={k.label} className="card" style={{ padding: "16px" }}>
             <div style={{ width: 32, height: 32, borderRadius: 8, background: k.bg, display: "flex", alignItems: "center", justifyContent: "center", marginBottom: 10 }}>
@@ -72,7 +72,7 @@ export default function AdminDashboard() {
         ))}
       </div>
 
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
+      <div className="admin-two-col" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(280px,1fr))", gap: 16 }}>
         {/* Activity log */}
         <div className="card" style={{ padding: "20px" }}>
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
