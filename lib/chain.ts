@@ -9,13 +9,14 @@ export const IS_CONFIGURED    = !!(CONTRACT_ADDRESS && USDC_ADDRESS);
 
 // ─── ABIs ─────────────────────────────────────────────────────────
 export const CONTRACT_ABI = [
-  "function publishArticle(string _title, string _blurb, string _content, uint256 _price, string _category, uint256 _readTime) external returns (uint256)",
+  "function publishArticle(string _title, string _blurb, string _content, uint256 _price, string _category, uint256 _readTime, bool _isResearch) external returns (uint256)",
   "function payToRead(uint256 _articleId, address _referrer) external",
-  "function getArticleMetadata(uint256 _articleId) external view returns (uint256 id, address author, string title, string blurb, uint256 price, string category, uint256 readTime, uint256 timestamp, uint256 reads)",
-  "function getFullArticle(uint256 _articleId) external view returns (tuple(uint256 id, address author, string title, string blurb, string content, uint256 price, string category, uint256 readTime, uint256 timestamp, uint256 reads))",
-  "function hasReadReceipt(address _user, uint256 _articleId) external view returns (bool)",
+  "function getArticleMetadata(uint256 _id) external view returns (uint256 id, address author, string title, string blurb, uint256 price, string category, uint256 readTime, uint256 timestamp, uint256 reads, bool isResearch)",
+  "function getFullArticle(uint256 _id) external view returns (tuple(uint256 id, address author, string title, string blurb, string content, uint256 price, string category, uint256 readTime, uint256 timestamp, uint256 reads, bool isResearch))",
+  "function hasReadReceipt(address _user, uint256 _id) external view returns (bool)",
   "function articleCount() external view returns (uint256)",
   "function owner() external view returns (address)",
+  "function platformTreasury() external view returns (address)",
   "function verifiedWriters(address) external view returns (bool)",
   "function defaultWriterBps() external view returns (uint256)",
   "function defaultPlatformBps() external view returns (uint256)",
@@ -23,11 +24,18 @@ export const CONTRACT_ABI = [
   "function verifiedWriterBps() external view returns (uint256)",
   "function verifiedPlatformBps() external view returns (uint256)",
   "function verifiedReferrerBps() external view returns (uint256)",
+  "function previewSplit(uint256 _price, bool _isVerified) external view returns (uint256 writerShare, uint256 platformShare, uint256 referrerShare)",
   "function setVerifiedWriter(address _writer, bool _status) external",
-  "function transferOwnership(address newOwner) external",
-  "event ArticlePublished(uint256 indexed id, address indexed author, string title)",
+  "function updateDefaultSplits(uint256 _writerBps, uint256 _platformBps, uint256 _referrerBps) external",
+  "function updateVerifiedSplits(uint256 _writerBps, uint256 _platformBps, uint256 _referrerBps) external",
+  "function updateTreasury(address _newTreasury) external",
+  "function transferOwnership(address _newOwner) external",
+  "event ArticlePublished(uint256 indexed id, address indexed author, string title, uint256 price)",
   "event ArticleRead(uint256 indexed id, address indexed reader, address indexed referrer, uint256 price)",
   "event WriterVerified(address indexed writer, bool status)",
+  "event SplitsUpdated(bool isVerified, uint256 writerBps, uint256 platformBps, uint256 referrerBps)",
+  "event TreasuryUpdated(address indexed oldTreasury, address indexed newTreasury)",
+  "event OwnershipTransferred(address indexed previousOwner, address indexed newOwner)",
 ];
 
 export const USDC_ABI = [

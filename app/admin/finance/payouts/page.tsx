@@ -73,7 +73,7 @@ export default function PayoutsPage() {
               <button onClick={() => setSendAmt(balance)} style={{ fontSize:10, fontWeight:700, color:"var(--brand)", background:"var(--brand-muted)", border:"1px solid var(--border-brand)", borderRadius:4, padding:"2px 7px", cursor:"pointer" }}>MAX</button>
             </div></div>
             {sendErr && <div style={{ fontSize:11, color:"#dc2626" }}>{sendErr}</div>}
-            {sendHash && <a href={`${EXPLORER_URL}/tx/${sendHash}`} target="_blank" rel="noopener noreferrer" style={{ fontSize:11, color:"#059669", fontFamily:"JetBrains Mono,monospace", textDecoration:"none" }}>✓ Sent! {sendHash.slice(0,20)}…</a>}
+            {sendHash && <a href={`${EXPLORER_URL}/tx/${sendHash}`} target="_blank" rel="noopener noreferrer" style={{ fontSize:11, color:"#059669", fontFamily:"JetBrains Mono,monospace", textDecoration:"none" }}>Sent! {sendHash.slice(0,20)}…</a>}
             <button onClick={handleSend} disabled={sending||!sendTo||!sendAmt} className="btn btn-primary" style={{ width:"100%", justifyContent:"center", fontWeight:700 }}>
               {sending ? <><div style={{ width:13,height:13,border:"2px solid rgba(255,255,255,.3)",borderTopColor:"white",borderRadius:"50%"}} className="spin"/>Sending…</> : <><Send size={13}/>Send USDC</>}
             </button>

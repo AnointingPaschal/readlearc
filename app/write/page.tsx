@@ -96,7 +96,7 @@ export default function WritePage() {
             <div style={{ width:60,height:60,borderRadius:"50%",background:"rgba(5,150,105,.08)",border:"1px solid rgba(5,150,105,.2)",display:"flex",alignItems:"center",justifyContent:"center",margin:"0 auto 18px" }}>
               <CheckCircle2 size={28} style={{ color:"#059669" }}/>
             </div>
-            <h2 style={{ fontFamily:"Outfit,sans-serif", fontSize:"clamp(22px,5vw,34px)", fontWeight:900, color:"var(--text)", marginBottom:10 }}>Article Published! 🎉</h2>
+            <h2 style={{ fontFamily:"Outfit,sans-serif", fontSize:"clamp(22px,5vw,34px)", fontWeight:900, color:"var(--text)", marginBottom:10 }}>Article Published!</h2>
             <p style={{ color:"var(--text-3)", fontSize:15, marginBottom:6 }}>Your article is live on Arc blockchain.</p>
             {articleId && <p style={{ fontSize:12, color:"var(--text-4)", marginBottom:6 }}>Article ID: #{articleId}</p>}
             {txHash && <a href={`${EXPLORER_URL}/tx/${txHash}`} target="_blank" rel="noopener noreferrer" style={{ fontSize:11, color:"var(--brand)", fontFamily:"JetBrains Mono,monospace", textDecoration:"none", display:"inline-flex", alignItems:"center", gap:3, marginBottom:24 }}>Tx: {txHash.slice(0,16)}…</a>}
@@ -185,7 +185,7 @@ export default function WritePage() {
                   {checks.map(item => (
                     <div key={item.label} style={{ display:"flex", alignItems:"center", gap:9 }}>
                       <div style={{ width:17, height:17, borderRadius:"50%", flexShrink:0, border:`1.5px solid ${item.done?"#059669":"var(--border-mid)"}`, background:item.done?"rgba(5,150,105,.08)":"transparent", display:"flex", alignItems:"center", justifyContent:"center", fontSize:10, color:"#059669", fontWeight:800 }}>
-                        {item.done?"✓":""}
+                        {item.done?"":""}
                       </div>
                       <span style={{ fontSize:12, fontWeight:500, color:item.done?"var(--text-2)":"var(--text-4)" }}>{item.label}</span>
                     </div>

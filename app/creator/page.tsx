@@ -150,7 +150,7 @@ export default function CreatorPage() {
                   <button onClick={() => setSendAmt(usdcBalance)} style={{ fontSize:10, fontWeight:700, color:"var(--brand)", background:"var(--brand-muted)", border:"1px solid var(--border-brand)", borderRadius:4, padding:"2px 6px", cursor:"pointer" }}>MAX</button>
                 </div>
                 {sendErr && <div style={{ fontSize:11, color:"#dc2626" }}>{sendErr}</div>}
-                {sendHash && <a href={`${EXPLORER_URL}/tx/${sendHash}`} target="_blank" rel="noopener noreferrer" style={{ fontSize:10, color:"#059669", fontFamily:"JetBrains Mono,monospace", textDecoration:"none" }}>✓ Sent! {sendHash.slice(0,14)}…</a>}
+                {sendHash && <a href={`${EXPLORER_URL}/tx/${sendHash}`} target="_blank" rel="noopener noreferrer" style={{ fontSize:10, color:"#059669", fontFamily:"JetBrains Mono,monospace", textDecoration:"none" }}>Sent! {sendHash.slice(0,14)}…</a>}
                 <div style={{ display:"flex", gap:5 }}>
                   <button onClick={() => { setShowSend(false); setSendErr(""); }} className="btn btn-ghost btn-sm" style={{ flex:1, justifyContent:"center", fontSize:11 }}>Cancel</button>
                   <button onClick={handleSend} disabled={sending||!sendTo||!sendAmt} className="btn btn-primary btn-sm" style={{ flex:2, justifyContent:"center", fontSize:11 }}>

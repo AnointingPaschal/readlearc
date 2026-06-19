@@ -164,7 +164,7 @@ export default function ArticlePage() {
       // Detect the wrong-USDC-address error
       if (reason.includes("missing revert data") || reason.includes("CALL_EXCEPTION") || reason.includes("estimateGas")) {
         setPayErr(
-          "❌ Contract configuration error: the deployed contract has the wrong USDC address. " +
+          "Contract configuration error: the deployed contract has the wrong USDC address. " +
           "Please redeploy Readlearc.sol with _usdc = 0x3600000000000000000000000000000000000000 " +
           "and update NEXT_PUBLIC_CONTRACT_ADDRESS in Vercel."
         );
@@ -424,7 +424,7 @@ export default function ArticlePage() {
                   ))}
                 </div>
                 {tipErr && <div style={{ fontSize:11,color:"#dc2626",marginBottom:8 }}>{tipErr}</div>}
-                {tipHash && <div style={{ fontSize:11,color:"var(--accent)",marginBottom:8,fontFamily:"JetBrains Mono,monospace" }}>✓ Tip sent! {tipHash.slice(0,16)}…</div>}
+                {tipHash && <div style={{ fontSize:11,color:"var(--accent)",marginBottom:8,fontFamily:"JetBrains Mono,monospace" }}>Tip sent! {tipHash.slice(0,16)}…</div>}
                 <button onClick={handleTip} disabled={!tipAmt||tipping||!!tipHash} className="btn btn-primary" style={{ fontWeight:700 }}>
                   {tipping ? <><div style={{ width:13,height:13,border:"2px solid rgba(255,255,255,.3)",borderTopColor:"white",borderRadius:"50%" }} className="spin"/>Sending…</>
                   : tipHash ? <>Tip Sent!</>

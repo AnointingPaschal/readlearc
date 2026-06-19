@@ -53,7 +53,7 @@ export default function OpenRouterPage() {
       const res = await fetch("https://openrouter.ai/api/v1/models", {
         headers:{ "Authorization": "Bearer " + state.key },
       });
-      if (res.ok) { const d = await res.json(); setTestResult(`✓ Connected · ${d.data?.length||"?"} models available`); }
+      if (res.ok) { const d = await res.json(); setTestResult(`Connected · ${d.data?.length||"?"} models available`); }
       else setTestResult("✗ Invalid API key");
     } catch { setTestResult("✗ Connection failed"); }
     setTesting(false);
@@ -108,7 +108,7 @@ export default function OpenRouterPage() {
           <button onClick={testConnection} disabled={!state.key||testing} className="btn btn-ghost btn-sm">
             {testing?<><div style={{ width:11,height:11,border:"1.5px solid currentColor",borderTopColor:"transparent",borderRadius:"50%"}} className="spin"/>Testing…</>:<>Test connection</>}
           </button>
-          {testResult && <span style={{ fontSize:11, fontWeight:600, color:testResult.startsWith("✓")?"#059669":"#dc2626" }}>{testResult}</span>}
+          {testResult && <span style={{ fontSize:11, fontWeight:600, color:testResult.startsWith("")?"#059669":"#dc2626" }}>{testResult}</span>}
         </div>
       </div>
 
@@ -151,7 +151,7 @@ export default function OpenRouterPage() {
               <button key={m.id} onClick={()=>togglePopularModel(m)} style={{ padding:"10px 12px", borderRadius:"var(--r)", border:`1.5px solid ${added?"var(--brand)":"var(--border)"}`, background:added?"var(--brand-muted)":"var(--bg-alt)", cursor:"pointer", textAlign:"left", transition:"all .15s" }}>
                 <div style={{ fontSize:12, fontWeight:700, color:added?"var(--brand)":"var(--text-2)", marginBottom:2 }}>{m.name}</div>
                 <div style={{ fontSize:10, color:"var(--text-4)", marginBottom:3 }}>{m.provider} · {m.ctx}</div>
-                <div style={{ fontSize:9, color:added?"var(--brand)":"var(--text-4)", fontWeight:600 }}>{added?"✓ Added":m.best}</div>
+                <div style={{ fontSize:9, color:added?"var(--brand)":"var(--text-4)", fontWeight:600 }}>{added?"Added":m.best}</div>
               </button>
             );
           })}
