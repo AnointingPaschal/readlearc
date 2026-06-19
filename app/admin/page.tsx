@@ -2,126 +2,216 @@
 import Link from "next/link";
 import { useState, useEffect } from "react";
 import { ethers } from "ethers";
-import { DollarSign, BookOpen, Users, Zap, TrendingUp, AlertTriangle, Shield, ArrowUpRight, RefreshCw } from "lucide-react";
-import { READLEARC_ADDRESS, READLEARC_ABI, USDC_ADDRESS, USDC_ABI, getReadProvider, ARC_EXPLORER } from "../../lib/web3";
+import {
+  DollarSign, BookOpen, Users, Zap, TrendingUp,
+  Shield, ArrowUpRight, RefreshCw, ExternalLink,
+} from "lucide-react";
+import { READLEARC_ADDRESS, READLEARC_ABI, USDC_ADDRESS, USDC_ABI, ARC_EXPLORER, getReadProvider } from "../../lib/web3";
 
 const QUICK_LINKS = [
-  { label: "Moderate flagged content", href: "/admin/content/moderation", color: "var(--c-red,#dc2626)",    icon: AlertTriangle },
-  { label: "Manage fee splits",        href: "/admin/finance/fees",       color: "var(--brand)",            icon: DollarSign   },
-  { label: "Contract registry",        href: "/admin/finance/contracts",  color: "var(--c-blue,#0284c7)",   icon: Shield       },
-  { label: "Writer verification",      href: "/admin/users/writers",      color: "var(--c-green,#059669)",  icon: Users        },
-];
-
-const ACTIVITY_LOG = [
-  { action: "FEE_SPLIT_CHANGED",  actor: "super@readlearc.io", time: "2 hr ago",  chain: true  },
-  { action: "WRITER_VERIFIED",    actor: "admin@readlearc.io", time: "5 hr ago",  chain: true  },
-  { action: "ARTICLE_REMOVED",    actor: "mod@readlearc.io",   time: "1 day ago", chain: true  },
-  { action: "AI_KEY_ROTATED",     actor: "super@readlearc.io", time: "2 day ago", chain: false },
-  { action: "CONTENT_FEATURED",   actor: "mod@readlearc.io",   time: "3 day ago", chain: false },
+  { label: "Manage all articles",   href: "/admin/content/moderation", color: "var(--brand)",  icon: BookOpen   },
+  { label: "Verify writers",        href: "/admin/users/writers",       color: "#059669",      icon: Users      },
+  { label: "Update fee splits",     href: "/admin/finance/fees",        color: "#0284c7",      icon: DollarSign },
+  { label: "Security & ownership",  href: "/admin/security",            color: "#7c3aed",      icon: Shield     },
 ];
 
 export default function AdminDashboard() {
-  const [stats, setStats] = useState({ articles: 0, treasury: "0.00", loading: true });
+  const [stats,  setStats]  = useState({ articles: 0, writers: 0, readers: 0, treasury: "0.00", totalReads: 0, totalRevenue: 0 });
+  const [events, setEvents] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    async function load() {
-      try {
-        if (!READLEARC_ADDRESS) return;
-        const prov = getReadProvider();
-        const c = new ethers.Contract(READLEARC_ADDRESS, READLEARC_ABI, prov);
-        const count = await c.articleCount();
-        let treasury = "0.00";
-        if (USDC_ADDRESS) {
-          const u = new ethers.Contract(USDC_ADDRESS, USDC_ABI, prov);
-          const bal = await u.balanceOf(/* platform treasury placeholder */ ethers.ZeroAddress);
-          treasury = parseFloat(ethers.formatUnits(bal, 6)).toFixed(2);
-        }
-        setStats({ articles: Number(count), treasury, loading: false });
-      } catch { setStats(s => ({ ...s, loading: false })); }
-    }
-    load();
-  }, []);
+  async function load() {
+    setLoading(true);
+    try {
+      if (!READLEARC_ADDRESS) return;
+      const prov = getReadProvider();
+      const c    = new ethers.Contract(READLEARC_ADDRESS, READLEARC_ABI, prov);
+
+      const [count, pubEvs, readEvs, verEvs] = await Promise.all([
+        c.articleCount(),
+        c.queryFilter(c.filters.ArticlePublished(), -100000),
+        c.queryFilter(c.filters.ArticleRead(),      -100000),
+        c.queryFilter(c.filters.WriterVerified(),   -100000),
+      ]);
+
+      const writers = new Set((pubEvs as any[]).map(e => e.args.author));
+      const readers = new Set((readEvs as any[]).map(e => e.args.reader));
+
+      const totalRevenue = (readEvs as any[]).reduce((s, e) => {
+        return s + parseFloat(ethers.formatUnits(e.args.price, 6));
+      }, 0);
+
+      // Treasury balance (platform's share)
+      let treasury = "0.00";
+      if (USDC_ADDRESS) {
+        try {
+          const usdc = new ethers.Contract(USDC_ADDRESS, USDC_ABI, prov);
+          // Try to read owner/treasury address first
+          const owner = await c.owner();
+          const bal   = await usdc.balanceOf(owner);
+          treasury = parseFloat(ethers.formatUnits(bal, 6)).toFixed(4);
+        } catch {}
+      }
+
+      setStats({
+        articles:     Number(count),
+        writers:      writers.size,
+        readers:      readers.size,
+        treasury,
+        totalReads:   (readEvs as any[]).length,
+        totalRevenue,
+      });
+
+      // Build real activity log from chain events
+      const allEvents: any[] = [
+        ...(pubEvs as any[]).map(e => ({
+          action:  "ARTICLE_PUBLISHED",
+          detail:  `"${e.args.title?.slice(0, 50)}"`,
+          actor:   `${e.args.author?.slice(0,10)}…`,
+          block:   e.blockNumber,
+          hash:    e.transactionHash,
+          chain:   true,
+          color:   "var(--brand)",
+          link:    `/article/${e.args.id}`,
+        })),
+        ...(readEvs as any[]).map(e => ({
+          action:  "ARTICLE_READ",
+          detail:  `Article #${e.args.id} · $${ethers.formatUnits(e.args.price, 6)} USDC`,
+          actor:   `${e.args.reader?.slice(0,10)}…`,
+          block:   e.blockNumber,
+          hash:    e.transactionHash,
+          chain:   true,
+          color:   "#059669",
+          link:    null,
+        })),
+        ...(verEvs as any[]).map(e => ({
+          action:  e.args.status ? "WRITER_VERIFIED" : "WRITER_UNVERIFIED",
+          detail:  `${e.args.writer?.slice(0,14)}…`,
+          actor:   "Admin",
+          block:   e.blockNumber,
+          hash:    e.transactionHash,
+          chain:   true,
+          color:   "#0284c7",
+          link:    `/profile/${e.args.writer}`,
+        })),
+      ].sort((a, b) => b.block - a.block).slice(0, 10);
+
+      setEvents(allEvents);
+    } catch (err) { console.error(err); }
+    finally { setLoading(false); }
+  }
+
+  useEffect(() => { load(); }, []);
 
   const KPI = [
-    { label: "Articles On-Chain", value: stats.loading ? "…" : stats.articles.toString(), sub: "from blockchain", icon: BookOpen,  color: "var(--brand)",          bg: "var(--brand-muted)"         },
-    { label: "Platform Treasury", value: `$${stats.treasury}`, sub: "USDC on Arc",         icon: DollarSign,  color: "#059669",                bg: "rgba(5,150,105,0.08)"       },
-    { label: "Fee Split",         value: "85/10/5",             sub: "writer/platform/ref", icon: TrendingUp,  color: "#0284c7",                bg: "rgba(2,132,199,0.08)"       },
-    { label: "Contract Status",   value: "LIVE",                sub: "Arc Testnet",          icon: Shield,      color: "#059669",                bg: "rgba(5,150,105,0.08)"       },
-    { label: "Moderation Queue",  value: "2",                   sub: "items pending",        icon: AlertTriangle, color: "#dc2626",              bg: "rgba(220,38,38,0.08)"       },
-    { label: "Network",           value: "Arc",                 sub: "Circle USDC L1",       icon: Zap,         color: "#d97706",                bg: "rgba(217,119,6,0.08)"       },
+    { label: "Articles",      value: stats.articles,                              icon: BookOpen,    color: "var(--brand)", bg: "var(--brand-muted)"        },
+    { label: "Writers",       value: stats.writers,                               icon: Users,       color: "#0284c7",    bg: "rgba(2,132,199,0.08)"       },
+    { label: "Readers",       value: stats.readers,                               icon: Users,       color: "#7c3aed",    bg: "rgba(124,58,237,0.08)"      },
+    { label: "Total Reads",   value: stats.totalReads,                            icon: TrendingUp,  color: "#d97706",    bg: "rgba(217,119,6,0.08)"       },
+    { label: "Total Revenue", value: `$${stats.totalRevenue.toFixed(4)}`,         icon: DollarSign,  color: "#059669",    bg: "rgba(5,150,105,0.08)"       },
+    { label: "Fee Split",     value: "85/10/5",                                   icon: Zap,         color: "var(--brand)", bg: "var(--brand-muted)"        },
   ];
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
-      <div>
-        <h1 style={{ fontFamily: "Outfit, sans-serif", fontSize: 26, fontWeight: 900, color: "var(--text)", letterSpacing: "-0.02em" }}>Admin Dashboard</h1>
-        <p style={{ color: "var(--text-4)", fontSize: 13, marginTop: 4 }}>Platform overview · Readlearc Protocol</p>
+    <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 10 }}>
+        <div>
+          <h1 style={{ fontFamily: "Outfit, sans-serif", fontSize: 22, fontWeight: 900, color: "var(--text)", letterSpacing: "-0.02em" }}>Admin Dashboard</h1>
+          <p style={{ color: "var(--text-4)", fontSize: 12, marginTop: 3 }}>Platform overview · live from Arc blockchain</p>
+        </div>
+        <button onClick={load} disabled={loading} style={{ display: "flex", alignItems: "center", gap: 6, padding: "7px 14px", border: "1.5px solid var(--border)", background: "var(--bg-alt)", borderRadius: "var(--radius)", cursor: "pointer", fontSize: 12, fontWeight: 600, color: "var(--text-3)" }}>
+          <RefreshCw size={13} style={loading ? { animation: "rl-spin 1s linear infinite" } : {}} /> Refresh
+        </button>
       </div>
 
-      {/* KPIs */}
+      {/* KPI grid */}
       <div className="admin-kpi-grid">
         {KPI.map(k => (
           <div key={k.label} className="card" style={{ padding: "16px" }}>
-            <div style={{ width: 32, height: 32, borderRadius: 8, background: k.bg, display: "flex", alignItems: "center", justifyContent: "center", marginBottom: 10 }}>
-              <k.icon size={15} style={{ color: k.color }} />
+            <div style={{ width: 30, height: 30, borderRadius: 8, background: k.bg, display: "flex", alignItems: "center", justifyContent: "center", marginBottom: 10 }}>
+              <k.icon size={14} style={{ color: k.color }} />
             </div>
-            <div style={{ fontFamily: "Outfit, sans-serif", fontSize: 22, fontWeight: 900, color: k.color, lineHeight: 1 }}>{k.value}</div>
+            {loading
+              ? <div className="skeleton" style={{ height: 28, borderRadius: 6, marginBottom: 8 }} />
+              : <div style={{ fontFamily: "Outfit, sans-serif", fontSize: 22, fontWeight: 900, color: k.color, lineHeight: 1 }}>{k.value}</div>
+            }
             <div style={{ fontSize: 11, color: "var(--text-3)", fontWeight: 600, marginTop: 4 }}>{k.label}</div>
-            <div style={{ fontSize: 10, color: "var(--text-4)", marginTop: 1 }}>{k.sub}</div>
           </div>
         ))}
       </div>
 
-      <div className="admin-two-col" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(280px,1fr))", gap: 16 }}>
-        {/* Activity log */}
-        <div className="card" style={{ padding: "20px" }}>
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
-            <h2 style={{ fontFamily: "Outfit, sans-serif", fontSize: 15, fontWeight: 700, color: "var(--text)" }}>Recent Activity</h2>
-            <Link href="/admin/logs" style={{ fontSize: 12, color: "var(--brand)", textDecoration: "none", fontWeight: 600, display: "flex", alignItems: "center", gap: 3 }}>View all <ArrowUpRight size={12} /></Link>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill,minmax(280px,1fr))", gap: 16 }}>
+
+        {/* Live activity log */}
+        <div className="card" style={{ padding: "18px 20px" }}>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14 }}>
+            <h2 style={{ fontFamily: "Outfit, sans-serif", fontSize: 14, fontWeight: 700, color: "var(--text)" }}>Live Activity</h2>
+            <Link href="/admin/logs" style={{ fontSize: 12, color: "var(--brand)", textDecoration: "none", fontWeight: 600, display: "flex", alignItems: "center", gap: 3 }}>
+              All logs <ArrowUpRight size={11} />
+            </Link>
           </div>
-          <div>
-            {ACTIVITY_LOG.map((log, i) => (
-              <div key={i} style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", padding: "10px 0", borderBottom: i < ACTIVITY_LOG.length - 1 ? "1px solid var(--border)" : "none", gap: 12 }}>
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 2, flexWrap: "wrap" }}>
-                    <span style={{ fontFamily: "JetBrains Mono, monospace", fontSize: 11, fontWeight: 700, color: "var(--brand)" }}>{log.action}</span>
-                    {log.chain && <span style={{ fontSize: 9, fontWeight: 700, color: "#059669", background: "rgba(5,150,105,0.08)", border: "1px solid rgba(5,150,105,0.2)", padding: "1px 5px", borderRadius: 4 }}>ON-CHAIN</span>}
+
+          {loading ? (
+            <div>{[1,2,3,4].map(i => <div key={i} className="skeleton" style={{ height: 40, borderRadius: 6, marginBottom: 8 }} />)}</div>
+          ) : events.length === 0 ? (
+            <div style={{ padding: "20px 0", textAlign: "center", color: "var(--text-4)", fontSize: 13 }}>
+              No on-chain activity yet.{" "}
+              {!READLEARC_ADDRESS && <span style={{ color: "#dc2626" }}>Contract address not configured.</span>}
+            </div>
+          ) : (
+            <div>
+              {events.map((ev, i) => (
+                <div key={`${ev.hash}-${i}`} style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", padding: "9px 0", borderBottom: i < events.length - 1 ? "1px solid var(--border)" : "none", gap: 10 }}>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 5, flexWrap: "wrap", marginBottom: 2 }}>
+                      <span style={{ fontFamily: "JetBrains Mono, monospace", fontSize: 10, fontWeight: 700, color: ev.color }}>{ev.action}</span>
+                      <span style={{ fontSize: 9, color: "#059669", background: "rgba(5,150,105,0.08)", border: "1px solid rgba(5,150,105,0.2)", padding: "1px 5px", borderRadius: 4, fontWeight: 700 }}>ON-CHAIN</span>
+                    </div>
+                    <div style={{ fontSize: 11, color: "var(--text-3)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{ev.detail}</div>
+                    <div style={{ fontSize: 10, color: "var(--text-4)", marginTop: 1 }}>Block #{ev.block} · {ev.actor}</div>
                   </div>
-                  <div style={{ fontSize: 11, color: "var(--text-4)" }}>{log.actor} · {log.time}</div>
+                  <a href={`${ARC_EXPLORER}/tx/${ev.hash}`} target="_blank" rel="noopener noreferrer" style={{ color: "var(--text-4)", display: "flex", flexShrink: 0, marginTop: 2 }}>
+                    <ExternalLink size={11} />
+                  </a>
                 </div>
-                <Link href="/admin/logs"><ArrowUpRight size={12} style={{ color: "var(--text-4)", marginTop: 2 }} /></Link>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          )}
         </div>
 
-        {/* Quick links */}
-        <div className="card" style={{ padding: "20px" }}>
-          <h2 style={{ fontFamily: "Outfit, sans-serif", fontSize: 15, fontWeight: 700, color: "var(--text)", marginBottom: 14 }}>Quick Actions</h2>
+        {/* Quick actions */}
+        <div className="card" style={{ padding: "18px 20px" }}>
+          <h2 style={{ fontFamily: "Outfit, sans-serif", fontSize: 14, fontWeight: 700, color: "var(--text)", marginBottom: 14 }}>Quick Actions</h2>
           <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
             {QUICK_LINKS.map(ql => (
-              <Link key={ql.href} href={ql.href} style={{ display: "flex", alignItems: "center", gap: 12, padding: "12px 14px", borderRadius: "var(--radius)", background: "var(--bg-alt)", border: "1px solid var(--border)", textDecoration: "none", transition: "all 0.15s" }}
+              <Link key={ql.href} href={ql.href} style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 12px", borderRadius: "var(--radius)", background: "var(--bg-alt)", border: "1px solid var(--border)", textDecoration: "none", transition: "all 0.15s" }}
                 onMouseEnter={e => { (e.currentTarget as HTMLAnchorElement).style.borderColor = "var(--border-brand)"; (e.currentTarget as HTMLAnchorElement).style.background = "var(--brand-muted)"; }}
                 onMouseLeave={e => { (e.currentTarget as HTMLAnchorElement).style.borderColor = "var(--border)"; (e.currentTarget as HTMLAnchorElement).style.background = "var(--bg-alt)"; }}
               >
-                <ql.icon size={15} style={{ color: ql.color, flexShrink: 0 }} />
+                <ql.icon size={14} style={{ color: ql.color, flexShrink: 0 }} />
                 <span style={{ fontSize: 13, fontWeight: 600, color: "var(--text-2)", flex: 1 }}>{ql.label}</span>
-                <ArrowUpRight size={13} style={{ color: "var(--text-4)" }} />
+                <ArrowUpRight size={12} style={{ color: "var(--text-4)" }} />
               </Link>
             ))}
           </div>
 
-          <div style={{ marginTop: 16, padding: "12px 14px", background: "var(--bg-alt)", border: "1px solid var(--border)", borderRadius: "var(--radius)", fontSize: 12, color: "var(--text-4)" }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-              <span style={{ width: 7, height: 7, borderRadius: "50%", background: "#059669", display: "inline-block" }} />
-              <span style={{ color: "var(--text-3)", fontWeight: 600 }}>Contract deployed · Arc Testnet</span>
+          {/* Contract status */}
+          <div style={{ marginTop: 14, padding: "10px 12px", background: "var(--bg-alt)", border: "1px solid var(--border)", borderRadius: "var(--radius)" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 5, marginBottom: 4 }}>
+              <span style={{ width: 6, height: 6, borderRadius: "50%", background: READLEARC_ADDRESS ? "#059669" : "#dc2626", display: "inline-block" }} />
+              <span style={{ fontSize: 11, fontWeight: 700, color: "var(--text-3)" }}>
+                {READLEARC_ADDRESS ? "Contract deployed" : "Contract not configured"}
+              </span>
             </div>
-            <a href={`${ARC_EXPLORER}/address/${READLEARC_ADDRESS}`} target="_blank" rel="noopener noreferrer" style={{ fontSize: 10, fontFamily: "JetBrains Mono, monospace", color: "var(--brand)", textDecoration: "none", display: "flex", alignItems: "center", gap: 4, marginTop: 4 }}>
-              {READLEARC_ADDRESS?.slice(0,14) || "Not deployed"}… <ArrowUpRight size={9} />
-            </a>
+            {READLEARC_ADDRESS && (
+              <a href={`${ARC_EXPLORER}/address/${READLEARC_ADDRESS}`} target="_blank" rel="noopener noreferrer" style={{ fontFamily: "JetBrains Mono, monospace", fontSize: 10, color: "var(--brand)", textDecoration: "none", display: "flex", alignItems: "center", gap: 3 }}>
+                {READLEARC_ADDRESS.slice(0,16)}… <ExternalLink size={9} />
+              </a>
+            )}
           </div>
         </div>
       </div>
+      <style>{`@keyframes rl-spin{to{transform:rotate(360deg)}}`}</style>
     </div>
   );
 }
