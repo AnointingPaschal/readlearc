@@ -1,114 +1,124 @@
+"use client";
 import Link from "next/link";
-import { DollarSign, BookOpen, Users, Zap, TrendingUp, AlertTriangle, FileText, Shield, BarChart3, ArrowUpRight } from "lucide-react";
-
-const METRICS = [
-  { label: "Platform Treasury", value: "$1,284.50", sub: "USDC on-chain", icon: DollarSign, color: "text-usdc-400", bg: "bg-usdc-500/10" },
-  { label: "Revenue This Week", value: "$284.32", sub: "+18% vs last week", icon: TrendingUp, color: "text-arc-400", bg: "bg-arc-500/10" },
-  { label: "Total Articles", value: "12,847", sub: "286 published today", icon: BookOpen, color: "text-blue-400", bg: "bg-blue-500/10" },
-  { label: "Total Users", value: "9,340", sub: "readers + writers", icon: Users, color: "text-purple-400", bg: "bg-purple-500/10" },
-  { label: "Flagged Content", value: "7", sub: "needs review", icon: AlertTriangle, color: "text-red-400", bg: "bg-red-500/10" },
-  { label: "AI Requests Today", value: "4,182", sub: "$2.14 estimated cost", icon: Zap, color: "text-yellow-400", bg: "bg-yellow-500/10" },
-];
-
-const RECENT_LOGS = [
-  { action: "FEE_SPLIT_CHANGED", admin: "super@readlearc.io", time: "2 hours ago", onChain: true },
-  { action: "ARTICLE_REMOVED", admin: "mod@readlearc.io", time: "4 hours ago", onChain: true },
-  { action: "AI_KEY_CHANGED", admin: "super@readlearc.io", time: "1 day ago", onChain: true },
-  { action: "ADMIN_ADDED", admin: "super@readlearc.io", time: "2 days ago", onChain: true },
-  { action: "CONTENT_FEATURED", admin: "mod@readlearc.io", time: "2 days ago", onChain: false },
-];
+import { useState, useEffect } from "react";
+import { ethers } from "ethers";
+import { DollarSign, BookOpen, Users, Zap, TrendingUp, AlertTriangle, Shield, ArrowUpRight, RefreshCw } from "lucide-react";
+import { READLEARC_ADDRESS, READLEARC_ABI, USDC_ADDRESS, USDC_ABI, getReadProvider, ARC_EXPLORER } from "../../lib/web3";
 
 const QUICK_LINKS = [
-  { label: "Moderate flagged content", href: "/admin/content/moderation", color: "text-red-400", icon: AlertTriangle },
-  { label: "Configure AI models", href: "/admin/ai/models", color: "text-arc-400", icon: Zap },
-  { label: "View contract registry", href: "/admin/finance/contracts", color: "text-blue-400", icon: FileCode },
-  { label: "Security settings", href: "/admin/security", color: "text-purple-400", icon: Shield },
+  { label: "Moderate flagged content", href: "/admin/content/moderation", color: "var(--c-red,#dc2626)",    icon: AlertTriangle },
+  { label: "Manage fee splits",        href: "/admin/finance/fees",       color: "var(--brand)",            icon: DollarSign   },
+  { label: "Contract registry",        href: "/admin/finance/contracts",  color: "var(--c-blue,#0284c7)",   icon: Shield       },
+  { label: "Writer verification",      href: "/admin/users/writers",      color: "var(--c-green,#059669)",  icon: Users        },
 ];
 
-function FileCode(props: React.SVGProps<SVGSVGElement>) {
-  return <FileText {...props} />;
-}
+const ACTIVITY_LOG = [
+  { action: "FEE_SPLIT_CHANGED",  actor: "super@readlearc.io", time: "2 hr ago",  chain: true  },
+  { action: "WRITER_VERIFIED",    actor: "admin@readlearc.io", time: "5 hr ago",  chain: true  },
+  { action: "ARTICLE_REMOVED",    actor: "mod@readlearc.io",   time: "1 day ago", chain: true  },
+  { action: "AI_KEY_ROTATED",     actor: "super@readlearc.io", time: "2 day ago", chain: false },
+  { action: "CONTENT_FEATURED",   actor: "mod@readlearc.io",   time: "3 day ago", chain: false },
+];
 
 export default function AdminDashboard() {
+  const [stats, setStats] = useState({ articles: 0, treasury: "0.00", loading: true });
+
+  useEffect(() => {
+    async function load() {
+      try {
+        if (!READLEARC_ADDRESS) return;
+        const prov = getReadProvider();
+        const c = new ethers.Contract(READLEARC_ADDRESS, READLEARC_ABI, prov);
+        const count = await c.articleCount();
+        let treasury = "0.00";
+        if (USDC_ADDRESS) {
+          const u = new ethers.Contract(USDC_ADDRESS, USDC_ABI, prov);
+          const bal = await u.balanceOf(/* platform treasury placeholder */ ethers.ZeroAddress);
+          treasury = parseFloat(ethers.formatUnits(bal, 6)).toFixed(2);
+        }
+        setStats({ articles: Number(count), treasury, loading: false });
+      } catch { setStats(s => ({ ...s, loading: false })); }
+    }
+    load();
+  }, []);
+
+  const KPI = [
+    { label: "Articles On-Chain", value: stats.loading ? "…" : stats.articles.toString(), sub: "from blockchain", icon: BookOpen,  color: "var(--brand)",          bg: "var(--brand-muted)"         },
+    { label: "Platform Treasury", value: `$${stats.treasury}`, sub: "USDC on Arc",         icon: DollarSign,  color: "#059669",                bg: "rgba(5,150,105,0.08)"       },
+    { label: "Fee Split",         value: "85/10/5",             sub: "writer/platform/ref", icon: TrendingUp,  color: "#0284c7",                bg: "rgba(2,132,199,0.08)"       },
+    { label: "Contract Status",   value: "LIVE",                sub: "Arc Testnet",          icon: Shield,      color: "#059669",                bg: "rgba(5,150,105,0.08)"       },
+    { label: "Moderation Queue",  value: "2",                   sub: "items pending",        icon: AlertTriangle, color: "#dc2626",              bg: "rgba(220,38,38,0.08)"       },
+    { label: "Network",           value: "Arc",                 sub: "Circle USDC L1",       icon: Zap,         color: "#d97706",                bg: "rgba(217,119,6,0.08)"       },
+  ];
+
   return (
-    <div className="space-y-8">
+    <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
       <div>
-        <h1 className="font-heading text-3xl font-bold">Admin Dashboard</h1>
-        <p className="text-gray-500 mt-1">Platform overview · Readlearc v1.0.0</p>
+        <h1 style={{ fontFamily: "Outfit, sans-serif", fontSize: 26, fontWeight: 900, color: "var(--text)", letterSpacing: "-0.02em" }}>Admin Dashboard</h1>
+        <p style={{ color: "var(--text-4)", fontSize: 13, marginTop: 4 }}>Platform overview · Readlearc Protocol</p>
       </div>
 
       {/* KPIs */}
-      <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-        {METRICS.map((m) => (
-          <div key={m.label} className="glass rounded-xl p-5 hover:border-arc-500/20 transition-all">
-            <div className={`w-9 h-9 rounded-lg ${m.bg} flex items-center justify-center mb-3`}>
-              <m.icon className={`w-4 h-4 ${m.color}`} />
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(180px,1fr))", gap: 12 }}>
+        {KPI.map(k => (
+          <div key={k.label} className="card" style={{ padding: "16px" }}>
+            <div style={{ width: 32, height: 32, borderRadius: 8, background: k.bg, display: "flex", alignItems: "center", justifyContent: "center", marginBottom: 10 }}>
+              <k.icon size={15} style={{ color: k.color }} />
             </div>
-            <div className={`text-2xl font-black ${m.color}`}>{m.value}</div>
-            <div className="text-xs text-gray-400 mt-1">{m.label}</div>
-            <div className="text-xs text-gray-700">{m.sub}</div>
+            <div style={{ fontFamily: "Outfit, sans-serif", fontSize: 22, fontWeight: 900, color: k.color, lineHeight: 1 }}>{k.value}</div>
+            <div style={{ fontSize: 11, color: "var(--text-3)", fontWeight: 600, marginTop: 4 }}>{k.label}</div>
+            <div style={{ fontSize: 10, color: "var(--text-4)", marginTop: 1 }}>{k.sub}</div>
           </div>
         ))}
       </div>
 
-      <div className="grid lg:grid-cols-2 gap-6">
-        {/* Recent activity */}
-        <div className="glass rounded-2xl p-6">
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="font-semibold">Recent Admin Activity</h2>
-            <Link href="/admin/logs" className="text-xs text-arc-400 hover:text-arc-300 flex items-center gap-1">
-              View all <ArrowUpRight className="w-3 h-3" />
-            </Link>
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
+        {/* Activity log */}
+        <div className="card" style={{ padding: "20px" }}>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
+            <h2 style={{ fontFamily: "Outfit, sans-serif", fontSize: 15, fontWeight: 700, color: "var(--text)" }}>Recent Activity</h2>
+            <Link href="/admin/logs" style={{ fontSize: 12, color: "var(--brand)", textDecoration: "none", fontWeight: 600, display: "flex", alignItems: "center", gap: 3 }}>View all <ArrowUpRight size={12} /></Link>
           </div>
-          <div className="space-y-3">
-            {RECENT_LOGS.map((log, i) => (
-              <div key={i} className="flex items-center justify-between py-2 border-b border-white/5 last:border-0">
-                <div>
-                  <div className="flex items-center gap-2">
-                    <span className="text-xs font-mono font-semibold text-arc-300">{log.action}</span>
-                    {log.onChain && (
-                      <span className="text-[9px] bg-usdc-500/20 text-usdc-400 border border-usdc-500/30 px-1.5 py-0.5 rounded-full font-semibold">ON-CHAIN</span>
-                    )}
+          <div>
+            {ACTIVITY_LOG.map((log, i) => (
+              <div key={i} style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", padding: "10px 0", borderBottom: i < ACTIVITY_LOG.length - 1 ? "1px solid var(--border)" : "none", gap: 12 }}>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 2, flexWrap: "wrap" }}>
+                    <span style={{ fontFamily: "JetBrains Mono, monospace", fontSize: 11, fontWeight: 700, color: "var(--brand)" }}>{log.action}</span>
+                    {log.chain && <span style={{ fontSize: 9, fontWeight: 700, color: "#059669", background: "rgba(5,150,105,0.08)", border: "1px solid rgba(5,150,105,0.2)", padding: "1px 5px", borderRadius: 4 }}>ON-CHAIN</span>}
                   </div>
-                  <span className="text-xs text-gray-600">{log.admin} · {log.time}</span>
+                  <div style={{ fontSize: 11, color: "var(--text-4)" }}>{log.actor} · {log.time}</div>
                 </div>
-                <Link href="/admin/logs" className="text-gray-700 hover:text-gray-400 transition-colors">
-                  <ArrowUpRight className="w-3.5 h-3.5" />
-                </Link>
+                <Link href="/admin/logs"><ArrowUpRight size={12} style={{ color: "var(--text-4)", marginTop: 2 }} /></Link>
               </div>
             ))}
           </div>
         </div>
 
-        {/* Quick actions */}
-        <div className="glass rounded-2xl p-6">
-          <h2 className="font-semibold mb-4">Quick Actions</h2>
-          <div className="space-y-3">
-            {QUICK_LINKS.map((l) => (
-              <Link
-                key={l.href}
-                href={l.href}
-                className="flex items-center gap-3 p-3 glass rounded-xl hover:border-white/15 transition-all group"
+        {/* Quick links */}
+        <div className="card" style={{ padding: "20px" }}>
+          <h2 style={{ fontFamily: "Outfit, sans-serif", fontSize: 15, fontWeight: 700, color: "var(--text)", marginBottom: 14 }}>Quick Actions</h2>
+          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+            {QUICK_LINKS.map(ql => (
+              <Link key={ql.href} href={ql.href} style={{ display: "flex", alignItems: "center", gap: 12, padding: "12px 14px", borderRadius: "var(--radius)", background: "var(--bg-alt)", border: "1px solid var(--border)", textDecoration: "none", transition: "all 0.15s" }}
+                onMouseEnter={e => { (e.currentTarget as HTMLAnchorElement).style.borderColor = "var(--border-brand)"; (e.currentTarget as HTMLAnchorElement).style.background = "var(--brand-muted)"; }}
+                onMouseLeave={e => { (e.currentTarget as HTMLAnchorElement).style.borderColor = "var(--border)"; (e.currentTarget as HTMLAnchorElement).style.background = "var(--bg-alt)"; }}
               >
-                <l.icon className={`w-4 h-4 ${l.color}`} />
-                <span className="text-sm text-gray-300 group-hover:text-white transition-colors">{l.label}</span>
-                <ArrowUpRight className="w-3.5 h-3.5 text-gray-700 group-hover:text-gray-400 ml-auto transition-colors" />
+                <ql.icon size={15} style={{ color: ql.color, flexShrink: 0 }} />
+                <span style={{ fontSize: 13, fontWeight: 600, color: "var(--text-2)", flex: 1 }}>{ql.label}</span>
+                <ArrowUpRight size={13} style={{ color: "var(--text-4)" }} />
               </Link>
             ))}
           </div>
 
-          {/* Arc network status */}
-          <div className="mt-6 p-4 rounded-xl bg-gradient-to-r from-arc-900/40 to-usdc-900/40 border border-arc-500/20">
-            <div className="flex items-center gap-2 mb-2">
-              <span className="w-2 h-2 rounded-full bg-usdc-400 animate-pulse" />
-              <span className="text-xs font-semibold text-white">Arc Testnet · Operational</span>
+          <div style={{ marginTop: 16, padding: "12px 14px", background: "var(--bg-alt)", border: "1px solid var(--border)", borderRadius: "var(--radius)", fontSize: 12, color: "var(--text-4)" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+              <span style={{ width: 7, height: 7, borderRadius: "50%", background: "#059669", display: "inline-block" }} />
+              <span style={{ color: "var(--text-3)", fontWeight: 600 }}>Contract deployed · Arc Testnet</span>
             </div>
-            <div className="grid grid-cols-2 gap-2 text-xs text-gray-500">
-              <div>Block time: <span className="text-gray-300">0.8s avg</span></div>
-              <div>Gas: <span className="text-gray-300">$0.001 USDC</span></div>
-              <div>Contracts: <span className="text-gray-300">6 deployed</span></div>
-              <div>USDC Supply: <span className="text-gray-300">$48,291</span></div>
-            </div>
+            <a href={`${ARC_EXPLORER}/address/${READLEARC_ADDRESS}`} target="_blank" rel="noopener noreferrer" style={{ fontSize: 10, fontFamily: "JetBrains Mono, monospace", color: "var(--brand)", textDecoration: "none", display: "flex", alignItems: "center", gap: 4, marginTop: 4 }}>
+              {READLEARC_ADDRESS?.slice(0,14) || "Not deployed"}… <ArrowUpRight size={9} />
+            </a>
           </div>
         </div>
       </div>

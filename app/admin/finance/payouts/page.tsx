@@ -1,109 +1,102 @@
 "use client";
-import { useState } from "react";
-import { Wallet, ArrowDownLeft, AlertTriangle, ExternalLink, CheckCircle } from "lucide-react";
+import { useState, useEffect } from "react";
+import { ethers } from "ethers";
+import { Wallet, ArrowUpRight, AlertCircle, ExternalLink, Send } from "lucide-react";
+import { useWallet } from "../../../../lib/web3Context";
+import { USDC_ADDRESS, USDC_ABI, ARC_EXPLORER } from "../../../../lib/web3";
 
 export default function PayoutsPage() {
-  const [amount, setAmount] = useState("");
-  const [withdrawing, setWithdrawing] = useState(false);
-  const [done, setDone] = useState(false);
+  const { address, isConnected, signer, provider } = useWallet();
+  const [balance,      setBalance]      = useState("0.00");
+  const [toAddress,    setToAddress]    = useState("");
+  const [amount,       setAmount]       = useState("");
+  const [withdrawing,  setWithdrawing]  = useState(false);
+  const [txHash,       setTxHash]       = useState("");
+  const [error,        setError]        = useState("");
 
-  const TREASURY_BALANCE = 1284.50;
+  useEffect(() => {
+    if (!provider || !USDC_ADDRESS || !address) return;
+    const usdc = new ethers.Contract(USDC_ADDRESS, USDC_ABI, provider);
+    usdc.balanceOf(address).then(async (bal: bigint) => {
+      const dec = await usdc.decimals();
+      setBalance(parseFloat(ethers.formatUnits(bal, dec)).toFixed(4));
+    }).catch(() => {});
+  }, [provider, address]);
 
   async function handleWithdraw() {
-    setWithdrawing(true);
-    await new Promise((r) => setTimeout(r, 2000));
-    setWithdrawing(false);
-    setDone(true);
-    setAmount("");
-    setTimeout(() => setDone(false), 3000);
+    if (!signer || !USDC_ADDRESS || !toAddress || !amount) return;
+    setWithdrawing(true); setError(""); setTxHash("");
+    try {
+      if (!ethers.isAddress(toAddress)) throw new Error("Invalid address");
+      const usdc = new ethers.Contract(USDC_ADDRESS, USDC_ABI, signer);
+      const dec  = await usdc.decimals();
+      const tx   = await usdc.transfer(toAddress, ethers.parseUnits(amount, dec));
+      await tx.wait();
+      setTxHash(tx.hash);
+      setToAddress(""); setAmount("");
+    } catch (err: any) { setError(err.reason || err.message); }
+    finally { setWithdrawing(false); }
   }
 
   return (
-    <div className="max-w-2xl space-y-6">
+    <div style={{ display: "flex", flexDirection: "column", gap: 20, maxWidth: 560 }}>
       <div>
-        <h1 className="font-heading text-2xl font-bold">Platform Payouts</h1>
-        <p className="text-gray-500 text-sm mt-1">Withdraw accumulated platform fees from the Arc treasury.</p>
+        <h1 style={{ fontFamily: "Outfit, sans-serif", fontSize: 22, fontWeight: 900, color: "var(--text)", letterSpacing: "-0.02em" }}>Platform Payouts</h1>
+        <p style={{ color: "var(--text-4)", fontSize: 12, marginTop: 3 }}>Manage USDC balance and withdraw platform fees</p>
       </div>
 
-      <div className="rounded-2xl p-8 relative overflow-hidden" style={{ background: "linear-gradient(135deg, #1a0a2e 0%, #0a1a0e 100%)", border: "1px solid rgba(124,58,237,0.3)" }}>
-        <div className="absolute top-0 right-0 w-64 h-64 bg-arc-600/10 rounded-full blur-3xl pointer-events-none" />
-        <div className="relative">
-          <div className="text-xs text-gray-400 mb-1 uppercase tracking-wider font-semibold">Treasury Balance</div>
-          <div className="text-5xl font-black text-white mb-6">
-            ${TREASURY_BALANCE.toFixed(2)} <span className="text-xl text-usdc-400">USDC</span>
+      {/* Balance card */}
+      <div style={{ borderRadius: 20, padding: "28px", background: "linear-gradient(135deg, var(--brand) 0%, var(--accent) 100%)", boxShadow: "0 10px 32px rgba(109,40,217,0.3)", position: "relative", overflow: "hidden" }}>
+        <div style={{ position: "absolute", top: -40, right: -40, width: 160, height: 160, borderRadius: "50%", background: "rgba(255,255,255,0.06)" }} />
+        <div style={{ position: "relative" }}>
+          <div style={{ fontSize: 11, color: "rgba(255,255,255,0.65)", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 6 }}>
+            Connected Wallet · USDC Balance
           </div>
+          <div style={{ fontFamily: "Outfit, sans-serif", fontSize: 44, fontWeight: 900, color: "white", lineHeight: 1, letterSpacing: "-0.03em" }}>
+            ${balance} <span style={{ fontSize: "0.45em", opacity: 0.75 }}>USDC</span>
+          </div>
+          {address && (
+            <div style={{ marginTop: 12, fontFamily: "JetBrains Mono, monospace", fontSize: 11, color: "rgba(255,255,255,0.6)" }}>
+              {address.slice(0,14)}…{address.slice(-6)}
+            </div>
+          )}
+        </div>
+      </div>
 
-          <div className="flex gap-4">
-            <div className="flex-1">
-              <label className="text-xs text-gray-400 mb-1.5 block">Amount to withdraw (USDC)</label>
-              <div className="relative">
-                <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500">$</span>
-                <input
-                  type="number"
-                  value={amount}
-                  onChange={(e) => setAmount(e.target.value)}
-                  placeholder="0.00"
-                  max={TREASURY_BALANCE}
-                  className="w-full bg-[#0a0a0f]/50 border border-white/20 rounded-xl pl-8 pr-16 py-3 text-white text-lg font-bold focus:outline-none focus:border-arc-500/50"
-                />
-                <button
-                  onClick={() => setAmount(TREASURY_BALANCE.toString())}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-bold text-arc-400 hover:text-arc-300 transition-colors"
-                >
-                  MAX
-                </button>
+      {!isConnected ? (
+        <div style={{ padding: "14px 16px", background: "rgba(220,38,38,0.06)", border: "1px solid rgba(220,38,38,0.18)", borderRadius: "var(--radius)", display: "flex", gap: 10 }}>
+          <AlertCircle size={14} style={{ color: "#dc2626", flexShrink: 0, marginTop: 1 }} />
+          <span style={{ fontSize: 13, color: "#dc2626" }}>Connect owner wallet to withdraw platform USDC.</span>
+        </div>
+      ) : (
+        <div className="card" style={{ padding: "22px" }}>
+          <h2 style={{ fontFamily: "Outfit, sans-serif", fontSize: 15, fontWeight: 700, color: "var(--text)", marginBottom: 16 }}>Send / Withdraw USDC</h2>
+          <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+            <div>
+              <label style={{ fontSize: 11, fontWeight: 700, color: "var(--text-4)", textTransform: "uppercase", letterSpacing: "0.06em", display: "block", marginBottom: 6 }}>Recipient Address</label>
+              <input type="text" placeholder="0x…" value={toAddress} onChange={e => setToAddress(e.target.value)} className="admin-input" style={{ fontFamily: "JetBrains Mono, monospace", fontSize: 13 }} />
+            </div>
+            <div>
+              <label style={{ fontSize: 11, fontWeight: 700, color: "var(--text-4)", textTransform: "uppercase", letterSpacing: "0.06em", display: "block", marginBottom: 6 }}>Amount (USDC)</label>
+              <div style={{ display: "flex", alignItems: "center", gap: 8, background: "var(--bg-alt)", border: "1.5px solid var(--border)", borderRadius: "var(--radius)", padding: "10px 14px" }}>
+                <span style={{ fontWeight: 700, color: "var(--text-4)" }}>$</span>
+                <input type="number" min="0" step="0.01" placeholder="0.00" value={amount} onChange={e => setAmount(e.target.value)}
+                  style={{ flex: 1, border: "none", outline: "none", background: "transparent", fontFamily: "Outfit, sans-serif", fontSize: 22, fontWeight: 900, color: "var(--brand)" }} />
+                <button onClick={() => setAmount(balance)} style={{ fontSize: 11, fontWeight: 700, color: "var(--brand)", background: "var(--brand-muted)", border: "1px solid var(--border-brand)", borderRadius: "var(--radius-sm)", padding: "3px 8px", cursor: "pointer" }}>MAX</button>
               </div>
             </div>
-          </div>
-        </div>
-      </div>
-
-      <div className="bg-red-500/5 border border-red-500/20 rounded-xl p-4 flex items-start gap-3">
-        <AlertTriangle className="w-5 h-5 text-red-400 mt-0.5" />
-        <div>
-          <h3 className="text-sm font-semibold text-white">Super Admin Signature Required</h3>
-          <p className="text-xs text-gray-400 mt-1">
-            Withdrawing from the platform treasury requires a signature from an authorized super_admin wallet registered in AdminRegistry.sol. The transaction will be logged on-chain.
-          </p>
-        </div>
-      </div>
-
-      <button
-        onClick={handleWithdraw}
-        disabled={!amount || parseFloat(amount) <= 0 || parseFloat(amount) > TREASURY_BALANCE || withdrawing}
-        className="w-full py-4 bg-arc-600 hover:bg-arc-500 disabled:bg-gray-800 disabled:text-gray-500 rounded-xl font-bold text-lg transition-all flex items-center justify-center gap-2"
-      >
-        {withdrawing ? (
-          <><span className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" /> Awaiting Wallet Signature...</>
-        ) : done ? (
-          <><CheckCircle className="w-5 h-5" /> Withdrawal Complete!</>
-        ) : (
-          <><Wallet className="w-5 h-5" /> Withdraw to Admin Wallet</>
-        )}
-      </button>
-
-      <div className="glass rounded-2xl p-6">
-        <h2 className="text-sm font-semibold text-gray-400 uppercase tracking-wider mb-4">Recent Withdrawals</h2>
-        <div className="space-y-3">
-          {[
-            { date: "Jun 1, 2026", amount: 4500.00, tx: "0x1a2b...3c4d" },
-            { date: "May 1, 2026", amount: 3200.50, tx: "0x5e6f...7g8h" },
-          ].map((w, i) => (
-            <div key={i} className="flex items-center justify-between py-2 border-b border-white/5 last:border-0">
-              <div>
-                <div className="flex items-center gap-2">
-                  <ArrowDownLeft className="w-4 h-4 text-usdc-400" />
-                  <span className="text-sm font-medium text-white">${w.amount.toFixed(2)} USDC</span>
-                </div>
-                <div className="text-xs text-gray-500 mt-1">{w.date}</div>
-              </div>
-              <a href="#" className="flex items-center gap-1 text-xs text-arc-400 hover:text-arc-300 font-mono">
-                {w.tx} <ExternalLink className="w-3 h-3" />
+            {error && <div style={{ fontSize: 12, color: "#dc2626" }}>{error}</div>}
+            {txHash && (
+              <a href={`${ARC_EXPLORER}/tx/${txHash}`} target="_blank" rel="noopener noreferrer" style={{ fontSize: 11, color: "#059669", fontFamily: "JetBrains Mono, monospace", textDecoration: "none", display: "flex", alignItems: "center", gap: 4 }}>
+                <ExternalLink size={10} /> Tx: {txHash.slice(0,16)}…
               </a>
-            </div>
-          ))}
+            )}
+            <button onClick={handleWithdraw} disabled={withdrawing || !toAddress || !amount} className="btn btn-primary" style={{ justifyContent: "center", fontWeight: 700 }}>
+              {withdrawing ? "Processing…" : <><Send size={14} /> Send USDC</>}
+            </button>
+          </div>
         </div>
-      </div>
+      )}
     </div>
   );
 }
