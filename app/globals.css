@@ -402,3 +402,67 @@ html, body {
 /* ─── Transitions ─────────────────────────────────────────────── */
 a, button { transition: all 0.2s ease; }
 img { transition: opacity 0.3s ease; }
+
+/* ─── Dashboard responsive ────────────────────────────────────── */
+@media (min-width: 768px) {
+  .kpi-grid {
+    grid-template-columns: repeat(4, 1fr) !important;
+  }
+  .chart-row {
+    grid-template-columns: 1fr 320px !important;
+  }
+}
+
+@media (max-width: 640px) {
+  .articles-table { display: none !important; }
+  .articles-cards { display: block !important; }
+}
+@media (min-width: 641px) {
+  .articles-table { display: block !important; }
+  .articles-cards { display: none !important; }
+}
+
+/* ─── Write page responsive ───────────────────────────────────── */
+.write-layout {
+  display: grid;
+  grid-template-columns: 1fr 272px;
+  gap: 20px;
+  align-items: start;
+}
+
+.write-sidebar {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  position: sticky;
+  top: 88px;
+}
+
+@media (max-width: 768px) {
+  .write-layout {
+    grid-template-columns: 1fr !important;
+  }
+  .write-sidebar {
+    position: static !important;
+  }
+  .checklist-pill {
+    display: inline-flex !important;
+  }
+}
+
+/* ─── General mobile helpers ─────────────────────────────────── */
+@media (max-width: 480px) {
+  .btn-lg {
+    height: 46px;
+    padding: 0 22px;
+    font-size: 14px;
+  }
+  .hero-btn-row {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .hero-btn-row a {
+    text-align: center;
+    justify-content: center;
+  }
+}

@@ -74,7 +74,7 @@ export default function LandingPage() {
       <Navbar />
 
       {/* ─── Hero ──────────────────────────────────────────────── */}
-      <section style={{ paddingTop: 128, paddingBottom: 80, position: "relative", overflow: "hidden" }}>
+      <section style={{ paddingTop: "clamp(96px, 12vw, 128px)", paddingBottom: "clamp(48px, 6vw, 80px)", position: "relative", overflow: "hidden" }}>
         {/* subtle grid */}
         <div className="hero-grid" style={{
           position: "absolute", inset: 0, opacity: 0.6, pointerEvents: "none",
@@ -128,7 +128,7 @@ export default function LandingPage() {
               and readers own cryptographic proof of every article they unlock.
             </motion.p>
 
-            <motion.div variants={fadeUp} style={{ display: "flex", gap: 12, flexWrap: "wrap", justifyContent: "center", marginBottom: 72 }}>
+            <motion.div variants={fadeUp} className="hero-btn-row" style={{ display: "flex", gap: 12, flexWrap: "wrap", justifyContent: "center", marginBottom: "clamp(40px, 6vw, 72px)" }}>
               <Link href="/explore" className="btn btn-primary btn-lg">
                 Start Reading <ArrowRight size={18} strokeWidth={2.5} />
               </Link>
@@ -316,7 +316,7 @@ export default function LandingPage() {
           <motion.div
             initial={{ opacity: 0, scale: 0.97 }} whileInView={{ opacity: 1, scale: 1 }} viewport={{ once: true }}
             className="card"
-            style={{ padding: "56px 48px", textAlign: "center", background: "var(--bg-card)" }}
+            style={{ padding: "clamp(28px, 5vw, 56px) clamp(20px, 5vw, 48px)", textAlign: "center", background: "var(--bg-card)" }}
           >
             <span className="badge badge-brand" style={{ marginBottom: 24 }}>
               <Zap size={11} strokeWidth={3} />
@@ -427,6 +427,13 @@ export default function LandingPage() {
           </div>
         </div>
       </footer>
+
+      <style jsx global>{`
+        @media (max-width: 480px) {
+          .hero-btn-row { flex-direction: column !important; align-items: stretch !important; }
+          .hero-btn-row a { text-align: center; justify-content: center; }
+        }
+      `}</style>
     </div>
   );
 }
