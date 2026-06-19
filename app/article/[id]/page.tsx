@@ -11,6 +11,7 @@ import Reactions from "../../../components/social/Reactions";
 import Comments from "../../../components/social/Comments";
 import ShareButton from "../../../components/social/ShareButton";
 import { fetchArticle, fetchFullArticle, checkReadReceipt, CONTRACT_ADDRESS, CONTRACT_ABI, USDC_ADDRESS, USDC_ABI, EXPLORER_URL, IS_CONFIGURED, type Article } from "../../../lib/chain";
+import { getStatus } from "../../../lib/moderation";
 import { useWallet } from "../../../lib/wallet";
 
 // Show first 25% of content before paywall
@@ -69,12 +70,15 @@ export default function ArticlePage() {
     async function load() {
       setLoading(true);
       const prov = provider || undefined;
-      const [meta, modRes] = await Promise.all([
-        fetchArticle(id, prov),
-        fetch(`/api/moderation?id=${id}`).then(r=>r.json()).catch(()=>({ status:"live" })),
-      ]);
+      const meta = await fetchArticle(id, prov);
       setArticle(meta);
-      setModStatus(modRes?.status || "live");
+      // Check localStorage first (instant, set by admin panel)
+      const localStatus = getStatus(id);
+      setModStatus(localStatus);
+      // Also sync with API for same-instance benefit
+      fetch(`/api/moderation?id=${id}`).then(r=>r.json()).then(d=>{
+        if(d?.status && d.status !== "live") setModStatus(d.status);
+      }).catch(()=>{});
       if (isConnected && address && meta) {
         const paid = await checkReadReceipt(address, id, prov);
         setIsPaid(paid);
