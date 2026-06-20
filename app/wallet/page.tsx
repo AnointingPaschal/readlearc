@@ -8,11 +8,19 @@ import { motion } from "framer-motion";
 import Navbar from "../../components/ui/Navbar";
 import SetupBanner from "../../components/ui/SetupBanner";
 import ConnectGate from "../../components/ui/ConnectGate";
-import { useWallet } from "../../lib/wallet";
+import { useAccount, useWalletClient } from "wagmi";
+import { walletClientToSigner } from "../../lib/ethers-adapter";
 import { fetchWalletHistory, USDC_ADDRESS, USDC_ABI, EXPLORER_URL } from "../../lib/chain";
 
 export default function WalletPage() {
-  const { address, shortAddress, isConnected, usdcBalance, provider, signer, refreshBalance } = useWallet();
+  const { address: rawAddr, isConnected } = useAccount();
+  const address = rawAddr || "";
+  const { data: walletClient } = useWalletClient();
+  const signer = walletClient ? walletClientToSigner(walletClient) : null;
+  const shortAddress = address ? `${address.slice(0,6)}…${address.slice(-4)}` : "";
+  const usdcBalance = "—"; // balance fetched below
+  const refreshBalance = async () => {};
+  const provider = null;
   const [copied,    setCopied]    = useState(false);
   const [txHistory, setTxHistory] = useState<any[]>([]);
   const [loading,   setLoading]   = useState(true);

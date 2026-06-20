@@ -19,7 +19,9 @@ import {
   EXPLORER_URL, IS_CONFIGURED, type Article,
 } from "../../../lib/chain";
 import { getStatus } from "../../../lib/moderation";
-import { useWallet } from "../../../lib/wallet";
+import { useAccount, useWalletClient } from "wagmi";
+import { useConnectModal } from "@rainbow-me/rainbowkit";
+import { walletClientToSigner } from "../../../lib/ethers-adapter";
 
 // ─── Render markdown-ish content ──────────────────────────────────
 function renderContent(text: string): string {
@@ -70,7 +72,12 @@ function HalfContent({ text }: { text: string }) {
 
 export default function ArticlePage() {
   const { id } = useParams<{ id: string }>();
-  const { address, isConnected, provider, signer, connect } = useWallet();
+  const { address, isConnected } = useAccount();
+  const { data: walletClient }  = useWalletClient();
+  const { openConnectModal }    = useConnectModal();
+  const connect = () => openConnectModal?.();
+  const signer  = walletClient ? walletClientToSigner(walletClient) : null;
+  const provider = null; // using ethers directly
 
   const [article,   setArticle]   = useState<Article | null>(null);
   const [isPaid,    setIsPaid]    = useState(false);

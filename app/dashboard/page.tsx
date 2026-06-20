@@ -6,13 +6,16 @@ import { BookOpen, DollarSign, Clock, CheckCircle2, ArrowRight, PenLine, History
 import Navbar from "../../components/ui/Navbar";
 import SetupBanner from "../../components/ui/SetupBanner";
 import ConnectGate from "../../components/ui/ConnectGate";
-import { useWallet } from "../../lib/wallet";
+import { useAccount } from "wagmi";
 import { fetchReadingHistory, type Article } from "../../lib/chain";
 
 type HistoryItem = Article & { pricePaid: string; txHash: string; blockNumber: number };
 
 export default function DashboardPage() {
-  const { address, isConnected, provider, usdcBalance, shortAddress } = useWallet();
+  const { address, isConnected } = useAccount();
+  const shortAddress = address ? `${address.slice(0,6)}…${address.slice(-4)}` : "";
+  const usdcBalance = "—";
+  const provider = null;
   const [history,  setHistory]  = useState<HistoryItem[]>([]);
   const [loading,  setLoading]  = useState(true);
   const [refreshing, setRefreshing] = useState(false);

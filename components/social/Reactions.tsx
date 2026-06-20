@@ -1,7 +1,7 @@
 "use client";
 import { useState, useEffect } from "react";
 import { Flame, Zap, Gem, ThumbsDown, CloudRain, XOctagon } from "lucide-react";
-import { useWallet } from "../../lib/wallet";
+import { useAccount } from "wagmi";
 import { REACTIONS, POSITIVE_REACTIONS, NEGATIVE_REACTIONS, type ReactionKey } from "../../lib/store";
 
 // Map reaction key → lucide icon
@@ -17,7 +17,7 @@ const ICONS: Record<ReactionKey, React.ElementType> = {
 interface Props { articleId: string; }
 
 export default function Reactions({ articleId }: Props) {
-  const { address, isConnected } = useWallet();
+  const { address, isConnected } = useAccount();
   const [counts,  setCounts]  = useState<Record<string, number>>({});
   const [mine,    setMine]    = useState<ReactionKey | null>(null);
   const [loading, setLoading] = useState(false);

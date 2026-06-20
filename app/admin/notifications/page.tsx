@@ -3,7 +3,7 @@ import { useState, useEffect } from "react";
 import { ethers } from "ethers";
 import { Bell, BookOpen, DollarSign, UserCheck, Flag, RefreshCw, ExternalLink, CheckCheck } from "lucide-react";
 import Link from "next/link";
-import { READLEARC_ADDRESS, READLEARC_ABI, ARC_EXPLORER, getReadProvider } from "../../../lib/web3";
+import { CONTRACT_ADDRESS, CONTRACT_ABI, EXPLORER_URL, readProvider } from "../../../lib/chain";
 
 type Notification = {
   id: string; type: string; title: string; body: string;
@@ -19,9 +19,9 @@ export default function NotificationsPage() {
   async function load() {
     setLoading(true);
     try {
-      if (!READLEARC_ADDRESS) return;
-      const prov = getReadProvider();
-      const c    = new ethers.Contract(READLEARC_ADDRESS, READLEARC_ABI, prov);
+      if (!CONTRACT_ADDRESS) return;
+      const prov = readProvider();
+      const c    = new ethers.Contract(CONTRACT_ADDRESS, CONTRACT_ABI, prov);
 
       const [pubEvs, readEvs, verEvs] = await Promise.all([
         c.queryFilter(c.filters.ArticlePublished(), -100000),
@@ -156,7 +156,7 @@ export default function NotificationsPage() {
                 </div>
 
                 {n.txHash && (
-                  <a href={`${ARC_EXPLORER}/tx/${n.txHash}`} target="_blank" rel="noopener noreferrer" onClick={e => e.stopPropagation()} style={{ color: "var(--text-4)", display: "flex", flexShrink: 0 }}>
+                  <a href={`${EXPLORER_URL}/tx/${n.txHash}`} target="_blank" rel="noopener noreferrer" onClick={e => e.stopPropagation()} style={{ color: "var(--text-4)", display: "flex", flexShrink: 0 }}>
                     <ExternalLink size={13} />
                   </a>
                 )}

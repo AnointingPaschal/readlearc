@@ -8,14 +8,21 @@ import { motion } from "framer-motion";
 import Navbar from "../../components/ui/Navbar";
 import SetupBanner from "../../components/ui/SetupBanner";
 import ConnectGate from "../../components/ui/ConnectGate";
-import { useWallet } from "../../lib/wallet";
+import { useAccount, useWalletClient, useBalance } from "wagmi";
+import { walletClientToSigner } from "../../lib/ethers-adapter";
 import { fetchWriterStats, USDC_ADDRESS, USDC_ABI, EXPLORER_URL, type Article } from "../../lib/chain";
 
 // Re-export ARC_EXPLORER
 
 
 export default function CreatorPage() {
-  const { address, shortAddress, isConnected, usdcBalance, provider, signer, refreshBalance } = useWallet();
+  const { address, isConnected } = useAccount();
+  const { data: walletClient } = useWalletClient();
+  const signer = walletClient ? walletClientToSigner(walletClient) : null;
+  const shortAddress = address ? `${address.slice(0,6)}…${address.slice(-4)}` : "";
+  const usdcBalance = "0.00"; // balance shown via RainbowKit
+  const refreshBalance = async () => {};
+  const provider = null;
   const [articles,  setArticles]  = useState<Article[]>([]);
   const [earned,    setEarned]    = useState(0);
   const [reads,     setReads]     = useState(0);

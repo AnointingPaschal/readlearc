@@ -7,13 +7,14 @@ import { motion } from "framer-motion";
 import Navbar from "../../components/ui/Navbar";
 import SetupBanner from "../../components/ui/SetupBanner";
 import ConnectGate from "../../components/ui/ConnectGate";
-import { useWallet } from "../../lib/wallet";
+import { useAccount } from "wagmi";
 import { fetchReadingHistory, EXPLORER_URL, type Article } from "../../lib/chain";
 
 type Item = Article & { pricePaid: string; txHash: string; blockNumber: number };
 
 export default function ReadingHistoryPage() {
-  const { address, isConnected, provider } = useWallet();
+  const { address, isConnected } = useAccount();
+  const provider = null;
   const [history,   setHistory]   = useState<Item[]>([]);
   const [loading,   setLoading]   = useState(true);
   const [search,    setSearch]    = useState("");

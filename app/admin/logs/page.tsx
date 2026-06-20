@@ -3,7 +3,7 @@ import { useState, useEffect } from "react";
 import { ethers } from "ethers";
 import { RefreshCw, ExternalLink, BookOpen, Users, UserCheck, Filter } from "lucide-react";
 import Link from "next/link";
-import { READLEARC_ADDRESS, READLEARC_ABI, ARC_EXPLORER, getReadProvider } from "../../../lib/web3";
+import { CONTRACT_ADDRESS, CONTRACT_ABI, EXPLORER_URL, readProvider } from "../../../lib/chain";
 
 type LogEntry = {
   type: "ArticlePublished" | "ArticleRead" | "WriterVerified";
@@ -26,9 +26,9 @@ export default function LogsPage() {
   async function fetchLogs() {
     setLoading(true);
     try {
-      if (!READLEARC_ADDRESS) return;
-      const prov = getReadProvider();
-      const c    = new ethers.Contract(READLEARC_ADDRESS, READLEARC_ABI, prov);
+      if (!CONTRACT_ADDRESS) return;
+      const prov = readProvider();
+      const c    = new ethers.Contract(CONTRACT_ADDRESS, CONTRACT_ABI, prov);
 
       const [pubEvs, readEvs, verEvs] = await Promise.all([
         c.queryFilter(c.filters.ArticlePublished(), -100000),
@@ -148,7 +148,7 @@ export default function LogsPage() {
                   </div>
 
                   {/* Tx link */}
-                  <a href={`${ARC_EXPLORER}/tx/${log.txHash}`} target="_blank" rel="noopener noreferrer" style={{ color: "var(--text-4)", display: "flex", flexShrink: 0, marginTop: 2 }} title="View transaction">
+                  <a href={`${EXPLORER_URL}/tx/${log.txHash}`} target="_blank" rel="noopener noreferrer" style={{ color: "var(--text-4)", display: "flex", flexShrink: 0, marginTop: 2 }} title="View transaction">
                     <ExternalLink size={13} />
                   </a>
                 </div>

@@ -1,111 +1,135 @@
 "use client";
-import { createContext, useContext, useState, useEffect, useCallback, ReactNode } from "react";
+/**
+ * Thin wrapper around Wagmi/RainbowKit hooks that keeps the same
+ * useWallet() API the rest of the app depends on.
+ * ethers.js is used for contract interactions; viem handles the connection.
+ */
+import { createContext, useContext, useEffect, useState, useCallback, ReactNode } from "react";
 import { ethers } from "ethers";
-import { USDC_ADDRESS, USDC_ABI, RPC_URL, CONTRACT_ADDRESS, CONTRACT_ABI } from "./chain";
+import { useAccount, useConnect, useDisconnect, useWalletClient, usePublicClient, useSwitchChain } from "wagmi";
+import { USDC_ADDRESS, USDC_ABI } from "./chain";
+import { arcTestnet } from "./wagmi";
 
 interface WalletCtx {
-  address: string;
+  address:      string;
   shortAddress: string;
-  isConnected: boolean;
-  isConnecting: boolean;
-  usdcBalance: string;
-  provider: ethers.BrowserProvider | null;
-  signer: ethers.JsonRpcSigner | null;
-  error: string;
-  connect: () => Promise<void>;
-  disconnect: () => void;
+  isConnected:  boolean;
+  usdcBalance:  string;
+  signer:       ethers.Signer | null;
+  provider:     ethers.Provider | null;
+  chainId:      number | undefined;
+  isWrongNetwork: boolean;
+  connect:      () => void;
+  disconnect:   () => void;
+  switchToArc:  () => Promise<void>;
   refreshBalance: () => Promise<void>;
 }
 
 const Ctx = createContext<WalletCtx>({
-  address: "", shortAddress: "", isConnected: false, isConnecting: false,
-  usdcBalance: "0.00", provider: null, signer: null, error: "",
-  connect: async () => {}, disconnect: () => {}, refreshBalance: async () => {},
+  address:"", shortAddress:"", isConnected:false, usdcBalance:"0.00",
+  signer:null, provider:null, chainId:undefined, isWrongNetwork:false,
+  connect:()=>{}, disconnect:()=>{}, switchToArc:async()=>{}, refreshBalance:async()=>{},
 });
 
-export function WalletProvider({ children }: { children: ReactNode }) {
-  const [address,     setAddress]     = useState("");
-  const [isConnecting,setIsConnecting]= useState(false);
+function WalletContextBridge({ children }: { children: ReactNode }) {
+  const { address, isConnected, chainId } = useAccount();
+  const { connectAsync, connectors } = useConnect();
+  const { disconnectAsync }           = useDisconnect();
+  const { data: walletClient }        = useWalletClient();
+  const publicClient                  = usePublicClient();
+  const { switchChainAsync }          = useSwitchChain();
+
+  const [signer,      setSigner]      = useState<ethers.Signer | null>(null);
+  const [provider,    setProvider]    = useState<ethers.Provider | null>(null);
   const [usdcBalance, setUsdcBalance] = useState("0.00");
-  const [provider,    setProvider]    = useState<ethers.BrowserProvider | null>(null);
-  const [signer,      setSigner]      = useState<ethers.JsonRpcSigner | null>(null);
-  const [error,       setError]       = useState("");
 
-  const shortAddress = address ? `${address.slice(0,6)}…${address.slice(-4)}` : "";
+  const isWrongNetwork = isConnected && chainId !== arcTestnet.id;
 
-  const fetchBalance = useCallback(async (addr: string, prov: ethers.BrowserProvider) => {
-    if (!USDC_ADDRESS) return;
+  // Build ethers signer from wagmi walletClient
+  useEffect(() => {
+    if (!walletClient) { setSigner(null); return; }
     try {
-      const usdc = new ethers.Contract(USDC_ADDRESS, USDC_ABI, prov);
-      const bal  = await usdc.balanceOf(addr);
+      const { account, chain, transport } = walletClient;
+      const network = { chainId: chain.id, name: chain.name };
+      const ethProv = new ethers.BrowserProvider(transport as any, network);
+      ethProv.getSigner(account.address).then(s => setSigner(s)).catch(() => setSigner(null));
+    } catch { setSigner(null); }
+  }, [walletClient]);
+
+  // Build ethers provider from publicClient
+  useEffect(() => {
+    if (!publicClient) { setProvider(null); return; }
+    try {
+      const { chain, transport } = publicClient;
+      const network = { chainId: chain.id, name: chain.name };
+      const prov = new ethers.BrowserProvider(transport as any, network);
+      setProvider(prov);
+    } catch { setProvider(null); }
+  }, [publicClient]);
+
+  // Fetch USDC balance
+  const refreshBalance = useCallback(async () => {
+    if (!address || !USDC_ADDRESS || !provider) return;
+    try {
+      const usdc = new ethers.Contract(USDC_ADDRESS, USDC_ABI, provider);
+      const bal  = await usdc.balanceOf(address);
       const dec  = await usdc.decimals();
       setUsdcBalance(parseFloat(ethers.formatUnits(bal, dec)).toFixed(4));
     } catch { setUsdcBalance("0.00"); }
-  }, []);
+  }, [address, provider, USDC_ADDRESS]);
 
-  const connect = useCallback(async () => {
-    if (typeof window === "undefined" || !(window as any).ethereum) {
-      setError("No wallet found. Please install MetaMask.");
-      return;
-    }
-    setIsConnecting(true); setError("");
-    try {
-      const prov = new ethers.BrowserProvider((window as any).ethereum);
-      await prov.send("eth_requestAccounts", []);
-      const sign = await prov.getSigner();
-      const addr = await sign.getAddress();
-      setProvider(prov); setSigner(sign); setAddress(addr);
-      localStorage.setItem("rl-wallet", addr);
-      await fetchBalance(addr, prov);
-    } catch (e: any) {
-      setError(e.message || "Failed to connect");
-    } finally { setIsConnecting(false); }
-  }, [fetchBalance]);
+  useEffect(() => { refreshBalance(); }, [refreshBalance]);
+
+  const connect = useCallback(() => {
+    const injected = connectors.find(c => c.id === "injected" || c.id === "metaMask" || c.name?.toLowerCase().includes("injected"));
+    const target   = injected || connectors[0];
+    if (target) connectAsync({ connector: target }).catch(() => {});
+  }, [connectors, connectAsync]);
 
   const disconnect = useCallback(() => {
-    setAddress(""); setProvider(null); setSigner(null); setUsdcBalance("0.00");
-    localStorage.removeItem("rl-wallet");
-  }, []);
+    disconnectAsync().catch(() => {});
+    setUsdcBalance("0.00");
+  }, [disconnectAsync]);
 
-  const refreshBalance = useCallback(async () => {
-    if (provider && address) await fetchBalance(address, provider);
-  }, [provider, address, fetchBalance]);
-
-  // Auto-reconnect
-  useEffect(() => {
-    const saved = localStorage.getItem("rl-wallet");
-    if (!saved || typeof window === "undefined" || !(window as any).ethereum) return;
-    const prov = new ethers.BrowserProvider((window as any).ethereum);
-    prov.listAccounts().then(accounts => {
-      if (accounts.length > 0 && accounts[0].address.toLowerCase() === saved.toLowerCase()) {
-        prov.getSigner().then(sign => {
-          setProvider(prov); setSigner(sign); setAddress(accounts[0].address);
-          fetchBalance(accounts[0].address, prov);
-        }).catch(() => {});
+  const switchToArc = useCallback(async () => {
+    try {
+      await switchChainAsync?.({ chainId: arcTestnet.id });
+    } catch (e: any) {
+      // If switchChain fails, try wallet_addEthereumChain directly
+      if (typeof window !== "undefined" && (window as any).ethereum) {
+        try {
+          await (window as any).ethereum.request({
+            method: "wallet_addEthereumChain",
+            params: [{
+              chainId:         `0x${arcTestnet.id.toString(16)}`,
+              chainName:       arcTestnet.name,
+              nativeCurrency:  arcTestnet.nativeCurrency,
+              rpcUrls:         arcTestnet.rpcUrls.default.http,
+              blockExplorerUrls: [arcTestnet.blockExplorers?.default.url],
+            }],
+          });
+        } catch {}
       }
-    }).catch(() => {});
-  }, [fetchBalance]);
+    }
+  }, [switchChainAsync]);
 
-  // Handle account changes
-  useEffect(() => {
-    if (typeof window === "undefined" || !(window as any).ethereum) return;
-    const onChange = (accounts: string[]) => {
-      if (accounts.length === 0) disconnect();
-      else connect();
-    };
-    (window as any).ethereum.on("accountsChanged", onChange);
-    return () => (window as any).ethereum?.removeListener("accountsChanged", onChange);
-  }, [connect, disconnect]);
+  const shortAddress = address ? `${address.slice(0,6)}…${address.slice(-4)}` : "";
 
   return (
     <Ctx.Provider value={{
-      address, shortAddress, isConnected: !!address,
-      isConnecting, usdcBalance, provider, signer, error,
-      connect, disconnect, refreshBalance,
+      address: address || "", shortAddress, isConnected, usdcBalance,
+      signer, provider, chainId, isWrongNetwork,
+      connect, disconnect, switchToArc, refreshBalance,
     }}>
       {children}
     </Ctx.Provider>
   );
+}
+
+// We export WalletProvider as a wrapper that must be placed inside
+// RainbowKit/Wagmi providers (see app/layout.tsx)
+export function WalletProvider({ children }: { children: ReactNode }) {
+  return <WalletContextBridge>{children}</WalletContextBridge>;
 }
 
 export const useWallet = () => useContext(Ctx);

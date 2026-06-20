@@ -3,7 +3,7 @@ import { useState, useEffect } from "react";
 import { ethers } from "ethers";
 import { Search, ExternalLink, Eye, EyeOff, RefreshCw } from "lucide-react";
 import Link from "next/link";
-import { READLEARC_ADDRESS, READLEARC_ABI, ARC_EXPLORER, getReadProvider } from "../../../../lib/web3";
+import { CONTRACT_ADDRESS, CONTRACT_ABI, EXPLORER_URL, readProvider } from "../../../../lib/chain";
 
 export default function ArticlesAdminPage() {
   const [articles, setArticles] = useState<any[]>([]);
@@ -15,9 +15,9 @@ export default function ArticlesAdminPage() {
     async function load() {
       setLoading(true);
       try {
-        if (!READLEARC_ADDRESS) return;
-        const prov  = getReadProvider();
-        const c     = new ethers.Contract(READLEARC_ADDRESS, READLEARC_ABI, prov);
+        if (!CONTRACT_ADDRESS) return;
+        const prov  = readProvider();
+        const c     = new ethers.Contract(CONTRACT_ADDRESS, CONTRACT_ABI, prov);
         const count = Number(await c.articleCount());
         const arts: any[] = [];
         for (let i = count; i >= Math.max(1, count - 49); i--) {
@@ -103,7 +103,7 @@ export default function ArticlesAdminPage() {
                     <td style={{ textAlign: "right" }}>
                       <div style={{ display: "flex", justifyContent: "flex-end", gap: 8 }}>
                         <Link href={`/article/${a.id}`} style={{ color: "var(--text-4)", display: "flex" }} title="View article"><Eye size={13} /></Link>
-                        <a href={`${ARC_EXPLORER}/tx/${a.id}`} target="_blank" rel="noopener noreferrer" style={{ color: "var(--text-4)", display: "flex" }} title="On-chain"><ExternalLink size={13} /></a>
+                        <a href={`${EXPLORER_URL}/tx/${a.id}`} target="_blank" rel="noopener noreferrer" style={{ color: "var(--text-4)", display: "flex" }} title="On-chain"><ExternalLink size={13} /></a>
                       </div>
                     </td>
                   </tr>

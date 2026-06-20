@@ -2,11 +2,15 @@
 import { useState, useEffect } from "react";
 import { ethers } from "ethers";
 import { Shield, AlertTriangle, CheckCircle2, RefreshCw, ArrowUpRight, Key, UserCheck, Copy, Check } from "lucide-react";
-import { useWallet } from "../../../lib/web3Context";
-import { READLEARC_ADDRESS, READLEARC_ABI, ARC_EXPLORER, getReadProvider } from "../../../lib/web3";
+import { useAccount, useWalletClient } from "wagmi";
+import { CONTRACT_ADDRESS, CONTRACT_ABI, EXPLORER_URL, readProvider } from "../../../lib/chain";
+import { walletClientToSigner } from "../../../lib/ethers-adapter";
 
 export default function SecurityPage() {
-  const { address, isConnected, signer } = useWallet();
+  const { address: _a, isConnected } = useAccount();
+  const address = _a || "";
+  const { data: wc } = useWalletClient();
+  const signer = wc ? walletClientToSigner(wc) : null;
 
   const [contractOwner,  setContractOwner]  = useState("");
   const [isOwner,        setIsOwner]        = useState(false);
@@ -20,9 +24,9 @@ export default function SecurityPage() {
   async function fetchOwner() {
     setLoading(true);
     try {
-      if (!READLEARC_ADDRESS) return;
-      const prov = getReadProvider();
-      const c    = new ethers.Contract(READLEARC_ADDRESS, READLEARC_ABI, prov);
+      if (!CONTRACT_ADDRESS) return;
+      const prov = readProvider();
+      const c    = new ethers.Contract(CONTRACT_ADDRESS, CONTRACT_ABI, prov);
       // owner() is a public state variable
       const owner = await c.owner();
       setContractOwner(owner);
@@ -36,11 +40,11 @@ export default function SecurityPage() {
   useEffect(() => { fetchOwner(); }, [isConnected, address]);
 
   async function handleTransfer() {
-    if (!signer || !newOwner || !READLEARC_ADDRESS) return;
+    if (!signer || !newOwner || !CONTRACT_ADDRESS) return;
     if (!ethers.isAddress(newOwner)) { setError("Invalid address format"); return; }
     setTransferring(true); setError(""); setTxHash("");
     try {
-      const c  = new ethers.Contract(READLEARC_ADDRESS, READLEARC_ABI, signer);
+      const c  = new ethers.Contract(CONTRACT_ADDRESS, CONTRACT_ABI, signer);
       const tx = await c.transferOwnership(newOwner);
       await tx.wait();
       setTxHash(tx.hash);
@@ -110,14 +114,14 @@ export default function SecurityPage() {
               <button onClick={() => copy(contractOwner)} style={{ background: "none", border: "none", cursor: "pointer", color: "var(--text-4)", display: "flex", flexShrink: 0 }}>
                 {copied ? <Check size={13} style={{ color: "#059669" }} /> : <Copy size={13} />}
               </button>
-              <a href={`${ARC_EXPLORER}/address/${contractOwner}`} target="_blank" rel="noopener noreferrer" style={{ color: "var(--brand)", display: "flex", flexShrink: 0 }}>
+              <a href={`${EXPLORER_URL}/address/${contractOwner}`} target="_blank" rel="noopener noreferrer" style={{ color: "var(--brand)", display: "flex", flexShrink: 0 }}>
                 <ArrowUpRight size={13} />
               </a>
             </div>
             <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
               <span style={{ fontSize: 11, fontWeight: 600, color: "var(--text-4)" }}>Contract:</span>
-              <a href={`${ARC_EXPLORER}/address/${READLEARC_ADDRESS}`} target="_blank" rel="noopener noreferrer" style={{ fontFamily: "JetBrains Mono, monospace", fontSize: 11, color: "var(--brand)", textDecoration: "none", display: "flex", alignItems: "center", gap: 3 }}>
-                {READLEARC_ADDRESS?.slice(0,14)}… <ArrowUpRight size={10} />
+              <a href={`${EXPLORER_URL}/address/${CONTRACT_ADDRESS}`} target="_blank" rel="noopener noreferrer" style={{ fontFamily: "JetBrains Mono, monospace", fontSize: 11, color: "var(--brand)", textDecoration: "none", display: "flex", alignItems: "center", gap: 3 }}>
+                {CONTRACT_ADDRESS?.slice(0,14)}… <ArrowUpRight size={10} />
               </a>
             </div>
           </div>
@@ -153,7 +157,7 @@ export default function SecurityPage() {
 
           {error && <div style={{ fontSize: 12, color: "#dc2626" }}>{error}</div>}
           {txHash && (
-            <a href={`${ARC_EXPLORER}/tx/${txHash}`} target="_blank" rel="noopener noreferrer" style={{ fontSize: 11, color: "#059669", fontFamily: "JetBrains Mono, monospace", textDecoration: "none", display: "flex", alignItems: "center", gap: 4 }}>
+            <a href={`${EXPLORER_URL}/tx/${txHash}`} target="_blank" rel="noopener noreferrer" style={{ fontSize: 11, color: "#059669", fontFamily: "JetBrains Mono, monospace", textDecoration: "none", display: "flex", alignItems: "center", gap: 4 }}>
               <CheckCircle2 size={11} /> Ownership transferred · {txHash.slice(0,16)}…
             </a>
           )}

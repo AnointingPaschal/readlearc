@@ -2,8 +2,8 @@
 import { useState, useEffect } from "react";
 import { ethers } from "ethers";
 import { RefreshCw, ExternalLink, Info } from "lucide-react";
-import { READLEARC_ADDRESS, READLEARC_ABI, ARC_EXPLORER, getReadProvider } from "../../../../lib/web3";
-import { useWallet } from "../../../../lib/web3Context";
+import { CONTRACT_ADDRESS, CONTRACT_ABI, EXPLORER_URL, readProvider } from "../../../../lib/chain";
+import { useAccount as useWallet } from "wagmi";
 
 export default function FeesConfigPage() {
   const { isConnected } = useWallet();
@@ -13,9 +13,9 @@ export default function FeesConfigPage() {
   async function fetchFees() {
     setLoading(true);
     try {
-      if (!READLEARC_ADDRESS) return;
-      const prov = getReadProvider();
-      const c    = new ethers.Contract(READLEARC_ADDRESS, READLEARC_ABI, prov);
+      if (!CONTRACT_ADDRESS) return;
+      const prov = readProvider();
+      const c    = new ethers.Contract(CONTRACT_ADDRESS, CONTRACT_ABI, prov);
 
       const [
         defaultWriterBps, defaultPlatformBps, defaultReferrerBps,
@@ -135,7 +135,7 @@ export default function FeesConfigPage() {
 
         {/* Contract link */}
         <div style={{ display: "flex", alignItems: "center", justifyContent: "center" }}>
-          <a href={`${ARC_EXPLORER}/address/${READLEARC_ADDRESS}`} target="_blank" rel="noopener noreferrer" style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12, color: "var(--brand)", textDecoration: "none", fontWeight: 600 }}>
+          <a href={`${EXPLORER_URL}/address/${CONTRACT_ADDRESS}`} target="_blank" rel="noopener noreferrer" style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12, color: "var(--brand)", textDecoration: "none", fontWeight: 600 }}>
             <ExternalLink size={13} /> View contract on Arc Explorer
           </a>
         </div>
