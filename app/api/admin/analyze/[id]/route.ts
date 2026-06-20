@@ -3,83 +3,144 @@ import { supabaseAdmin } from "../../../../../lib/supabase";
 
 type C = { params: Promise<{id:string}> };
 
-export async function POST(_: NextRequest, { params }: C) {
-  const { id } = await params;
+// ── Unified AI caller ─────────────────────────────────────────────
+async function callAI(provider: string, model: string, apiKey: string, prompt: string): Promise<string> {
+  switch (provider) {
+    case "openai": {
+      const res = await fetch("https://api.openai.com/v1/chat/completions", {
+        method: "POST",
+        headers: { "Content-Type":"application/json", "Authorization":`Bearer ${apiKey}` },
+        body: JSON.stringify({
+          model, max_tokens:600,
+          messages:[{ role:"user", content:prompt }],
+          response_format:{ type:"json_object" },
+        }),
+      });
+      const d = await res.json();
+      if (!res.ok) throw new Error(d.error?.message || "OpenAI error");
+      return d.choices?.[0]?.message?.content || "";
+    }
 
-  // Get article content
-  const { data: article, error: aErr } = await supabaseAdmin
-    .from("articles").select("title,blurb,content,author_address").eq("id", id).single();
-  if (aErr || !article) return NextResponse.json({ error:"Article not found" }, { status:404 });
+    case "anthropic": {
+      const res = await fetch("https://api.anthropic.com/v1/messages", {
+        method:"POST",
+        headers:{ "Content-Type":"application/json","x-api-key":apiKey,"anthropic-version":"2023-06-01" },
+        body: JSON.stringify({ model, max_tokens:600, messages:[{ role:"user", content:prompt }] }),
+      });
+      const d = await res.json();
+      if (!res.ok) throw new Error(d.error?.message || "Anthropic error");
+      return d.content?.[0]?.text || "";
+    }
 
-  const apiKey = process.env.ANTHROPIC_API_KEY;
-  if (!apiKey) return NextResponse.json({ error:"ANTHROPIC_API_KEY not set in Vercel" }, { status:500 });
+    case "gemini": {
+      const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
+      const res = await fetch(url, {
+        method:"POST",
+        headers:{ "Content-Type":"application/json" },
+        body: JSON.stringify({ contents:[{ parts:[{ text:prompt }] }], generationConfig:{ maxOutputTokens:600, responseMimeType:"application/json" } }),
+      });
+      const d = await res.json();
+      if (!res.ok) throw new Error(d.error?.message || "Gemini error");
+      return d.candidates?.[0]?.content?.parts?.[0]?.text || "";
+    }
 
-  const wordCount = (article.content||"").split(/\s+/).filter(Boolean).length;
-  const excerpt   = (article.content||"").slice(0, 3000);
+    case "groq": {
+      const res = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+        method:"POST",
+        headers:{ "Content-Type":"application/json","Authorization":`Bearer ${apiKey}` },
+        body: JSON.stringify({ model, max_tokens:600, messages:[{ role:"user", content:prompt }], response_format:{type:"json_object"} }),
+      });
+      const d = await res.json();
+      if (!res.ok) throw new Error(d.error?.message || "Groq error");
+      return d.choices?.[0]?.message?.content || "";
+    }
 
-  const prompt = `You are an expert content quality analyst. Analyze the following article and return ONLY a JSON object (no markdown, no explanation).
+    case "deepseek": {
+      const res = await fetch("https://api.deepseek.com/chat/completions", {
+        method:"POST",
+        headers:{ "Content-Type":"application/json","Authorization":`Bearer ${apiKey}` },
+        body: JSON.stringify({ model, max_tokens:600, messages:[{ role:"user", content:prompt }], response_format:{type:"json_object"} }),
+      });
+      const d = await res.json();
+      if (!res.ok) throw new Error(d.error?.message || "DeepSeek error");
+      return d.choices?.[0]?.message?.content || "";
+    }
 
-Article Title: ${article.title}
+    default:
+      throw new Error(`Unknown AI provider: ${provider}`);
+  }
+}
+
+// ── Analysis prompt ───────────────────────────────────────────────
+function buildPrompt(title: string, content: string, wordCount: number): string {
+  return `You are an expert content quality analyst. Analyze the following article.
+Return ONLY a valid JSON object — no markdown, no extra text.
+
+Article Title: ${title}
 Word Count: ${wordCount}
 Content:
 ---
-${excerpt}${wordCount > 500 ? "\n...[truncated]" : ""}
+${content.slice(0, 3000)}${wordCount > 500 ? "\n...[truncated]" : ""}
 ---
 
-Return this exact JSON structure:
+Return this exact JSON:
 {
-  "plagiarism_score": <0-100, where 0=definitely original, 100=definitely copied>,
-  "plagiarism_notes": "<brief reason, max 100 chars>",
-  "ai_score": <0-100, where 0=definitely human-written, 100=definitely AI-generated>,
-  "ai_notes": "<brief reason, max 100 chars>",
-  "quality_score": <0-100, where 0=poor quality, 100=excellent quality>,
-  "quality_notes": "<brief reason, max 100 chars>",
-  "originality_score": <0-100, where 0=generic/derivative, 100=highly original ideas>,
+  "plagiarism_score": <0-100>,
+  "plagiarism_notes": "<max 100 chars>",
+  "ai_score": <0-100>,
+  "ai_notes": "<max 100 chars>",
+  "quality_score": <0-100>,
+  "quality_notes": "<max 100 chars>",
+  "originality_score": <0-100>,
+  "originality_notes": "<max 100 chars>",
   "recommendation": "<approve|reject|review>",
   "summary": "<1-2 sentence overall assessment>"
 }
 
 Scoring guide:
-- plagiarism_score > 70: likely copied content → recommend reject
-- ai_score > 80: likely AI-generated with no original value → recommend review
-- quality_score < 30: too short, incoherent, or low effort → recommend reject
-- quality_score > 70 AND plagiarism < 40 AND originality > 60: recommend approve`;
+- plagiarism_score >70 → reject | ai_score >80 → review
+- quality_score <30 → reject | quality_score >70 + plagiarism<40 + originality>60 → approve`;
+}
+
+export async function POST(_: NextRequest, { params }: C) {
+  const { id } = await params;
+
+  // Get article
+  const { data: article } = await supabaseAdmin
+    .from("articles").select("title,content").eq("id", id).single();
+  if (!article) return NextResponse.json({ error:"Article not found" }, { status:404 });
+
+  // Get AI config from platform_settings
+  const { data: settings } = await supabaseAdmin
+    .from("platform_settings")
+    .select("key,value")
+    .in("key", ["ai_provider","ai_model","ai_api_key"]);
+
+  const cfg: Record<string,string> = {};
+  for (const s of settings||[]) cfg[s.key] = s.value;
+
+  const provider = cfg.ai_provider || "anthropic";
+  const model    = cfg.ai_model    || "claude-haiku-4-5-20251001";
+  const apiKey   = cfg.ai_api_key  || process.env.ANTHROPIC_API_KEY || "";
+
+  if (!apiKey) return NextResponse.json({
+    error: `No API key set for ${provider}. Go to Admin → Settings → AI Model.`
+  }, { status:400 });
+
+  const wordCount = (article.content||"").split(/\s+/).filter(Boolean).length;
+  const prompt    = buildPrompt(article.title, article.content||"", wordCount);
 
   try {
-    const res = await fetch("https://api.anthropic.com/v1/messages", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "x-api-key": apiKey,
-        "anthropic-version": "2023-06-01",
-      },
-      body: JSON.stringify({
-        model: "claude-sonnet-4-6",
-        max_tokens: 500,
-        messages: [{ role:"user", content: prompt }],
-      }),
-    });
+    const raw  = await callAI(provider, model, apiKey, prompt);
+    const clean = raw.replace(/```json|```/g,"").trim();
+    const analysis = JSON.parse(clean);
 
-    const d = await res.json();
-    if (!res.ok) return NextResponse.json({ error: d.error?.message || "AI API error" }, { status:500 });
-
-    const text = d.content?.[0]?.text || "";
-    let analysis: any;
-    try {
-      // Strip any markdown fences
-      const clean = text.replace(/```json|```/g, "").trim();
-      analysis = JSON.parse(clean);
-    } catch {
-      return NextResponse.json({ error:"Failed to parse AI response", raw: text.slice(0,200) }, { status:500 });
-    }
-
-    // Save to DB
-    const { error: saveErr } = await supabaseAdmin.from("article_analysis").upsert({
+    await supabaseAdmin.from("article_analysis").upsert({
       article_id:        parseInt(id),
-      plagiarism_score:  Math.min(100, Math.max(0, analysis.plagiarism_score||0)),
-      ai_score:          Math.min(100, Math.max(0, analysis.ai_score||0)),
-      quality_score:     Math.min(100, Math.max(0, analysis.quality_score||0)),
-      originality_score: Math.min(100, Math.max(0, analysis.originality_score||0)),
+      plagiarism_score:  Math.min(100,Math.max(0, analysis.plagiarism_score||0)),
+      ai_score:          Math.min(100,Math.max(0, analysis.ai_score||0)),
+      quality_score:     Math.min(100,Math.max(0, analysis.quality_score||0)),
+      originality_score: Math.min(100,Math.max(0, analysis.originality_score||0)),
       plagiarism_notes:  analysis.plagiarism_notes||"",
       ai_notes:          analysis.ai_notes||"",
       quality_notes:     analysis.quality_notes||"",
@@ -87,16 +148,15 @@ Scoring guide:
       analyzed_at:       new Date().toISOString(),
     }, { onConflict:"article_id" });
 
-    if (saveErr) return NextResponse.json({ error: saveErr.message }, { status:500 });
-
-    return NextResponse.json({ ok:true, analysis: { ...analysis, summary: analysis.summary } });
-  } catch (e:any) {
+    return NextResponse.json({ ok:true, provider, model, analysis });
+  } catch(e:any) {
     return NextResponse.json({ error: e.message }, { status:500 });
   }
 }
 
 export async function GET(_: NextRequest, { params }: C) {
   const { id } = await params;
-  const { data } = await supabaseAdmin.from("article_analysis").select("*").eq("article_id", id).maybeSingle();
+  const { data } = await supabaseAdmin
+    .from("article_analysis").select("*").eq("article_id", id).maybeSingle();
   return NextResponse.json(data || null);
 }
