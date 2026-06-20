@@ -5,12 +5,12 @@ import { BookOpen, Clock, DollarSign, ExternalLink, Zap } from "lucide-react";
 import Navbar from "../../components/ui/Navbar";
 import SetupBanner from "../../components/ui/SetupBanner";
 import ConnectGate from "../../components/ui/ConnectGate";
-import { useWallet } from "../../lib/wallet";
+import { useAuth } from "../../lib/auth";
 import { supabase } from "../../lib/supabase";
 import { EXPLORER_URL } from "../../lib/chain";
 
 export default function ReadingHistoryPage() {
-  const { address, connected } = useWallet();
+  const { address, isAuth } = useAuth();
   const [history,  setHistory]  = useState<any[]>([]);
   const [loading,  setLoading]  = useState(true);
 
@@ -31,7 +31,7 @@ export default function ReadingHistoryPage() {
     load();
   }, [address]);
 
-  if (!connected) return (
+  if (!isAuth) return (
     <div style={{ minHeight:"100vh", background:"var(--bg)" }}>
       <SetupBanner/><Navbar/>
       <ConnectGate title="Reading History" body="Connect your wallet to see all articles you've unlocked." icon={BookOpen}/>

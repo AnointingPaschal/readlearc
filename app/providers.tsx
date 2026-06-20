@@ -1,20 +1,20 @@
 "use client";
 import { ReactNode } from "react";
 import { ThemeProvider } from "../lib/theme";
-import { WalletProvider } from "../lib/wallet";
+import { AuthProvider } from "../lib/auth";
 import { BrandProvider } from "../lib/brand";
-import WalletModal from "../components/ui/WalletModal";
+import AuthModal from "../components/ui/AuthModal";
 import UsernameModal from "../components/ui/UsernameModal";
 
 export default function Providers({ children }: { children: ReactNode }) {
   return (
     <BrandProvider>
       <ThemeProvider>
-        <WalletProvider>
-          <WalletModal/>
-          <UsernameModal/>
+        <AuthProvider>
+          <AuthModal />
+          <UsernameModal />
           {children}
-        </WalletProvider>
+        </AuthProvider>
       </ThemeProvider>
     </BrandProvider>
   );

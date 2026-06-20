@@ -1,11 +1,11 @@
 "use client";
 import { Wallet } from "lucide-react";
-import { useWallet } from "../../lib/wallet";
+import { useAuth } from "../../lib/auth";
 
 interface Props { title?:string; body?:string; icon?:React.ElementType; }
 
-export default function ConnectGate({ title="Connect your wallet", body="Connect your wallet to continue.", icon:Icon=Wallet }: Props) {
-  const { connect, busy } = useWallet();
+export default function ConnectGate({ title="Sign in to continue", body="Create or unlock your wallet to access this feature.", icon:Icon=Wallet }: Props) {
+  const { requireAuth } = useAuth();
   return (
     <div style={{ minHeight:"calc(100vh - var(--header-h))", display:"flex", alignItems:"center", justifyContent:"center", padding:"20px 16px" }}>
       <div className="card" style={{ maxWidth:440, width:"100%", padding:"clamp(28px,5vw,52px) clamp(20px,4vw,36px)", textAlign:"center" }}>
@@ -14,8 +14,8 @@ export default function ConnectGate({ title="Connect your wallet", body="Connect
         </div>
         <h2 style={{ fontFamily:"Outfit,sans-serif", fontSize:"clamp(18px,4vw,24px)", fontWeight:900, color:"var(--text)", marginBottom:10, letterSpacing:"-0.02em" }}>{title}</h2>
         <p style={{ color:"var(--text-3)", fontSize:14, lineHeight:1.68, marginBottom:26 }}>{body}</p>
-        <button onClick={connect} disabled={busy} className="btn btn-primary btn-lg" style={{ width:"100%", justifyContent:"center" }}>
-          <Wallet size={16}/>{busy?"Connecting…":"Connect Wallet"}
+        <button onClick={requireAuth} className="btn btn-primary btn-lg" style={{ width:"100%", justifyContent:"center" }}>
+          <Wallet size={16}/>Sign In / Create Wallet
         </button>
       </div>
     </div>

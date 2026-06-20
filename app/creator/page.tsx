@@ -6,7 +6,7 @@ import { DollarSign, BookOpen, Users, PlusCircle, ExternalLink, RefreshCw, Send,
 import Navbar from "../../components/ui/Navbar";
 import SetupBanner from "../../components/ui/SetupBanner";
 import ConnectGate from "../../components/ui/ConnectGate";
-import { useWallet } from "../../lib/wallet";
+import { useAuth } from "../../lib/auth";
 import { USDC_ADDRESS, USDC_ABI, EXPLORER_URL, type DBArticle } from "../../lib/chain";
 
 const STATUS_COLOR: Record<string, string> = {
@@ -14,7 +14,7 @@ const STATUS_COLOR: Record<string, string> = {
 };
 
 export default function CreatorPage() {
-  const { address, short, connected, balance, signer, refresh } = useWallet();
+  const { address, short, isAuth, balance, signer, refresh } = useAuth();
 
   const [articles,  setArticles]  = useState<DBArticle[]>([]);
   const [loading,   setLoading]   = useState(true);
@@ -43,7 +43,7 @@ export default function CreatorPage() {
     setLoading(false); setRefreshing(false);
   }, [address]);
 
-  useEffect(() => { if (connected) load(); else setLoading(false); }, [load, connected]);
+  useEffect(() => { if (isAuth) load(); else setLoading(false); }, [load, isAuth]);
 
   async function saveEdit(id: string) {
     setSaving(true);
@@ -88,7 +88,7 @@ export default function CreatorPage() {
     finally { setSending(false); }
   }
 
-  if (!connected) return (
+  if (!isAuth) return (
     <div style={{ minHeight:"100vh", background:"var(--bg)" }}>
       <SetupBanner/><Navbar/>
       <ConnectGate title="Creator Studio" body="Connect your wallet to manage your articles and earnings." icon={Zap}/>

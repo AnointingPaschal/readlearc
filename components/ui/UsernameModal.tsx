@@ -1,12 +1,12 @@
 "use client";
 import { useState, useEffect } from "react";
 import { User, Check, X, AtSign } from "lucide-react";
-import { useWallet } from "../../lib/wallet";
+import { useAuth } from "../../lib/auth";
 
 interface Props { onComplete?: () => void; }
 
 export default function UsernameModal({ onComplete }: Props) {
-  const { address, connected } = useWallet();
+  const { address, isAuth } = useAuth();
   const [show,        setShow]        = useState(false);
   const [username,    setUsername]    = useState("");
   const [displayName, setDisplayName] = useState("");
@@ -18,12 +18,12 @@ export default function UsernameModal({ onComplete }: Props) {
 
   // Check if user already has a profile
   useEffect(() => {
-    if (!connected || !address) return;
+    if (!isAuth || !address) return;
     fetch(`/api/profiles/${address}`)
       .then(r => r.json())
       .then(d => { if (!d.username) setShow(true); })
       .catch(() => setShow(true));
-  }, [connected, address]);
+  }, [isAuth, address]);
 
   // Check username availability
   useEffect(() => {
@@ -57,7 +57,7 @@ export default function UsernameModal({ onComplete }: Props) {
 
   function skip() { setShow(false); }
 
-  if (!show || !connected) return null;
+  if (!show || !isAuth) return null;
 
   const usernameValid = /^[a-zA-Z0-9_]{3,30}$/.test(username);
 

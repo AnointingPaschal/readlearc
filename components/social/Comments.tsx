@@ -1,6 +1,6 @@
 
 "use client";
-import { useWallet } from "../../lib/wallet";
+import { useAuth } from "../../lib/auth";
 import { useState, useEffect } from "react";
 import { MessageCircle, Reply, Trash2, Edit3, Check, X, ChevronDown, ChevronUp } from "lucide-react";
 import type { Comment } from "../../lib/store";
@@ -74,7 +74,7 @@ function CommentItem({ c, address, articleId, onDelete, onEdit, depth=0 }: { c:C
 }
 
 export default function Comments({ articleId }: Props) {
-  const { address: _addr, connected } = useWallet();
+  const { address: _addr, isAuth } = useAuth();
   const address = _addr || "";
   const [comments,  setComments]  = useState<Comment[]>([]);
   const [text,      setText]      = useState("");
@@ -127,7 +127,7 @@ export default function Comments({ articleId }: Props) {
         <h3 style={{ fontFamily:"Outfit,sans-serif", fontSize:16, fontWeight:700, color:"var(--text)" }}>{comments.length} Comment{comments.length!==1?"s":""}</h3>
       </div>
 
-      {connected ? (
+      {isAuth ? (
         <div style={{ display:"flex", gap:10 }}>
           <div style={{ width:32, height:32, borderRadius:"50%", background:`linear-gradient(135deg,var(--brand),var(--accent))`, flexShrink:0 }}/>
           <div style={{ flex:1 }}>

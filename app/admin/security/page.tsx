@@ -1,12 +1,12 @@
 "use client";
-import { useWallet } from "../../../lib/wallet";
+import { useAuth } from "../../../lib/auth";
 import { useState, useEffect } from "react";
 import { ethers } from "ethers";
 import { Shield, AlertTriangle, CheckCircle2, RefreshCw, ArrowUpRight, Key, UserCheck, Copy, Check } from "lucide-react";
 import { CONTRACT_ADDRESS, CONTRACT_ABI, EXPLORER_URL, readProvider } from "../../../lib/chain";
 
 export default function SecurityPage() {
-  const { address, signer, connected } = useWallet();
+  const { address, signer, isAuth } = useAuth();
 
   const [contractOwner,  setContractOwner]  = useState("");
   const [isOwner,        setIsOwner]        = useState(false);
@@ -26,14 +26,14 @@ export default function SecurityPage() {
       // owner() is a public state variable
       const owner = await c.owner();
       setContractOwner(owner);
-      if (connected && address) {
+      if (isAuth && address) {
         setIsOwner(address.toLowerCase() === owner.toLowerCase());
       }
     } catch (e) { console.error(e); }
     finally { setLoading(false); }
   }
 
-  useEffect(() => { fetchOwner(); }, [connected, address]);
+  useEffect(() => { fetchOwner(); }, [isAuth, address]);
 
   async function handleTransfer() {
     if (!signer || !newOwner || !CONTRACT_ADDRESS) return;
@@ -67,7 +67,7 @@ export default function SecurityPage() {
       {/* Wallet status */}
       <div className="card" style={{ padding: "18px 20px" }}>
         <h2 style={{ fontSize: 13, fontWeight: 700, color: "var(--text)", marginBottom: 14 }}>Admin Access</h2>
-        {!connected ? (
+        {!isAuth ? (
           <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "12px 14px", background: "rgba(220,38,38,0.06)", border: "1px solid rgba(220,38,38,0.18)", borderRadius: "var(--radius)" }}>
             <AlertTriangle size={15} style={{ color: "#dc2626", flexShrink: 0 }} />
             <span style={{ fontSize: 13, color: "#dc2626" }}>Connect your owner wallet to manage security settings.</span>
@@ -76,7 +76,7 @@ export default function SecurityPage() {
           <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "12px 14px", background: "rgba(5,150,105,0.06)", border: "1px solid rgba(5,150,105,0.18)", borderRadius: "var(--radius)" }}>
             <CheckCircle2 size={15} style={{ color: "#059669", flexShrink: 0 }} />
             <div>
-              <div style={{ fontSize: 13, fontWeight: 700, color: "#059669" }}>Owner wallet connected</div>
+              <div style={{ fontSize: 13, fontWeight: 700, color: "#059669" }}>Owner wallet isAuth</div>
               <div style={{ fontSize: 11, fontFamily: "JetBrains Mono, monospace", color: "var(--text-4)", marginTop: 2 }}>{address}</div>
             </div>
           </div>

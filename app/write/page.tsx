@@ -5,7 +5,7 @@ import { ArrowLeft, Bold, Italic, Heading2, List, Quote, Code2, Eye, EyeOff, Sen
 import Navbar from "../../components/ui/Navbar";
 import SetupBanner from "../../components/ui/SetupBanner";
 import ConnectGate from "../../components/ui/ConnectGate";
-import { useWallet } from "../../lib/wallet";
+import { useAuth } from "../../lib/auth";
 import { EXPLORER_URL } from "../../lib/chain";
 
 const CATS = ["Web3","Development","Blockchain","Economics","Research","Guide","AI","DeFi","Culture","Opinion"];
@@ -27,7 +27,7 @@ function renderPreview(text: string) {
 }
 
 export default function WritePage() {
-  const { connected, address } = useWallet();
+  const { isAuth, address } = useAuth();
 
   const [title,      setTitle]      = useState("");
   const [blurb,      setBlurb]      = useState("");
@@ -106,7 +106,7 @@ export default function WritePage() {
     } finally { setPublishing(false); setStep(""); }
   }
 
-  if (!connected) return (
+  if (!isAuth) return (
     <div style={{ minHeight:"100vh", background:"var(--bg)" }}>
       <SetupBanner/><Navbar/>
       <ConnectGate title="Connect to write" body="Connect your wallet to publish articles on Readlearc." icon={PenLine}/>

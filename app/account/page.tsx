@@ -1,6 +1,6 @@
 
 "use client";
-import { useWallet } from "../../lib/wallet";
+import { useAuth } from "../../lib/auth";
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { Save, CheckCircle2, AtSign, Globe, ExternalLink } from "lucide-react";
@@ -21,7 +21,7 @@ function load(addr: string) { try { return JSON.parse(localStorage.getItem(`rl-p
 function save(addr: string, d: any) { localStorage.setItem(`rl-profile-${addr.toLowerCase()}`, JSON.stringify(d)); }
 
 export default function AccountPage() {
-  const { address: _a, connected } = useWallet();
+  const { address: _a, isAuth } = useAuth();
   const address = _a || "";
   const short = address ? `${address.slice(0,6)}…${address.slice(-4)}` : "";
   const balance = "—";
@@ -46,7 +46,7 @@ export default function AccountPage() {
     setSaved(true); setDirty(false); setTimeout(()=>setSaved(false),3000);
   }
 
-  if (!connected) return (
+  if (!isAuth) return (
     <div style={{ minHeight:"100vh", background:"var(--bg)" }}>
       <SetupBanner/><Navbar/><ConnectGate title="Account Settings" body="Connect your wallet to edit your public profile. Your wallet address is your on-chain identity."/>
     </div>

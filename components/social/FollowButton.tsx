@@ -1,13 +1,13 @@
 
 "use client";
-import { useWallet } from "../../lib/wallet";
+import { useAuth } from "../../lib/auth";
 import { useState, useEffect } from "react";
 import { UserPlus, UserCheck, UserMinus } from "lucide-react";
 
 interface Props { targetAddress: string; }
 
 export default function FollowButton({ targetAddress }: Props) {
-  const { address, connected } = useWallet();
+  const { address, isAuth } = useAuth();
   const [following,  setFollowing]  = useState(false);
   const [followers,  setFollowers]  = useState(0);
   const [hovering,   setHovering]   = useState(false);
@@ -24,7 +24,7 @@ export default function FollowButton({ targetAddress }: Props) {
   }, [address, targetAddress]);
 
   async function toggle() {
-    if (!connected || !address || loading || isSelf) return;
+    if (!isAuth || !address || loading || isSelf) return;
     setLoading(true);
     const res  = await fetch("/api/social/follow", {
       method:"POST", headers:{"Content-Type":"application/json"},
@@ -37,7 +37,7 @@ export default function FollowButton({ targetAddress }: Props) {
   }
 
   if (isSelf) return null;
-  if (!connected) return null;
+  if (!isAuth) return null;
 
   return (
     <button onClick={toggle} disabled={loading}

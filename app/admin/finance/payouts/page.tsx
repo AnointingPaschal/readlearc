@@ -4,10 +4,10 @@ import { useState, useEffect } from "react";
 import { ethers } from "ethers";
 import { Wallet, AlertCircle, ExternalLink, Send, RefreshCw } from "lucide-react";
 import { CONTRACT_ADDRESS, USDC_ADDRESS, USDC_ABI, EXPLORER_URL, IS_CONFIGURED, readContract, fetchUsdcBalance } from "../../../../lib/chain";
-import { useWallet } from "../../../../lib/wallet";
+import { useAuth } from "../../../../lib/auth";
 
 export default function PayoutsPage() {
-  const { address, connected, signer, short } = useWallet();
+  const { address, isAuth, signer, short } = useAuth();
   const [ownerAddr,   setOwnerAddr]   = useState("");
   const [balance,     setBalance]     = useState("0.00");
   const [loading,     setLoading]     = useState(true);
@@ -30,7 +30,7 @@ export default function PayoutsPage() {
   }
   useEffect(() => { load(); }, []);
 
-  const isOwner = connected && address && ownerAddr && address.toLowerCase()===ownerAddr.toLowerCase();
+  const isOwner = isAuth && address && ownerAddr && address.toLowerCase()===ownerAddr.toLowerCase();
 
   async function handleSend() {
     if (!signer || !sendTo || !sendAmt || !USDC_ADDRESS) return;
@@ -53,7 +53,7 @@ export default function PayoutsPage() {
         <div><h1 style={{ fontFamily:"Outfit,sans-serif", fontSize:22, fontWeight:900, color:"var(--text)", letterSpacing:"-0.02em" }}>Payouts</h1><p style={{ color:"var(--text-4)", fontSize:12, marginTop:2 }}>Platform treasury · USDC balance</p></div>
         <button onClick={load} disabled={loading} style={{ width:34,height:34,borderRadius:"50%",border:"1.5px solid var(--border)",background:"var(--bg-alt)",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",color:"var(--text-3)" }}><RefreshCw size={13} className={loading?"spin":""}/></button>
       </div>
-      {!connected && <div style={{ padding:"10px 14px", background:"rgba(217,119,6,.06)", border:"1px solid rgba(217,119,6,.18)", borderRadius:"var(--r)", fontSize:12, color:"#d97706", fontWeight:600, display:"flex", gap:8 }}><AlertCircle size={14} style={{ flexShrink:0 }}/>Connect owner wallet to send USDC</div>}
+      {!isAuth && <div style={{ padding:"10px 14px", background:"rgba(217,119,6,.06)", border:"1px solid rgba(217,119,6,.18)", borderRadius:"var(--r)", fontSize:12, color:"#d97706", fontWeight:600, display:"flex", gap:8 }}><AlertCircle size={14} style={{ flexShrink:0 }}/>Connect owner wallet to send USDC</div>}
       <div className="card" style={{ padding:"24px", textAlign:"center" }}>
         <div style={{ width:44,height:44,borderRadius:"50%",background:"rgba(5,150,105,.08)",display:"flex",alignItems:"center",justifyContent:"center",margin:"0 auto 12px" }}><Wallet size={20} style={{ color:"#059669" }}/></div>
         {loading ? <div className="skeleton" style={{ height:40,width:140,borderRadius:7,margin:"0 auto 8px" }}/> :

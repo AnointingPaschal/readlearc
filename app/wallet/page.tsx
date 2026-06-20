@@ -1,6 +1,6 @@
 
 "use client";
-import { useWallet } from "../../lib/wallet";
+import { useAuth } from "../../lib/auth";
 import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
 import { ethers } from "ethers";
@@ -12,7 +12,7 @@ import ConnectGate from "../../components/ui/ConnectGate";
 import { fetchWalletHistory, USDC_ADDRESS, USDC_ABI, EXPLORER_URL } from "../../lib/chain";
 
 export default function WalletPage() {
-  const { address, signer, connected, balance, refresh, provider } = useWallet();
+  const { address, signer, isAuth, balance, refresh } = useAuth();
   const short = address ? `${address.slice(0,6)}…${address.slice(-4)}` : "";
   const [copied,    setCopied]    = useState(false);
   const [txHistory, setTxHistory] = useState<any[]>([]);
@@ -27,13 +27,13 @@ export default function WalletPage() {
   const [sendHash,  setSendHash]  = useState("");
 
   const loadHistory = useCallback(async () => {
-    if (!connected || !address) return;
+    if (!isAuth || !address) return;
     setRefreshing(true);
-    const hist = await fetchWalletHistory(address, provider||undefined);
+    const hist = await fetchWalletHistory(address, undefined);
     setTxHistory(hist); setLoading(false); setRefreshing(false);
-  }, [connected, address, provider]);
+  }, [isAuth, address, null]);
 
-  useEffect(() => { if (connected) loadHistory(); else setLoading(false); }, [loadHistory]);
+  useEffect(() => { if (isAuth) loadHistory(); else setLoading(false); }, [loadHistory]);
 
   function copy() { navigator.clipboard.writeText(address); setCopied(true); setTimeout(()=>setCopied(false),2000); }
 
@@ -55,7 +55,7 @@ export default function WalletPage() {
     finally { setSending(false); }
   }
 
-  if (!connected) return (
+  if (!isAuth) return (
     <div style={{ minHeight:"100vh", background:"var(--bg)" }}>
       <SetupBanner/><Navbar/>
       <ConnectGate title="My Wallet" body="Connect your MetaMask or EIP-1193 wallet to view your USDC balance and transaction history."/>

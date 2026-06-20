@@ -1,6 +1,6 @@
 
 "use client";
-import { useWallet } from "../../lib/wallet";
+import { useAuth } from "../../lib/auth";
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { BookOpen, DollarSign, Clock, CheckCircle2, ArrowRight, PenLine, History, Wallet, RefreshCw } from "lucide-react";
@@ -12,7 +12,7 @@ import { fetchReadingHistory, type Article } from "../../lib/chain";
 type HistoryItem = Article & { pricePaid: string; txHash: string; blockNumber: number };
 
 export default function DashboardPage() {
-  const { address, connected } = useWallet();
+  const { address, isAuth } = useAuth();
   const short = address ? `${address.slice(0,6)}…${address.slice(-4)}` : "";
   const balance = "—";
   const provider = null;
@@ -21,15 +21,15 @@ export default function DashboardPage() {
   const [refreshing, setRefreshing] = useState(false);
 
   async function load() {
-    if (!connected || !address) return;
+    if (!isAuth || !address) return;
     setRefreshing(true);
     const h = await fetchReadingHistory(address, provider||undefined);
     setHistory(h); setLoading(false); setRefreshing(false);
   }
 
-  useEffect(() => { if (connected) load(); else setLoading(false); }, [connected, address, provider]);
+  useEffect(() => { if (isAuth) load(); else setLoading(false); }, [isAuth, address, provider]);
 
-  if (!connected) return (
+  if (!isAuth) return (
     <div style={{ minHeight:"100vh", background:"var(--bg)" }}>
       <SetupBanner /><Navbar />
       <ConnectGate title="Your Reading Dashboard" body="Connect your wallet to see your reading history, USDC spent, and on-chain read receipts." icon={BookOpen} />

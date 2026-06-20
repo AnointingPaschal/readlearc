@@ -1,5 +1,5 @@
 "use client";
-import { useWallet } from "../../../../lib/wallet";
+import { useAuth } from "../../../../lib/auth";
 import { useState, useEffect } from "react";
 import { ethers } from "ethers";
 import { RefreshCw, ExternalLink, Info } from "lucide-react";

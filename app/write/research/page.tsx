@@ -6,7 +6,7 @@ import Navbar from "../../../components/ui/Navbar";
 import SetupBanner from "../../../components/ui/SetupBanner";
 import ConnectGate from "../../../components/ui/ConnectGate";
 import NetworkGuard from "../../../components/ui/NetworkGuard";
-import { useWallet } from "../../../lib/wallet";
+import { useAuth } from "../../../lib/auth";
 
 interface Section { id:string; type:string; title:string; content:string; required:boolean; collapsed:boolean; }
 interface Reference { id:string; text:string; url:string; year:string; }
@@ -32,7 +32,7 @@ const PLACEHOLDERS: Record<string,string> = {
 };
 
 export default function ResearchPage() {
-  const { connected, address } = useWallet();
+  const { isAuth, address } = useAuth();
   const [draftId,    setDraftId]    = useState<string|null>(null);
   const [title,      setTitle]      = useState("");
   const [keywords,   setKeywords]   = useState<string[]>([]);
@@ -71,12 +71,12 @@ export default function ResearchPage() {
 
   // Auto-save every 30s
   useEffect(() => {
-    if (!connected) return;
+    if (!isAuth) return;
     timerRef.current = setInterval(() => {
       if (title || sections.some(s => s.content)) saveDraft();
     }, 30000);
     return () => clearInterval(timerRef.current);
-  }, [connected, saveDraft]);
+  }, [isAuth, saveDraft]);
 
   async function submit() {
     if (!address) return;
@@ -119,7 +119,7 @@ export default function ResearchPage() {
     setKwInput("");
   }
 
-  if (!connected) return (
+  if (!isAuth) return (
     <div style={{ minHeight:"100vh", background:"var(--bg)" }}>
       <SetupBanner/><Navbar/><NetworkGuard/>
       <ConnectGate title="Connect to write research" body="Connect your wallet to publish research papers." icon={BookOpen}/>

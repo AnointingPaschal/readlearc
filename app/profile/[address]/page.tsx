@@ -5,12 +5,12 @@ import Link from "next/link";
 import { BookOpen, Users, DollarSign, Clock, UserPlus, UserMinus, Zap } from "lucide-react";
 import Navbar from "../../../components/ui/Navbar";
 import SetupBanner from "../../../components/ui/SetupBanner";
-import { useWallet } from "../../../lib/wallet";
+import { useAuth } from "../../../lib/auth";
 import { supabase } from "../../../lib/supabase";
 
 export default function ProfilePage() {
   const { address: profileAddr } = useParams<{ address: string }>();
-  const { address, connected } = useWallet();
+  const { address, isAuth } = useAuth();
   const [articles,   setArticles]  = useState<any[]>([]);
   const [followers,  setFollowers] = useState(0);
   const [following,  setFollowing] = useState(false);
@@ -82,7 +82,7 @@ export default function ProfilePage() {
             <div style={{ flexShrink:0 }}>
               {isOwn
                 ? <Link href="/creator" className="btn btn-secondary btn-sm">Creator Studio</Link>
-                : connected
+                : isAuth
                   ? <button onClick={toggleFollow} className={`btn btn-sm ${following?"btn-secondary":"btn-primary"}`} style={{ fontWeight:700 }}>
                       {following?<><UserMinus size={13}/>Unfollow</>:<><UserPlus size={13}/>Follow</>}
                     </button>

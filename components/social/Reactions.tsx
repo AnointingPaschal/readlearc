@@ -1,5 +1,5 @@
 "use client";
-import { useWallet } from "../../lib/wallet";
+import { useAuth } from "../../lib/auth";
 import { useState, useEffect } from "react";
 import { Flame, Zap, Gem, ThumbsDown, CloudRain, XOctagon } from "lucide-react";
 import { REACTIONS, POSITIVE_REACTIONS, NEGATIVE_REACTIONS, type ReactionKey } from "../../lib/store";
@@ -17,7 +17,7 @@ const ICONS: Record<ReactionKey, React.ElementType> = {
 interface Props { articleId: string; }
 
 export default function Reactions({ articleId }: Props) {
-  const { address, connected } = useWallet();
+  const { address, isAuth } = useAuth();
   const [counts,  setCounts]  = useState<Record<string, number>>({});
   const [mine,    setMine]    = useState<ReactionKey | null>(null);
   const [loading, setLoading] = useState(false);
@@ -32,7 +32,7 @@ export default function Reactions({ articleId }: Props) {
   useEffect(() => { load(); }, [articleId, address]);
 
   async function react(key: ReactionKey) {
-    if (!connected || !address || loading) return;
+    if (!isAuth || !address || loading) return;
     setLoading(true);
     const next = mine === key ? null : key;
     // Optimistic update
@@ -65,7 +65,7 @@ export default function Reactions({ articleId }: Props) {
     return (
       <button
         onClick={() => react(r.key)}
-        disabled={!connected || loading}
+        disabled={!isAuth || loading}
         title={r.label}
         style={{
           display: "flex", flexDirection: "column", alignItems: "center", gap: 4,
@@ -73,13 +73,13 @@ export default function Reactions({ articleId }: Props) {
           borderRadius: "var(--r-md)",
           border: `1.5px solid ${active ? r.color : "var(--border)"}`,
           background: active ? `${r.color}14` : "var(--bg-alt)",
-          cursor: connected ? "pointer" : "default",
+          cursor: isAuth ? "pointer" : "default",
           transition: "all .18s cubic-bezier(.2,0,.13,1)",
           transform: active ? "scale(1.1)" : "scale(1)",
           boxShadow: active ? `0 3px 12px ${r.color}28` : "none",
           opacity: loading ? .6 : 1,
         }}
-        onMouseEnter={e => { if (!active && connected) { (e.currentTarget as HTMLElement).style.borderColor = r.color; (e.currentTarget as HTMLElement).style.background = `${r.color}08`; }}}
+        onMouseEnter={e => { if (!active && isAuth) { (e.currentTarget as HTMLElement).style.borderColor = r.color; (e.currentTarget as HTMLElement).style.background = `${r.color}08`; }}}
         onMouseLeave={e => { if (!active) { (e.currentTarget as HTMLElement).style.borderColor = "var(--border)"; (e.currentTarget as HTMLElement).style.background = "var(--bg-alt)"; }}}
       >
         <Icon size={size} style={{ color: active ? r.color : "var(--text-4)" }} strokeWidth={active ? 2.5 : 1.75}/>
@@ -126,7 +126,7 @@ export default function Reactions({ articleId }: Props) {
         </div>
       </div>
 
-      {!connected && (
+      {!isAuth && (
         <p style={{ fontSize: 11, color: "var(--text-4)", marginTop: 8 }}>
           Connect wallet to react
         </p>
