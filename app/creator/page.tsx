@@ -1,55 +1,77 @@
-
 "use client";
 import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
 import { ethers } from "ethers";
-import { DollarSign, BookOpen, Users, Wallet, PlusCircle, ExternalLink, RefreshCw, Send, Zap } from "lucide-react";
-import { motion } from "framer-motion";
+import { DollarSign, BookOpen, Users, PlusCircle, ExternalLink, RefreshCw, Send, Zap, Edit3, Trash2, X, Save, Eye, CheckCircle2, Clock } from "lucide-react";
 import Navbar from "../../components/ui/Navbar";
 import SetupBanner from "../../components/ui/SetupBanner";
 import ConnectGate from "../../components/ui/ConnectGate";
-import { useAccount, useWalletClient, useBalance } from "wagmi";
-import { walletClientToSigner } from "../../lib/ethers-adapter";
-import { fetchWriterStats, USDC_ADDRESS, USDC_ABI, EXPLORER_URL, type Article } from "../../lib/chain";
+import { useWallet } from "../../lib/wallet";
+import { USDC_ADDRESS, USDC_ABI, EXPLORER_URL, type DBArticle } from "../../lib/chain";
 
-// Re-export ARC_EXPLORER
-
+const STATUS_COLOR: Record<string, string> = {
+  approved: "#059669", pending: "#d97706", rejected: "#dc2626", featured: "#ca8a04",
+};
 
 export default function CreatorPage() {
-  const { address, isConnected } = useAccount();
-  const { data: walletClient } = useWalletClient();
-  const signer = walletClient ? walletClientToSigner(walletClient) : null;
-  const shortAddress = address ? `${address.slice(0,6)}…${address.slice(-4)}` : "";
-  const usdcBalance = "0.00"; // balance shown via RainbowKit
-  const refreshBalance = async () => {};
-  const provider = null;
-  const [articles,  setArticles]  = useState<Article[]>([]);
-  const [earned,    setEarned]    = useState(0);
-  const [reads,     setReads]     = useState(0);
-  const [byArticle, setByArticle] = useState<Map<string,number>>(new Map());
+  const { address, shortAddress, isConnected, usdcBalance, signer, refreshBalance } = useWallet();
+
+  const [articles,  setArticles]  = useState<DBArticle[]>([]);
   const [loading,   setLoading]   = useState(true);
   const [refreshing,setRefreshing]= useState(false);
+  const [editing,   setEditing]   = useState<string|null>(null);
+  const [editData,  setEditData]  = useState<any>({});
+  const [saving,    setSaving]    = useState(false);
+  const [deleting,  setDeleting]  = useState("");
 
+  // USDC send
   const [sendTo,   setSendTo]   = useState("");
   const [sendAmt,  setSendAmt]  = useState("");
   const [sending,  setSending]  = useState(false);
-  const [sendStep, setSendStep] = useState("");
   const [sendHash, setSendHash] = useState("");
   const [sendErr,  setSendErr]  = useState("");
   const [showSend, setShowSend] = useState(false);
 
   const load = useCallback(async () => {
-    if (!isConnected || !address) return;
+    if (!address) return;
     setRefreshing(true);
-    const stats = await fetchWriterStats(address, provider||undefined);
-    setArticles(stats.articles);
-    setEarned(stats.totalEarned);
-    setReads(stats.totalReads);
-    setByArticle(stats.earningsByArticle);
+    try {
+      const res = await fetch(`/api/articles?admin=1&author=${address}&limit=100`);
+      const data = await res.json();
+      setArticles(Array.isArray(data) ? data : []);
+    } catch {}
     setLoading(false); setRefreshing(false);
-  }, [isConnected, address, provider]);
+  }, [address]);
 
-  useEffect(() => { if (isConnected) load(); else setLoading(false); }, [load]);
+  useEffect(() => { if (isConnected) load(); else setLoading(false); }, [load, isConnected]);
+
+  async function saveEdit(id: string) {
+    setSaving(true);
+    try {
+      const res = await fetch(`/api/articles/${id}`, {
+        method: "PUT", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ...editData, authorAddress: address }),
+      });
+      if (!res.ok) throw new Error((await res.json()).error);
+      setArticles(prev => prev.map(a => a.id===id ? { ...a, ...editData } as DBArticle : a));
+      setEditing(null); setEditData({});
+    } catch (e: any) { alert(e.message); }
+    finally { setSaving(false); }
+  }
+
+  async function deleteArticle(id: string) {
+    if (!confirm("Delete this article permanently?")) return;
+    setDeleting(id);
+    try {
+      const res = await fetch(`/api/articles/${id}`, {
+        method: "DELETE", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ authorAddress: address }),
+      });
+      if (!res.ok) throw new Error((await res.json()).error);
+      setArticles(prev => prev.filter(a => a.id !== id));
+    } catch (e: any) { alert(e.message); }
+    finally { setDeleting(""); }
+  }
 
   async function handleSend() {
     if (!signer || !sendTo || !sendAmt || !USDC_ADDRESS) return;
@@ -58,165 +80,186 @@ export default function CreatorPage() {
       if (!ethers.isAddress(sendTo)) throw new Error("Invalid address");
       const usdc = new ethers.Contract(USDC_ADDRESS, USDC_ABI, signer);
       const dec  = await usdc.decimals();
-      setSendStep("Confirm in wallet…");
-      const tx = await usdc.transfer(sendTo, ethers.parseUnits(sendAmt, dec));
-      setSendStep("Confirming…");
+      const tx   = await usdc.transfer(sendTo, ethers.parseUnits(sendAmt, dec));
       await tx.wait();
-      setSendHash(tx.hash); setSendStep("Done!"); setSendTo(""); setSendAmt("");
+      setSendHash(tx.hash); setSendTo(""); setSendAmt("");
       await refreshBalance();
-      setTimeout(() => { setShowSend(false); setSendStep(""); setSendHash(""); }, 5000);
-    } catch (e: any) { setSendErr(e.reason||e.message); }
+    } catch (e: any) { setSendErr(e.reason || e.message); }
     finally { setSending(false); }
   }
 
   if (!isConnected) return (
     <div style={{ minHeight:"100vh", background:"var(--bg)" }}>
-      <SetupBanner /><Navbar />
-      <ConnectGate title="Creator Studio" body="Connect your wallet to view your on-chain earnings, article analytics, and manage your USDC." icon={Zap} />
+      <SetupBanner/><Navbar/>
+      <ConnectGate title="Creator Studio" body="Connect your wallet to manage your articles and earnings." icon={Zap}/>
     </div>
   );
 
+  const totalReads = articles.reduce((s,a) => s+a.reads, 0);
+  const totalEarned = articles.filter(a=>a.status==="approved"||a.status==="featured").reduce((s,a) => s+(a.reads*parseFloat(a.price)*0.85),0);
+  const published  = articles.filter(a=>a.status==="approved"||a.status==="featured").length;
+  const pending    = articles.filter(a=>a.status==="pending").length;
+
   return (
     <div style={{ minHeight:"100vh", background:"var(--bg)" }}>
-      <SetupBanner /><Navbar />
-      <style>{`.c-kpi{display:grid;grid-template-columns:repeat(2,1fr);gap:12px;margin-bottom:18px}@media(min-width:768px){.c-kpi{grid-template-columns:repeat(4,1fr)!important}}.c-row{display:grid;grid-template-columns:1fr;gap:14px;margin-bottom:18px}@media(min-width:860px){.c-row{grid-template-columns:1fr 256px!important}}.at{display:none}.ac{display:block}@media(min-width:580px){.at{display:block!important}.ac{display:none!important}}`}</style>
-      <div style={{ maxWidth:1200, margin:"0 auto", padding:"76px 14px 60px" }}>
-        <div style={{ display:"flex", alignItems:"flex-start", justifyContent:"space-between", marginBottom:24, flexWrap:"wrap", gap:12 }}>
+      <SetupBanner/><Navbar/>
+      <div style={{ maxWidth:1100, margin:"0 auto", padding:"calc(var(--header-h) + 28px) 14px 60px" }}>
+
+        {/* Header */}
+        <div style={{ display:"flex", alignItems:"flex-start", justifyContent:"space-between", marginBottom:22, flexWrap:"wrap", gap:12 }}>
           <div>
-            <h1 style={{ fontFamily:"Outfit,sans-serif", fontSize:"clamp(20px,4vw,28px)", fontWeight:900, color:"var(--text)", letterSpacing:"-0.02em", marginBottom:4 }}>Creator Studio</h1>
-            <p style={{ color:"var(--text-4)", fontSize:12, display:"flex", alignItems:"center", gap:5 }}>
-              <span style={{ width:6,height:6,borderRadius:"50%",background:"#059669",display:"inline-block" }}/>{shortAddress} · Arc Testnet
-            </p>
+            <h1 style={{ fontFamily:"Outfit,sans-serif", fontSize:"clamp(20px,4vw,28px)", fontWeight:900, color:"var(--text)", letterSpacing:"-0.02em" }}>Creator Studio</h1>
+            <p style={{ color:"var(--text-4)", fontSize:12, marginTop:3 }}>{shortAddress} · Arc Testnet</p>
           </div>
           <div style={{ display:"flex", gap:8, flexWrap:"wrap" }}>
             <button onClick={load} disabled={refreshing} style={{ width:34,height:34,borderRadius:"50%",border:"1.5px solid var(--border)",background:"var(--bg-alt)",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",color:"var(--text-3)" }}>
               <RefreshCw size={14} className={refreshing?"spin":""}/>
             </button>
-            <Link href={`/profile/${address}`} className="btn btn-ghost btn-sm">My Profile</Link>
-            <Link href="/write" className="btn btn-primary btn-sm" style={{ fontWeight:700 }}><PlusCircle size={13} strokeWidth={2.5}/>New Article</Link>
+            <Link href="/write" className="btn btn-primary btn-sm" style={{ fontWeight:700 }}><PlusCircle size={13}/>New Article</Link>
           </div>
         </div>
 
-        <div className="c-kpi">
+        {/* KPIs */}
+        <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fill,minmax(150px,1fr))", gap:10, marginBottom:20 }}>
           {[
-            { label:"Total Earned",   value:`$${earned.toFixed(4)}`, sub:"writer share 85%",    color:"#059669",    bg:"rgba(5,150,105,.08)"   },
-            { label:"USDC Balance",   value:`$${usdcBalance}`,       sub:"in your wallet",      color:"var(--brand)",bg:"var(--brand-muted)"     },
-            { label:"Total Reads",    value:reads.toLocaleString(),  sub:"across all articles", color:"#0284c7",    bg:"rgba(2,132,199,.08)"    },
-            { label:"Articles",       value:articles.length.toString(),sub:"on-chain",          color:"#d97706",    bg:"rgba(217,119,6,.08)"    },
-          ].map(k => (
-            <div key={k.label} className="card" style={{ padding:"16px" }}>
-              {loading ? <div className="skeleton" style={{ height:28, borderRadius:6, marginBottom:6 }}/> :
-                <div style={{ fontFamily:"Outfit,sans-serif", fontSize:"clamp(18px,3.5vw,22px)", fontWeight:900, color:k.color, lineHeight:1 }}>{k.value}</div>}
-              <div style={{ fontSize:11, color:"var(--text-3)", fontWeight:600, marginTop:4 }}>{k.label}</div>
-              <div style={{ fontSize:10, color:"var(--text-4)", marginTop:1 }}>{k.sub}</div>
+            { label:"Published",   value:published.toString(),         color:"var(--brand)" },
+            { label:"Pending",     value:pending.toString(),           color:"#d97706"      },
+            { label:"Total Reads", value:totalReads.toLocaleString(),  color:"#0284c7"      },
+            { label:"Est. Earned", value:`$${totalEarned.toFixed(4)}`, color:"var(--accent)"},
+            { label:"USDC Balance",value:`$${usdcBalance}`,            color:"var(--accent)"},
+          ].map(k=>(
+            <div key={k.label} className="card" style={{ padding:"14px" }}>
+              <div style={{ fontFamily:"Outfit,sans-serif", fontSize:"clamp(17px,3vw,22px)", fontWeight:900, color:k.color, lineHeight:1 }}>{k.value}</div>
+              <div style={{ fontSize:11, color:"var(--text-3)", fontWeight:600, marginTop:5 }}>{k.label}</div>
             </div>
           ))}
         </div>
 
-        <div className="c-row">
-          {/* Earnings chart placeholder */}
-          <div className="card" style={{ padding:"20px" }}>
-            <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:14, flexWrap:"wrap", gap:8 }}>
-              <div>
-                <h2 style={{ fontFamily:"Outfit,sans-serif", fontSize:14, fontWeight:700, color:"var(--text)" }}>Earnings from Chain</h2>
-                <p style={{ fontSize:11, color:"var(--text-4)", marginTop:1 }}>From ArticleRead events · 85% writer share</p>
-              </div>
-              <span style={{ fontSize:12, fontWeight:700, color:"#059669" }}>${earned.toFixed(4)} total</span>
-            </div>
-            {loading ? <div className="skeleton" style={{ height:80, borderRadius:8 }}/> :
-              earned === 0 ? <div style={{ height:80, display:"flex", alignItems:"center", justifyContent:"center", color:"var(--text-4)", fontSize:13 }}>No earnings yet — publish and share your articles!</div> :
-              <div style={{ display:"flex", alignItems:"flex-end", gap:4, height:80 }}>
-                {articles.slice(0,10).map((a,i) => {
-                  const e = byArticle.get(a.id)||0;
-                  const maxE = Math.max(...articles.map(x=>byArticle.get(x.id)||0),.001);
-                  return <div key={i} style={{ flex:1, display:"flex", flexDirection:"column", alignItems:"center", gap:3 }}>
-                    <div title={a.title.slice(0,30)} style={{ width:"100%", borderRadius:"3px 3px 0 0", background:"linear-gradient(to top,var(--brand),var(--brand-light))", opacity:.8, height:`${Math.max((e/maxE)*100,e>0?6:2)}%`, minHeight:2, cursor:"default" }}/>
-                    <span style={{ fontSize:8, color:"var(--text-4)", overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap", width:"100%", textAlign:"center" }}>{a.id}</span>
-                  </div>;
-                })}
-              </div>
-            }
-          </div>
-
-          {/* Wallet */}
-          <div className="card" style={{ padding:"20px", display:"flex", flexDirection:"column" }}>
-            <div style={{ display:"flex", alignItems:"center", gap:8, marginBottom:12 }}>
-              <div style={{ width:28,height:28,borderRadius:8,background:"rgba(5,150,105,.08)",display:"flex",alignItems:"center",justifyContent:"center" }}><Wallet size={13} style={{ color:"#059669" }}/></div>
-              <h2 style={{ fontFamily:"Outfit,sans-serif", fontSize:13, fontWeight:700, color:"var(--text)" }}>USDC Balance</h2>
-            </div>
-            <div style={{ fontFamily:"Outfit,sans-serif", fontSize:"clamp(24px,4vw,32px)", fontWeight:900, color:"#059669", letterSpacing:"-0.03em", lineHeight:1 }}>${usdcBalance}</div>
-            <div style={{ fontSize:11, color:"var(--text-4)", margin:"4px 0 12px" }}>Available in wallet · earnings go here directly</div>
-            {!showSend ? (
-              <button onClick={() => setShowSend(true)} className="btn btn-primary btn-sm" style={{ width:"100%", justifyContent:"center" }}><Send size={12}/>Send / Withdraw USDC</button>
-            ) : (
-              <div style={{ display:"flex", flexDirection:"column", gap:7 }}>
-                <input type="text" placeholder="To address (0x…)" value={sendTo} onChange={e => setSendTo(e.target.value)} style={{ width:"100%", background:"var(--bg-alt)", border:"1.5px solid var(--border)", borderRadius:"var(--r2)", padding:"7px 10px", outline:"none", fontSize:11, color:"var(--text)", fontFamily:"JetBrains Mono,monospace" }}/>
-                <div style={{ display:"flex", gap:5, alignItems:"center", background:"var(--bg-alt)", border:"1.5px solid var(--border)", borderRadius:"var(--r2)", padding:"7px 10px" }}>
-                  <span style={{ fontWeight:700, color:"var(--text-4)", fontSize:12 }}>$</span>
-                  <input type="number" step="0.01" placeholder="Amount" value={sendAmt} onChange={e => setSendAmt(e.target.value)} style={{ flex:1, border:"none", outline:"none", background:"transparent", fontSize:15, fontWeight:700, color:"var(--brand)", fontFamily:"Outfit,sans-serif" }}/>
-                  <button onClick={() => setSendAmt(usdcBalance)} style={{ fontSize:10, fontWeight:700, color:"var(--brand)", background:"var(--brand-muted)", border:"1px solid var(--border-brand)", borderRadius:4, padding:"2px 6px", cursor:"pointer" }}>MAX</button>
-                </div>
-                {sendErr && <div style={{ fontSize:11, color:"#dc2626" }}>{sendErr}</div>}
-                {sendHash && <a href={`${EXPLORER_URL}/tx/${sendHash}`} target="_blank" rel="noopener noreferrer" style={{ fontSize:10, color:"#059669", fontFamily:"JetBrains Mono,monospace", textDecoration:"none" }}>Sent! {sendHash.slice(0,14)}…</a>}
-                <div style={{ display:"flex", gap:5 }}>
-                  <button onClick={() => { setShowSend(false); setSendErr(""); }} className="btn btn-ghost btn-sm" style={{ flex:1, justifyContent:"center", fontSize:11 }}>Cancel</button>
-                  <button onClick={handleSend} disabled={sending||!sendTo||!sendAmt} className="btn btn-primary btn-sm" style={{ flex:2, justifyContent:"center", fontSize:11 }}>
-                    {sending ? <><div style={{ width:11,height:11,border:"2px solid rgba(255,255,255,.3)",borderTopColor:"white",borderRadius:"50%"}} className="spin"/>{sendStep}</> : <><Send size={11}/>Send</>}
-                  </button>
-                </div>
-              </div>
-            )}
-          </div>
-        </div>
-
         {/* Articles */}
-        <div className="card" style={{ overflow:"hidden", padding:0 }}>
-          <div style={{ padding:"14px 18px", borderBottom:"1px solid var(--border)", display:"flex", justifyContent:"space-between", alignItems:"center" }}>
-            <h2 style={{ fontFamily:"Outfit,sans-serif", fontSize:14, fontWeight:700, color:"var(--text)" }}>Your Articles</h2>
-            <Link href="/write" style={{ fontSize:12, fontWeight:600, color:"var(--brand)", textDecoration:"none" }}>+ New article</Link>
-          </div>
-          {loading ? <div style={{ padding:14 }}>{[1,2,3].map(i=><div key={i} className="skeleton" style={{ height:40,borderRadius:7,marginBottom:8 }}/>)}</div>
-          : articles.length === 0 ? (
-            <div style={{ padding:"40px 20px", textAlign:"center" }}>
-              <BookOpen size={28} style={{ color:"var(--text-4)", marginBottom:10 }}/>
-              <p style={{ fontSize:14, fontWeight:600, color:"var(--text-3)", marginBottom:4 }}>No articles yet</p>
-              <Link href="/write" className="btn btn-primary btn-sm" style={{ marginTop:10 }}>Write First Article</Link>
+        <div style={{ display:"grid", gridTemplateColumns:"1fr clamp(200px,22vw,240px)", gap:16, alignItems:"start" }}>
+          <div className="card" style={{ overflow:"hidden", padding:0 }}>
+            <div style={{ padding:"14px 18px", borderBottom:"1px solid var(--border)", display:"flex", justifyContent:"space-between", alignItems:"center" }}>
+              <h2 style={{ fontFamily:"Outfit,sans-serif", fontSize:14, fontWeight:700, color:"var(--text)" }}>My Articles</h2>
+              <span style={{ fontSize:12, color:"var(--text-4)" }}>{articles.length} total</span>
             </div>
-          ) : (<>
-            <div className="at" style={{ overflowX:"auto" }}>
-              <table className="admin-table">
-                <thead><tr><th style={{ textAlign:"left" }}>Article</th><th style={{ textAlign:"right" }}>Reads</th><th style={{ textAlign:"right" }}>Earned</th><th style={{ textAlign:"right" }}>Price</th><th/></tr></thead>
-                <tbody>
-                  {articles.map((a,i) => {
-                    const e = byArticle.get(a.id)||(a.reads*parseFloat(a.price)*.85);
-                    return <tr key={a.id}>
-                      <td style={{ maxWidth:280 }}><div style={{ fontSize:13, fontWeight:600, color:"var(--text)", overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{a.title}</div><span className="badge badge-neutral" style={{ marginTop:3, fontSize:9 }}>{a.category}</span></td>
-                      <td style={{ textAlign:"right" }}>{a.reads.toLocaleString()}</td>
-                      <td style={{ textAlign:"right", fontWeight:700, color:"#059669" }}>${e.toFixed(4)}</td>
-                      <td style={{ textAlign:"right", fontFamily:"JetBrains Mono,monospace", fontSize:11 }}>${a.price}</td>
-                      <td style={{ textAlign:"right" }}><Link href={`/article/${a.id}`} style={{ display:"inline-flex", alignItems:"center", gap:3, fontSize:11, color:"var(--brand)", textDecoration:"none", fontWeight:600 }}>View <ExternalLink size={10}/></Link></td>
-                    </tr>;
-                  })}
-                </tbody>
-              </table>
-            </div>
-            <div className="ac">
-              {articles.map((a,i) => {
-                const e = byArticle.get(a.id)||(a.reads*parseFloat(a.price)*.85);
-                return <div key={a.id} style={{ padding:"12px 14px", borderBottom:i<articles.length-1?"1px solid var(--border)":"none" }}>
-                  <div style={{ fontSize:13, fontWeight:600, color:"var(--text)", marginBottom:6, display:"-webkit-box", WebkitLineClamp:2, WebkitBoxOrient:"vertical", overflow:"hidden" }}>{a.title}</div>
-                  <div style={{ display:"flex", gap:12, flexWrap:"wrap", alignItems:"center", fontSize:11 }}>
-                    <div><div style={{ color:"var(--text-4)", fontSize:9, fontWeight:700, textTransform:"uppercase" }}>Earned</div><div style={{ fontWeight:800, color:"#059669", fontSize:14 }}>${e.toFixed(4)}</div></div>
-                    <div><div style={{ color:"var(--text-4)", fontSize:9, fontWeight:700, textTransform:"uppercase" }}>Reads</div><div style={{ color:"var(--text-2)" }}>{a.reads}</div></div>
-                    <Link href={`/article/${a.id}`} style={{ marginLeft:"auto", color:"var(--brand)", textDecoration:"none", fontWeight:700, display:"flex", alignItems:"center", gap:3 }}>View <ExternalLink size={10}/></Link>
+
+            {loading ? <div style={{ padding:14 }}>{[1,2,3].map(i=><div key={i} className="skeleton" style={{ height:56,borderRadius:8,marginBottom:8 }}/>)}</div>
+            : articles.length===0 ? (
+              <div style={{ padding:"40px 20px", textAlign:"center" }}>
+                <BookOpen size={28} style={{ color:"var(--text-4)", marginBottom:10 }}/>
+                <p style={{ fontSize:14, fontWeight:600, color:"var(--text-3)", marginBottom:4 }}>No articles yet</p>
+                <Link href="/write" className="btn btn-primary btn-sm" style={{ marginTop:10 }}>Write First Article</Link>
+              </div>
+            ) : articles.map((a, i) => (
+              <div key={a.id} style={{ borderBottom:i<articles.length-1?"1px solid var(--border)":"none" }}>
+                {editing===a.id ? (
+                  /* Inline edit form */
+                  <div style={{ padding:"14px 16px", background:"var(--bg-alt)", display:"flex", flexDirection:"column", gap:9 }}>
+                    <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:4 }}>
+                      <span style={{ fontSize:11, fontWeight:700, color:"var(--brand)" }}>Editing #{a.id}</span>
+                      <div style={{ display:"flex", gap:5 }}>
+                        <button onClick={()=>saveEdit(a.id)} disabled={saving} className="btn btn-primary btn-xs">
+                          {saving?<><div style={{ width:10,height:10,border:"1.5px solid rgba(255,255,255,.3)",borderTopColor:"white",borderRadius:"50%"}} className="spin"/>Saving…</>:<><Save size={10}/>Save</>}
+                        </button>
+                        <button onClick={()=>{setEditing(null);setEditData({});}} className="btn btn-ghost btn-xs"><X size={10}/>Cancel</button>
+                      </div>
+                    </div>
+                    <input defaultValue={a.title} onChange={e=>setEditData((d:any)=>({...d,title:e.target.value}))}
+                      style={{ width:"100%",background:"var(--bg-card)",border:"1.5px solid var(--border)",borderRadius:"var(--r)",padding:"7px 10px",fontSize:13,color:"var(--text)",outline:"none",fontFamily:"Outfit,sans-serif",fontWeight:700 }}
+                      placeholder="Title" onFocus={e=>(e.target as any).style.borderColor="var(--brand)"} onBlur={e=>(e.target as any).style.borderColor="var(--border)"}
+                    />
+                    <textarea defaultValue={a.blurb} rows={2} onChange={e=>setEditData((d:any)=>({...d,blurb:e.target.value}))}
+                      style={{ width:"100%",background:"var(--bg-card)",border:"1.5px solid var(--border)",borderRadius:"var(--r)",padding:"7px 10px",fontSize:12,color:"var(--text)",outline:"none",resize:"vertical",fontFamily:"Inter,sans-serif" }}
+                      placeholder="Blurb" onFocus={e=>(e.target as any).style.borderColor="var(--brand)"} onBlur={e=>(e.target as any).style.borderColor="var(--border)"}
+                    />
+                    <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:7 }}>
+                      <input type="number" defaultValue={a.price} step="0.001" onChange={e=>setEditData((d:any)=>({...d,price:parseFloat(e.target.value)}))}
+                        style={{ background:"var(--bg-card)",border:"1.5px solid var(--border)",borderRadius:"var(--r)",padding:"7px 10px",fontSize:13,color:"var(--accent)",outline:"none",fontFamily:"Outfit,sans-serif",fontWeight:700 }}
+                        placeholder="Price USDC" onFocus={e=>(e.target as any).style.borderColor="var(--brand)"} onBlur={e=>(e.target as any).style.borderColor="var(--border)"}
+                      />
+                      <input defaultValue={a.category} onChange={e=>setEditData((d:any)=>({...d,category:e.target.value}))}
+                        style={{ background:"var(--bg-card)",border:"1.5px solid var(--border)",borderRadius:"var(--r)",padding:"7px 10px",fontSize:13,color:"var(--text)",outline:"none" }}
+                        placeholder="Category" onFocus={e=>(e.target as any).style.borderColor="var(--brand)"} onBlur={e=>(e.target as any).style.borderColor="var(--border)"}
+                      />
+                    </div>
                   </div>
-                </div>;
-              })}
+                ) : (
+                  <div style={{ padding:"13px 16px", display:"flex", alignItems:"flex-start", gap:12 }}>
+                    <div style={{ flex:1, minWidth:0 }}>
+                      <div style={{ display:"flex", gap:6, marginBottom:5, flexWrap:"wrap", alignItems:"center" }}>
+                        <span style={{ fontSize:10, fontWeight:700, padding:"2px 7px", borderRadius:"var(--r-f)", background:`${STATUS_COLOR[a.status]||"#6b7280"}14`, color:STATUS_COLOR[a.status]||"#6b7280", border:`1px solid ${STATUS_COLOR[a.status]||"#6b7280"}30`, fontFamily:"Outfit,sans-serif" }}>
+                          {a.status}
+                        </span>
+                        <span className="badge badge-neutral" style={{ textTransform:"capitalize", fontSize:9 }}>{a.category}</span>
+                        <span className="price-tag" style={{ fontSize:9 }}>${a.price}</span>
+                      </div>
+                      <h3 style={{ fontFamily:"Outfit,sans-serif", fontSize:13, fontWeight:700, color:"var(--text)", lineHeight:1.3, marginBottom:4, display:"-webkit-box", WebkitLineClamp:2, WebkitBoxOrient:"vertical" as any, overflow:"hidden" }}>{a.title}</h3>
+                      <div style={{ display:"flex", gap:10, fontSize:10, color:"var(--text-4)" }}>
+                        <span style={{ display:"flex", alignItems:"center", gap:2 }}><Users size={9}/>{a.reads} reads</span>
+                        <span style={{ display:"flex", alignItems:"center", gap:2 }}><DollarSign size={9} style={{ color:"var(--accent)" }}/>${(a.reads*parseFloat(a.price)*0.85).toFixed(4)}</span>
+                      </div>
+                    </div>
+                    <div style={{ display:"flex", gap:5, flexShrink:0 }}>
+                      <Link href={`/article/${a.id}`} style={{ width:28,height:28,borderRadius:"var(--r)",border:"1px solid var(--border)",background:"var(--bg-alt)",display:"flex",alignItems:"center",justifyContent:"center",color:"var(--text-3)",textDecoration:"none" }} title="Preview">
+                        <Eye size={12}/>
+                      </Link>
+                      <button onClick={()=>{setEditing(a.id);setEditData({});}} style={{ width:28,height:28,borderRadius:"var(--r)",border:"1px solid var(--border-brand)",background:"var(--brand-muted)",display:"flex",alignItems:"center",justifyContent:"center",color:"var(--brand)",cursor:"pointer" }} title="Edit">
+                        <Edit3 size={12}/>
+                      </button>
+                      <button onClick={()=>deleteArticle(a.id)} disabled={deleting===a.id} style={{ width:28,height:28,borderRadius:"var(--r)",border:"1px solid rgba(220,38,38,.3)",background:"rgba(220,38,38,.06)",display:"flex",alignItems:"center",justifyContent:"center",color:"#dc2626",cursor:"pointer",opacity:deleting===a.id?.5:1 }} title="Delete">
+                        {deleting===a.id?<div style={{ width:10,height:10,border:"1.5px solid #dc2626",borderTopColor:"transparent",borderRadius:"50%"}} className="spin"/>:<Trash2 size={12}/>}
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+
+          {/* Sidebar: Wallet */}
+          <div style={{ display:"flex", flexDirection:"column", gap:12, position:"sticky", top:"calc(var(--header-h) + 12px)" }}>
+            <div className="card" style={{ padding:"18px" }}>
+              <div style={{ display:"flex", alignItems:"center", gap:7, marginBottom:12 }}>
+                <Zap size={14} style={{ color:"var(--accent)" }}/>
+                <h3 style={{ fontFamily:"Outfit,sans-serif", fontSize:13, fontWeight:700, color:"var(--text)" }}>USDC Balance</h3>
+              </div>
+              <div style={{ fontFamily:"Outfit,sans-serif", fontSize:"clamp(22px,4vw,30px)", fontWeight:900, color:"var(--accent)", lineHeight:1, marginBottom:4 }}>${usdcBalance}</div>
+              <div style={{ fontSize:10, color:"var(--text-4)", marginBottom:14 }}>Your wallet · earnings go here</div>
+
+              {!showSend ? (
+                <button onClick={()=>setShowSend(true)} className="btn btn-primary btn-sm" style={{ width:"100%", justifyContent:"center" }}>
+                  <Send size={12}/>Send / Withdraw USDC
+                </button>
+              ) : (
+                <div style={{ display:"flex", flexDirection:"column", gap:7 }}>
+                  <input type="text" placeholder="To address (0x…)" value={sendTo} onChange={e=>setSendTo(e.target.value)}
+                    style={{ width:"100%",background:"var(--bg-alt)",border:"1.5px solid var(--border)",borderRadius:"var(--r)",padding:"7px 10px",fontSize:11,color:"var(--text)",fontFamily:"JetBrains Mono,monospace",outline:"none" }}
+                    onFocus={e=>(e.target as any).style.borderColor="var(--brand)"} onBlur={e=>(e.target as any).style.borderColor="var(--border)"}
+                  />
+                  <div style={{ display:"flex", alignItems:"center", gap:5, background:"var(--bg-alt)", border:"1.5px solid var(--border)", borderRadius:"var(--r)", padding:"7px 10px" }}>
+                    <span style={{ fontWeight:700, color:"var(--text-4)", fontSize:12 }}>$</span>
+                    <input type="number" step="0.01" placeholder="0.00" value={sendAmt} onChange={e=>setSendAmt(e.target.value)}
+                      style={{ flex:1,border:"none",outline:"none",background:"transparent",fontSize:15,fontWeight:700,color:"var(--accent)",fontFamily:"Outfit,sans-serif" }}/>
+                    <button onClick={()=>setSendAmt(usdcBalance)} style={{ fontSize:9,fontWeight:700,color:"var(--brand)",background:"var(--brand-muted)",border:"1px solid var(--brand-border)",borderRadius:4,padding:"2px 6px",cursor:"pointer" }}>MAX</button>
+                  </div>
+                  {sendErr  && <div style={{ fontSize:10, color:"#dc2626" }}>{sendErr}</div>}
+                  {sendHash && <div style={{ fontSize:10, color:"var(--accent)", fontFamily:"JetBrains Mono,monospace" }}>Sent! {sendHash.slice(0,16)}…</div>}
+                  <div style={{ display:"flex", gap:5 }}>
+                    <button onClick={()=>{setShowSend(false);setSendErr("");setSendHash("");}} className="btn btn-ghost btn-sm" style={{ flex:1, justifyContent:"center", fontSize:11 }}>Cancel</button>
+                    <button onClick={handleSend} disabled={sending||!sendTo||!sendAmt} className="btn btn-primary btn-sm" style={{ flex:2, justifyContent:"center", fontSize:11 }}>
+                      {sending?<><div style={{ width:11,height:11,border:"1.5px solid rgba(255,255,255,.3)",borderTopColor:"white",borderRadius:"50%"}} className="spin"/>Sending…</>:<><Send size={11}/>Send</>}
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
-          </>)}
-        </div>
-        <div style={{ marginTop:14, textAlign:"center", fontSize:10, color:"var(--text-4)", fontFamily:"JetBrains Mono,monospace" }}>
-          <Zap size={9} style={{ display:"inline", marginRight:4 }}/>Earnings settled atomically via Readlearc.sol · 85% writer share per read
+
+            <div className="card" style={{ padding:"14px", fontSize:11, color:"var(--text-4)", lineHeight:1.65 }}>
+              <div style={{ fontWeight:700, color:"var(--text-3)", marginBottom:5, fontSize:12 }}>How earnings work</div>
+              Readers pay USDC directly to your wallet (85% of article price). Payments settle instantly — no waiting, no minimums.
+              <div style={{ marginTop:8, fontSize:10, color:"var(--text-4)" }}>Platform fee: 15% · Updated per-article</div>
+            </div>
+          </div>
         </div>
       </div>
     </div>
