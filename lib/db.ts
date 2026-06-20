@@ -1,49 +1,33 @@
 /**
- * Database client — connects via PHP bridge on cPanel.
- * 
- * The PHP bridge (public/db-bridge.php) runs on the same server as
- * PostgreSQL and proxies queries over HTTP to Vercel.
- * 
- * Required env vars:
- *   DB_BRIDGE_URL    = https://yourdomain.com/db-bridge.php
- *   DB_BRIDGE_SECRET = rl-bridge-[hash] (shown when you visit the bridge)
+ * PostgreSQL via Supabase (or any external PostgreSQL).
+ * Set DATABASE_URL in Vercel env vars:
+ *   postgresql://postgres.[ref]:[password]@aws-0-[region].pooler.supabase.com:6543/postgres
+ *
+ * Use the TRANSACTION POOLER string from Supabase (port 6543) — 
+ * it's built for serverless/Vercel.
  */
+import { Pool, QueryResultRow } from "pg";
 
-const BRIDGE_URL    = process.env.DB_BRIDGE_URL    || "";
-const BRIDGE_SECRET = process.env.DB_BRIDGE_SECRET || "";
+declare global { var __pgPool: Pool | undefined; }
 
-export interface QueryResult<T = any> {
-  rows:     T[];
-  rowCount: number;
+const pool = global.__pgPool ?? (global.__pgPool = new Pool({
+  connectionString: process.env.DATABASE_URL,
+  ssl: { rejectUnauthorized: false },
+  max: 10,
+  idleTimeoutMillis: 30_000,
+  connectionTimeoutMillis: 10_000,
+}));
+
+export async function sql<T extends QueryResultRow = any>(
+  text: string,
+  values?: any[]
+) {
+  const client = await pool.connect();
+  try {
+    return await client.query<T>(text, values);
+  } finally {
+    client.release();
+  }
 }
 
-export async function sql<T = any>(
-  text:   string,
-  values: any[] = []
-): Promise<QueryResult<T>> {
-  if (!BRIDGE_URL) {
-    throw new Error(
-      "DB_BRIDGE_URL not set. Upload public/db-bridge.php to cPanel and set " +
-      "DB_BRIDGE_URL + DB_BRIDGE_SECRET in Vercel env vars."
-    );
-  }
-
-  const res = await fetch(BRIDGE_URL, {
-    method:  "POST",
-    headers: {
-      "Content-Type":  "application/json",
-      "X-Bridge-Key":  BRIDGE_SECRET,
-    },
-    body: JSON.stringify({ sql: text, params: values }),
-  });
-
-  const data = await res.json();
-
-  if (!res.ok || data.error) {
-    throw new Error(data.error || `Bridge error ${res.status}`);
-  }
-
-  return { rows: data.rows || [], rowCount: data.rowCount || 0 };
-}
-
-export default { sql };
+export default pool;
