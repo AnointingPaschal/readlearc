@@ -198,7 +198,7 @@ export function WalletProvider({ children }: { children: ReactNode }) {
           params: [{
             chainId:           ARC.chainHex,
             chainName:         ARC.name,
-            nativeCurrency:    ARC.currency,
+            nativeCurrency:    { name: ARC.currency.name, symbol: ARC.currency.symbol, decimals: 18 },
             rpcUrls:           [ARC.rpc],
             blockExplorerUrls: [ARC.explorer],
           }],

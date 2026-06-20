@@ -36,7 +36,8 @@ const NAV = [
   ]},
   { label:"Site",      items:[
     { href:"/admin/settings",      icon:DollarSign,label:"Payment Settings" },
-    { href:"/admin/site",          icon:Settings, label:"Site Settings" },
+    { href:"/admin/settings/branding", icon:Palette,  label:"Brand & Colors"  },
+    { href:"/admin/site",          icon:Settings, label:"Site Settings"   },
     { href:"/admin/site/branding", icon:Palette,  label:"Branding" },
     { href:"/admin/site/seo",      icon:SearchIcon,label:"SEO"     },
   ]},

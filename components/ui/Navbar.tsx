@@ -91,6 +91,7 @@ export default function Navbar() {
                       { href:`/profile/${address}`, icon:User,          label:"My Profile"      },
                       { href:"/creator",            icon:LayoutDashboard,label:"Creator Studio"  },
                       { href:"/reading-history",    icon:BookOpen,       label:"Reading History" },
+                    { href:"/wallet-app",          icon:Wallet,         label:"My Wallet"      },
                     ].map(item=>(
                       <Link key={item.href} href={item.href} onClick={()=>setDrop(false)} style={{ display:"flex",alignItems:"center",gap:9,padding:"10px 14px",fontSize:13,color:"var(--text-2)",textDecoration:"none",borderBottom:"1px solid var(--border)",transition:"background .12s" }}
                         onMouseEnter={e=>(e.currentTarget as any).style.background="var(--bg-alt)"}
