@@ -1,12 +1,12 @@
 
 "use client";
+import { useWallet } from "../../lib/wallet";
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { Save, CheckCircle2, AtSign, Globe, ExternalLink } from "lucide-react";
 import Navbar from "../../components/ui/Navbar";
 import SetupBanner from "../../components/ui/SetupBanner";
 import ConnectGate from "../../components/ui/ConnectGate";
-import { useAccount } from "wagmi";
 
 const GRADS = [
   "linear-gradient(135deg,#6d28d9,#059669)",
@@ -21,7 +21,7 @@ function load(addr: string) { try { return JSON.parse(localStorage.getItem(`rl-p
 function save(addr: string, d: any) { localStorage.setItem(`rl-profile-${addr.toLowerCase()}`, JSON.stringify(d)); }
 
 export default function AccountPage() {
-  const { address: _a, isConnected } = useAccount();
+  const { address: _a, isConnected } = useWallet();
   const address = _a || "";
   const shortAddress = address ? `${address.slice(0,6)}…${address.slice(-4)}` : "";
   const usdcBalance = "—";

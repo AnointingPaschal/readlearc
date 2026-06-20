@@ -1,16 +1,12 @@
 "use client";
+import { useWallet } from "../../../lib/wallet";
 import { useState, useEffect } from "react";
 import { ethers } from "ethers";
 import { Shield, AlertTriangle, CheckCircle2, RefreshCw, ArrowUpRight, Key, UserCheck, Copy, Check } from "lucide-react";
-import { useAccount, useWalletClient } from "wagmi";
 import { CONTRACT_ADDRESS, CONTRACT_ABI, EXPLORER_URL, readProvider } from "../../../lib/chain";
-import { walletClientToSigner } from "../../../lib/ethers-adapter";
 
 export default function SecurityPage() {
-  const { address: _a, isConnected } = useAccount();
-  const address = _a || "";
-  const { data: wc } = useWalletClient();
-  const signer = wc ? walletClientToSigner(wc) : null;
+  const { address, signer, isConnected } = useWallet();
 
   const [contractOwner,  setContractOwner]  = useState("");
   const [isOwner,        setIsOwner]        = useState(false);

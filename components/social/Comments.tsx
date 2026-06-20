@@ -1,8 +1,8 @@
 
 "use client";
+import { useWallet } from "../../lib/wallet";
 import { useState, useEffect } from "react";
 import { MessageCircle, Reply, Trash2, Edit3, Check, X, ChevronDown, ChevronUp } from "lucide-react";
-import { useAccount } from "wagmi";
 import type { Comment } from "../../lib/store";
 
 interface Props { articleId: string; }
@@ -74,7 +74,7 @@ function CommentItem({ c, address, articleId, onDelete, onEdit, depth=0 }: { c:C
 }
 
 export default function Comments({ articleId }: Props) {
-  const { address: _addr, isConnected } = useAccount();
+  const { address: _addr, isConnected } = useWallet();
   const address = _addr || "";
   const [comments,  setComments]  = useState<Comment[]>([]);
   const [text,      setText]      = useState("");

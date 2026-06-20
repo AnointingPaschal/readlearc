@@ -324,7 +324,7 @@ export type DBArticle = {
 export async function dbFetchArticles(opts?: {
   limit?: number; category?: string; author?: string;
   search?: string; featured?: boolean;
-}): Promise<DBArticle[]> {
+}): Promise<{ data: DBArticle[]; error?: string }> {
   const p = new URLSearchParams();
   if (opts?.limit)    p.set("limit",    String(opts.limit));
   if (opts?.category && opts.category !== "All") p.set("category", opts.category);
@@ -332,10 +332,14 @@ export async function dbFetchArticles(opts?: {
   if (opts?.search)   p.set("q",        opts.search);
   if (opts?.featured) p.set("featured", "1");
   try {
-    const res = await fetch(`/api/articles?${p}`);
-    if (!res.ok) return [];
-    return res.json();
-  } catch { return []; }
+    const res  = await fetch(`/api/articles?${p}`);
+    const json = await res.json();
+    if (!res.ok) return { data:[], error: json?.error || `HTTP ${res.status}` };
+    if (!Array.isArray(json)) return { data:[], error:"Unexpected response from database" };
+    return { data: json };
+  } catch (e: any) {
+    return { data:[], error: e.message || "Failed to reach API" };
+  }
 }
 
 export async function dbFetchArticle(id: string, readerAddress?: string): Promise<DBArticle | null> {

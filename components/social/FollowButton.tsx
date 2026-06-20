@@ -1,13 +1,13 @@
 
 "use client";
+import { useWallet } from "../../lib/wallet";
 import { useState, useEffect } from "react";
 import { UserPlus, UserCheck, UserMinus } from "lucide-react";
-import { useAccount } from "wagmi";
 
 interface Props { targetAddress: string; }
 
 export default function FollowButton({ targetAddress }: Props) {
-  const { address, isConnected } = useAccount();
+  const { address, isConnected } = useWallet();
   const [following,  setFollowing]  = useState(false);
   const [followers,  setFollowers]  = useState(0);
   const [hovering,   setHovering]   = useState(false);

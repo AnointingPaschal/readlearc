@@ -1,13 +1,12 @@
 "use client";
+import { useWallet } from "../../../../lib/wallet";
 import { useState, useEffect } from "react";
 import { ethers } from "ethers";
 import { RefreshCw, ExternalLink, Info } from "lucide-react";
 import { CONTRACT_ADDRESS, CONTRACT_ABI, EXPLORER_URL, readProvider } from "../../../../lib/chain";
-import { useAccount as useWallet } from "wagmi";
 
 export default function FeesConfigPage() {
-  const { isConnected } = useWallet();
-  const [onChain,  setOnChain]  = useState<any>(null);
+    const [onChain,  setOnChain]  = useState<any>(null);
   const [loading,  setLoading]  = useState(true);
 
   async function fetchFees() {

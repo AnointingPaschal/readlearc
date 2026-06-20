@@ -19,10 +19,10 @@ export default function ExplorePage() {
 
   useEffect(() => {
     setLoading(true); setError("");
-    dbFetchArticles({ limit:100 })
-      .then(setArticles)
-      .catch(e => setError(e.message))
-      .finally(() => setLoading(false));
+    dbFetchArticles({ limit:100 }).then(({ data, error }) => {
+      setArticles(data);
+      if (error) setError(error);
+    }).finally(() => setLoading(false));
   }, []);
 
   const filtered = articles.filter(a => {

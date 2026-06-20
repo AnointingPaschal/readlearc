@@ -12,7 +12,6 @@ import Comments from "../../../components/social/Comments";
 import ShareButton from "../../../components/social/ShareButton";
 import { USDC_ADDRESS, USDC_ABI, EXPLORER_URL, type DBArticle, dbFetchArticle, dbRecordPayment } from "../../../lib/chain";
 import { useWallet } from "../../../lib/wallet";
-import { useConnectModal } from "@rainbow-me/rainbowkit";
 
 function renderContent(text: string): string {
   return text.trim()
@@ -50,9 +49,8 @@ function HalfContent({ text }: { text: string }) {
 
 export default function ArticlePage() {
   const { id } = useParams<{ id: string }>();
-  const { address, isConnected, signer } = useWallet();
-  const { openConnectModal } = useConnectModal();
-
+  const { address, isConnected, signer, connect } = useWallet();
+  
   const [article, setArticle] = useState<DBArticle | null>(null);
   const [isPaid,  setIsPaid]  = useState(false);
   const [paying,  setPaying]  = useState(false);
@@ -86,7 +84,7 @@ export default function ArticlePage() {
 
   async function handlePay() {
     if (!article) return;
-    if (!isConnected || !signer) { openConnectModal?.(); return; }
+    if (!isConnected || !signer) { connect(); return; }
     if (!USDC_ADDRESS) { setPayErr("USDC address not configured."); return; }
     setPaying(true); setPayErr(""); setTxHash("");
     try {

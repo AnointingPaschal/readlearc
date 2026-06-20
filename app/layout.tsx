@@ -1,17 +1,10 @@
 import type { Metadata } from "next";
 import "./globals.css";
-import "@rainbow-me/rainbowkit/styles.css";
 import Providers from "./providers";
 
 export const metadata: Metadata = {
   title: "Readlearc — Pay per word. Own every read.",
-  description: "A pay-per-read publishing platform on Arc blockchain. Writers earn 85% in USDC instantly. Readers hold cryptographic proof of every article unlocked.",
-  keywords: ["pay-per-read","Arc","USDC","Circle","web3","blockchain","articles"],
-  openGraph: {
-    title: "Readlearc — Pay per word. Own every read.",
-    description: "Pay-per-read articles on Arc. USDC nanopayments. Sub-second settlement.",
-    type: "website",
-  },
+  description: "Pay-per-read publishing on Arc blockchain. Writers earn 85% in USDC instantly.",
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

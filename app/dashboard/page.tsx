@@ -1,18 +1,18 @@
 
 "use client";
+import { useWallet } from "../../lib/wallet";
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { BookOpen, DollarSign, Clock, CheckCircle2, ArrowRight, PenLine, History, Wallet, RefreshCw } from "lucide-react";
 import Navbar from "../../components/ui/Navbar";
 import SetupBanner from "../../components/ui/SetupBanner";
 import ConnectGate from "../../components/ui/ConnectGate";
-import { useAccount } from "wagmi";
 import { fetchReadingHistory, type Article } from "../../lib/chain";
 
 type HistoryItem = Article & { pricePaid: string; txHash: string; blockNumber: number };
 
 export default function DashboardPage() {
-  const { address, isConnected } = useAccount();
+  const { address, isConnected } = useWallet();
   const shortAddress = address ? `${address.slice(0,6)}…${address.slice(-4)}` : "";
   const usdcBalance = "—";
   const provider = null;

@@ -74,8 +74,12 @@ export default function Home() {
   const [search,    setSearch]    = useState("");
   const [activeCat, setActiveCat] = useState("All");
 
+  const [dbError, setDbError] = useState("");
   useEffect(() => {
-    dbFetchArticles({ limit:100 }).then(setArticles).finally(() => setLoading(false));
+    dbFetchArticles({ limit:100 }).then(({ data, error }) => {
+      setArticles(data);
+      if (error) setDbError(error);
+    }).finally(() => setLoading(false));
   }, []);
 
   // DB already returns only approved/featured — no client-side moderation needed
@@ -96,6 +100,13 @@ export default function Home() {
   return (
     <div style={{ minHeight:"100vh", background:"var(--bg)" }}>
       <SetupBanner/><Navbar/>
+
+      {/* DB Error */}
+      {dbError && (
+        <div style={{ position:"fixed", top:"var(--header-h)", left:0, right:0, zIndex:55, background:"rgba(220,38,38,.95)", color:"white", padding:"9px 16px", display:"flex", gap:10, alignItems:"center", justifyContent:"center", fontSize:13, fontWeight:600 }}>
+          Database error: {dbError} — check NEXT_PUBLIC_SUPABASE_URL + NEXT_PUBLIC_SUPABASE_ANON_KEY in Vercel and redeploy.
+        </div>
+      )}
 
       {/* ── Hero ── */}
       <section style={{ paddingTop:"calc(var(--header-h) + clamp(52px,9vw,88px))", paddingBottom:"clamp(48px,7vw,72px)", position:"relative", overflow:"hidden" }}>
