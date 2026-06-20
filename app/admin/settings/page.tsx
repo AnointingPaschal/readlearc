@@ -4,11 +4,19 @@ import { Save, RefreshCw, CheckCircle2, Eye, EyeOff, Brain, DollarSign, Percent,
 
 // ── AI Providers ─────────────────────────────────────────────────
 const AI_PROVIDERS = [
+  { id:"openrouter", label:"OpenRouter", models:[
+      "anthropic/claude-haiku-4-5","anthropic/claude-sonnet-4-5",
+      "openai/gpt-4o-mini","openai/gpt-4o",
+      "meta-llama/llama-3.1-8b-instruct:free","meta-llama/llama-3.3-70b-instruct",
+      "google/gemini-flash-1.5","google/gemini-pro-1.5",
+      "deepseek/deepseek-chat","mistralai/mixtral-8x7b-instruct",
+      "qwen/qwen-2.5-72b-instruct","x-ai/grok-beta",
+    ], docsUrl:"https://openrouter.ai/keys", freeNote:"300+ models, one key" },
   { id:"anthropic", label:"Anthropic",  models:["claude-haiku-4-5-20251001","claude-sonnet-4-6","claude-opus-4-6"],    docsUrl:"https://console.anthropic.com",       freeNote:"" },
   { id:"openai",    label:"OpenAI",     models:["gpt-4o-mini","gpt-4o","gpt-4-turbo","gpt-3.5-turbo"],                docsUrl:"https://platform.openai.com/api-keys", freeNote:"" },
-  { id:"gemini",    label:"Google Gemini", models:["gemini-1.5-flash","gemini-1.5-pro","gemini-2.0-flash"],            docsUrl:"https://aistudio.google.com/app/apikey", freeNote:"Free tier available" },
-  { id:"groq",      label:"Groq",       models:["llama-3.1-8b-instant","llama-3.3-70b-versatile","mixtral-8x7b-32768"], docsUrl:"https://console.groq.com/keys",        freeNote:"Free tier available" },
-  { id:"deepseek",  label:"DeepSeek",   models:["deepseek-chat","deepseek-reasoner"],                                  docsUrl:"https://platform.deepseek.com",        freeNote:"Very affordable" },
+  { id:"gemini",    label:"Google Gemini", models:["gemini-1.5-flash","gemini-1.5-pro","gemini-2.0-flash"],            docsUrl:"https://aistudio.google.com/app/apikey", freeNote:"Free tier" },
+  { id:"groq",      label:"Groq",       models:["llama-3.1-8b-instant","llama-3.3-70b-versatile","mixtral-8x7b-32768"], docsUrl:"https://console.groq.com/keys",        freeNote:"Free tier" },
+  { id:"deepseek",  label:"DeepSeek",   models:["deepseek-chat","deepseek-reasoner"],                                  docsUrl:"https://platform.deepseek.com",        freeNote:"Affordable" },
 ];
 
 const FEE_FIELDS = [
@@ -29,8 +37,8 @@ export default function AdminSettingsPage() {
   // Treasury
   const [treasury,       setTreasury]       = useState("");
   // AI
-  const [aiProvider,     setAiProvider]     = useState("anthropic");
-  const [aiModel,        setAiModel]        = useState("claude-haiku-4-5-20251001");
+  const [aiProvider,     setAiProvider]     = useState("openrouter");
+  const [aiModel,        setAiModel]        = useState("anthropic/claude-haiku-4-5");
   const [aiApiKey,       setAiApiKey]       = useState("");
   const [showKey,        setShowKey]        = useState(false);
   const [testResult,     setTestResult]     = useState<{ok:boolean;msg:string}|null>(null);

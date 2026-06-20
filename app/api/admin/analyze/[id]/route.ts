@@ -6,6 +6,28 @@ type C = { params: Promise<{id:string}> };
 // ── Unified AI caller ─────────────────────────────────────────────
 async function callAI(provider: string, model: string, apiKey: string, prompt: string): Promise<string> {
   switch (provider) {
+    // OpenRouter — single endpoint for 300+ models
+    case "openrouter": {
+      const res = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${apiKey}`,
+          "HTTP-Referer": "https://readlearc.vercel.app",
+          "X-Title": "Readlearc Content Analysis",
+        },
+        body: JSON.stringify({
+          model,
+          max_tokens: 600,
+          messages: [{ role:"user", content:prompt }],
+          response_format: { type:"json_object" },
+        }),
+      });
+      const d = await res.json();
+      if (!res.ok) throw new Error(d.error?.message || `OpenRouter error: ${JSON.stringify(d.error)}`);
+      return d.choices?.[0]?.message?.content || "";
+    }
+
     case "openai": {
       const res = await fetch("https://api.openai.com/v1/chat/completions", {
         method: "POST",

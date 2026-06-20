@@ -17,7 +17,15 @@ export async function GET() {
 
   try {
     let text = "";
-    if (provider==="openai"||provider==="groq"||provider==="deepseek") {
+    if (provider==="openrouter") {
+      const r = await fetch("https://openrouter.ai/api/v1/chat/completions",{
+        method:"POST",
+        headers:{"Content-Type":"application/json","Authorization":`Bearer ${apiKey}`,"HTTP-Referer":"https://readlearc.vercel.app","X-Title":"Readlearc"},
+        body:JSON.stringify({model,max_tokens:50,messages:[{role:"user",content:testPrompt}]})
+      });
+      const d = await r.json(); if(!r.ok) throw new Error(d.error?.message||JSON.stringify(d.error)||"Error");
+      text = d.choices?.[0]?.message?.content||"";
+    } else if (provider==="openai"||provider==="groq"||provider==="deepseek") {
       const url = provider==="openai"?"https://api.openai.com/v1/chat/completions":provider==="groq"?"https://api.groq.com/openai/v1/chat/completions":"https://api.deepseek.com/chat/completions";
       const r = await fetch(url,{method:"POST",headers:{"Content-Type":"application/json","Authorization":`Bearer ${apiKey}`},body:JSON.stringify({model,max_tokens:50,messages:[{role:"user",content:testPrompt}]})});
       const d = await r.json(); if(!r.ok) throw new Error(d.error?.message||"Error");
