@@ -1,10 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin as supabase } from "../../../lib/supabase";
 
-const AUTHOR_1 = "0xCca907AE079DB7638A4d2D3e82defaea5FBDF383";
-const AUTHOR_2 = "0x4Df868336E6d27E9DBBBDa536607FCaC578D88d7";
-const AUTHOR_3 = "0x9B2E4563Fa78236E9F89342A1A5B08a5dE72D591";
-const READER_1 = "0x7Ab3CE109c56E1Ab1bE4dFEC2eC5aae4dE39AB7c";
+const AUTHOR_1 = "0xcca907ae079db7638a4d2d3e82defaea5fbdf383";
+const AUTHOR_2 = "0x4df868336e6d27e9dbbbda536607fcac578d88d7";
+const AUTHOR_3 = "0x9b2e4563fa78236e9f89342a1a5b08a5de72d591";
+const READER_1 = "0x7ab3ce109c56e1ab1be4dfec2ec5aae4de39ab7c";
 
 const ARTICLES = [
   {

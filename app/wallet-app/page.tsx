@@ -110,7 +110,7 @@ export default function WalletApp() {
         </div>
         <h1 style={{ fontFamily:"Outfit,sans-serif",fontSize:28,fontWeight:900,color:"var(--text)",marginBottom:8,letterSpacing:"-.02em" }}>Readlearc Wallet</h1>
         <p style={{ fontSize:14,color:"var(--text-4)",lineHeight:1.7,marginBottom:32 }}>Your self-custodial USDC wallet for Arc Testnet. Create a wallet or sign in first.</p>
-        <button onClick={requireAuth} className="btn btn-primary" style={{ height:52,justifyContent:"center",fontWeight:700,fontSize:15,width:"100%",marginBottom:10 }}>
+        <button onClick={() => requireAuth()} className="btn btn-primary" style={{ height:52,justifyContent:"center",fontWeight:700,fontSize:15,width:"100%",marginBottom:10 }}>
           <Plus size={16}/>Create or Import Wallet
         </button>
         <Link href="/" className="btn btn-ghost" style={{ justifyContent:"center",width:"100%" }}>← Back to Readlearc</Link>

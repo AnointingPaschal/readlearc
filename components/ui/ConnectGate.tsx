@@ -14,7 +14,7 @@ export default function ConnectGate({ title="Sign in to continue", body="Create 
         </div>
         <h2 style={{ fontFamily:"Outfit,sans-serif", fontSize:"clamp(18px,4vw,24px)", fontWeight:900, color:"var(--text)", marginBottom:10, letterSpacing:"-0.02em" }}>{title}</h2>
         <p style={{ color:"var(--text-3)", fontSize:14, lineHeight:1.68, marginBottom:26 }}>{body}</p>
-        <button onClick={requireAuth} className="btn btn-primary btn-lg" style={{ width:"100%", justifyContent:"center" }}>
+        <button onClick={() => requireAuth()} className="btn btn-primary btn-lg" style={{ width:"100%", justifyContent:"center" }}>
           <Wallet size={16}/>Sign In / Create Wallet
         </button>
       </div>
