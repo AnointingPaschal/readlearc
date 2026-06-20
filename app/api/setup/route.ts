@@ -4,7 +4,7 @@ import { sql } from "../../../lib/db";
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
   if (searchParams.get("key") !== "readlearc-setup") {
-    return NextResponse.json({ error: "Add ?key=readlearc-setup to the URL" }, { status: 401 });
+    return NextResponse.json({ error: "Add ?key=readlearc-setup" }, { status: 401 });
   }
 
   const steps: string[] = [];
@@ -25,19 +25,18 @@ export async function GET(req: NextRequest) {
 
   await run("follows", `CREATE TABLE IF NOT EXISTS follows (id SERIAL PRIMARY KEY, follower_address VARCHAR(42) NOT NULL, following_address VARCHAR(42) NOT NULL, created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(), UNIQUE(follower_address, following_address))`);
 
-  await run("updated_at function", `CREATE OR REPLACE FUNCTION update_updated_at() RETURNS TRIGGER AS $$ BEGIN NEW.updated_at = NOW(); RETURN NEW; END; $$ LANGUAGE plpgsql`);
+  await run("updated_at fn", `CREATE OR REPLACE FUNCTION update_updated_at() RETURNS TRIGGER AS $$ BEGIN NEW.updated_at = NOW(); RETURN NEW; END; $$ LANGUAGE plpgsql`);
 
   await run("drop old trigger", `DROP TRIGGER IF EXISTS articles_updated_at ON articles`);
 
   await run("articles trigger", `CREATE TRIGGER articles_updated_at BEFORE UPDATE ON articles FOR EACH ROW EXECUTE PROCEDURE update_updated_at()`);
 
-  const { rows } = await sql(`SELECT table_name FROM information_schema.tables WHERE table_schema='public' ORDER BY table_name`).catch(() => ({ rows: [] as any[] }));
+  const { rows } = await sql(`SELECT table_name FROM information_schema.tables WHERE table_schema='public' ORDER BY table_name`).catch(() => ({ rows: [] as any[], rowCount: 0 }));
 
   return NextResponse.json({
-    success:  errors.length === 0,
-    message:  errors.length === 0 ? "Database ready!" : "Done with errors",
-    steps,
-    errors,
-    tables:   rows.map((r: any) => r.table_name),
+    success: errors.length === 0,
+    message: errors.length === 0 ? "Database ready!" : "Done with errors",
+    steps, errors,
+    tables: rows.map((r: any) => r.table_name),
   });
 }
