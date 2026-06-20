@@ -21,7 +21,7 @@ CREATE TABLE articles (
   category       VARCHAR(50)   NOT NULL DEFAULT 'General',
   read_time      INTEGER       NOT NULL DEFAULT 3,
   is_research    BOOLEAN       NOT NULL DEFAULT FALSE,
-  author_address VARCHAR(42)   NOT NULL,
+  author_address VARCHAR(50)   NOT NULL,
   status         VARCHAR(20)   NOT NULL DEFAULT 'pending',
   featured       BOOLEAN       NOT NULL DEFAULT FALSE,
   reads          INTEGER       NOT NULL DEFAULT 0,
@@ -32,7 +32,7 @@ CREATE TABLE articles (
 CREATE TABLE read_receipts (
   id             SERIAL      PRIMARY KEY,
   article_id     INTEGER     NOT NULL REFERENCES articles(id) ON DELETE CASCADE,
-  reader_address VARCHAR(42) NOT NULL,
+  reader_address VARCHAR(50) NOT NULL,
   tx_hash        VARCHAR(66),
   amount_paid    NUMERIC(10,6),
   created_at     TIMESTAMPTZ NOT NULL DEFAULT NOW(),
@@ -42,7 +42,7 @@ CREATE TABLE read_receipts (
 CREATE TABLE comments (
   id             SERIAL      PRIMARY KEY,
   article_id     INTEGER     NOT NULL REFERENCES articles(id) ON DELETE CASCADE,
-  author_address VARCHAR(42) NOT NULL,
+  author_address VARCHAR(50) NOT NULL,
   author_name    VARCHAR(100),
   content        TEXT        NOT NULL,
   parent_id      INTEGER     REFERENCES comments(id) ON DELETE CASCADE,
@@ -53,7 +53,7 @@ CREATE TABLE comments (
 CREATE TABLE reactions (
   id             SERIAL      PRIMARY KEY,
   article_id     INTEGER     NOT NULL REFERENCES articles(id) ON DELETE CASCADE,
-  address        VARCHAR(42) NOT NULL,
+  address        VARCHAR(50) NOT NULL,
   reaction_key   VARCHAR(20) NOT NULL,
   created_at     TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   UNIQUE(article_id, address)
@@ -61,8 +61,8 @@ CREATE TABLE reactions (
 
 CREATE TABLE follows (
   id                SERIAL      PRIMARY KEY,
-  follower_address  VARCHAR(42) NOT NULL,
-  following_address VARCHAR(42) NOT NULL,
+  follower_address  VARCHAR(50) NOT NULL,
+  following_address VARCHAR(50) NOT NULL,
   created_at        TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   UNIQUE(follower_address, following_address)
 );
@@ -172,51 +172,51 @@ INSERT INTO articles (title, blurb, content, price, category, read_time, is_rese
 
 -- ── Read Receipts ─────────────────────────────────────────────────
 INSERT INTO read_receipts (article_id, reader_address, tx_hash, amount_paid) VALUES
-(1, '0x4df868336e6d27e9dbbbbda536607fcac578d88d7', '0xabc123def456abc123def456abc123def456abc123def456abc123def456ab01', 0.020000),
+(1, '0x4df868336e6d27e9dbbbda536607fcac578d88d7', '0xabc123def456abc123def456abc123def456abc123def456abc123def456ab01', 0.020000),
 (1, '0x9b2e4563fa78236e9f89342a1a5b08a5de72d591', '0xabc123def456abc123def456abc123def456abc123def456abc123def456ab02', 0.020000),
 (1, '0x7ab3ce109c56e1ab1be4dfec2ec5aae4de39ab7c', '0xabc123def456abc123def456abc123def456abc123def456abc123def456ab03', 0.020000),
-(2, '0x4df868336e6d27e9dbbbbda536607fcac578d88d7', '0xabc123def456abc123def456abc123def456abc123def456abc123def456ab04', 0.015000),
+(2, '0x4df868336e6d27e9dbbbda536607fcac578d88d7', '0xabc123def456abc123def456abc123def456abc123def456abc123def456ab04', 0.015000),
 (3, '0xcca907ae079db7638a4d2d3e82defaea5fbdf383', '0xabc123def456abc123def456abc123def456abc123def456abc123def456ab05', 0.050000),
 (3, '0x7ab3ce109c56e1ab1be4dfec2ec5aae4de39ab7c', '0xabc123def456abc123def456abc123def456abc123def456abc123def456ab06', 0.050000),
 (5, '0xcca907ae079db7638a4d2d3e82defaea5fbdf383', '0xabc123def456abc123def456abc123def456abc123def456abc123def456ab07', 0.025000),
-(5, '0x4df868336e6d27e9dbbbbda536607fcac578d88d7', '0xabc123def456abc123def456abc123def456abc123def456abc123def456ab08', 0.025000),
+(5, '0x4df868336e6d27e9dbbbda536607fcac578d88d7', '0xabc123def456abc123def456abc123def456abc123def456abc123def456ab08', 0.025000),
 (6, '0x9b2e4563fa78236e9f89342a1a5b08a5de72d591', '0xabc123def456abc123def456abc123def456abc123def456abc123def456ab09', 0.012000),
 (8, '0xcca907ae079db7638a4d2d3e82defaea5fbdf383', '0xabc123def456abc123def456abc123def456abc123def456abc123def456ab10', 0.022000);
 
 -- ── Comments ──────────────────────────────────────────────────────
 INSERT INTO comments (article_id, author_address, author_name, content, parent_id) VALUES
-(1, '0x4df868336e6d27e9dbbbbda536607fcac578d88d7', 'CryptoResearcher', 'This is the most balanced take on the 2026 market I''ve read. The BTC/ETH divergence point is something most people are still missing.', NULL),
+(1, '0x4df868336e6d27e9dbbbda536607fcac578d88d7', 'CryptoResearcher', 'This is the most balanced take on the 2026 market I''ve read. The BTC/ETH divergence point is something most people are still missing.', NULL),
 (1, '0x9b2e4563fa78236e9f89342a1a5b08a5de72d591', 'DeFiBuilder', 'The AI agents section is underappreciated. We''re already seeing agent-to-agent payments on Arc. USDC as machine money is inevitable.', NULL),
 (1, '0xcca907ae079db7638a4d2d3e82defaea5fbdf383', 'Anointing', 'Thanks for the kind words! The agent economy angle is what I''m most excited to write about next.', 2),
 (2, '0x9b2e4563fa78236e9f89342a1a5b08a5de72d591', 'DeFiBuilder', 'The gas-in-USDC model is a bigger deal than most people realize. I spent years managing ETH for gas on behalf of users. Never again.', NULL),
 (3, '0xcca907ae079db7638a4d2d3e82defaea5fbdf383', 'Anointing', 'Excellent research. The 15-23% creator retention differential is striking. Would love to see the methodology expanded.', NULL),
-(3, '0x4df868336e6d27e9dbbbbda536607fcac578d88d7', 'CryptoResearcher', 'The on-chain read receipt as a composable primitive is the most interesting idea in here. Haven''t seen this framed this way before.', NULL),
+(3, '0x4df868336e6d27e9dbbbda536607fcac578d88d7', 'CryptoResearcher', 'The on-chain read receipt as a composable primitive is the most interesting idea in here. Haven''t seen this framed this way before.', NULL),
 (5, '0x7ab3ce109c56e1ab1be4dfec2ec5aae4de39ab7c', 'Web3Writer', 'I''ve been thinking about this exact problem for months. The moment AI agents need to pay for data, USDC becomes unavoidable.', NULL),
 (5, '0xcca907ae079db7638a4d2d3e82defaea5fbdf383', 'Anointing', 'We built Readlearc partly with this in mind. Articles as data products that agents can purchase autonomously.', 7);
 
 -- ── Reactions ─────────────────────────────────────────────────────
 INSERT INTO reactions (article_id, address, reaction_key) VALUES
-(1, '0x4df868336e6d27e9dbbbbda536607fcac578d88d7', 'gem'),
+(1, '0x4df868336e6d27e9dbbbda536607fcac578d88d7', 'gem'),
 (1, '0x9b2e4563fa78236e9f89342a1a5b08a5de72d591', 'flame'),
 (1, '0x7ab3ce109c56e1ab1be4dfec2ec5aae4de39ab7c', 'zap'),
-(2, '0x4df868336e6d27e9dbbbbda536607fcac578d88d7', 'flame'),
+(2, '0x4df868336e6d27e9dbbbda536607fcac578d88d7', 'flame'),
 (2, '0x9b2e4563fa78236e9f89342a1a5b08a5de72d591', 'gem'),
 (3, '0xcca907ae079db7638a4d2d3e82defaea5fbdf383', 'gem'),
 (3, '0x7ab3ce109c56e1ab1be4dfec2ec5aae4de39ab7c', 'zap'),
-(4, '0x4df868336e6d27e9dbbbbda536607fcac578d88d7', 'flame'),
+(4, '0x4df868336e6d27e9dbbbda536607fcac578d88d7', 'flame'),
 (5, '0xcca907ae079db7638a4d2d3e82defaea5fbdf383', 'gem'),
-(5, '0x4df868336e6d27e9dbbbbda536607fcac578d88d7', 'gem'),
+(5, '0x4df868336e6d27e9dbbbda536607fcac578d88d7', 'gem'),
 (5, '0x7ab3ce109c56e1ab1be4dfec2ec5aae4de39ab7c', 'zap'),
 (6, '0x9b2e4563fa78236e9f89342a1a5b08a5de72d591', 'flame'),
 (8, '0xcca907ae079db7638a4d2d3e82defaea5fbdf383', 'zap');
 
 -- ── Follows ───────────────────────────────────────────────────────
 INSERT INTO follows (follower_address, following_address) VALUES
-('0x4df868336e6d27e9dbbbbda536607fcac578d88d7', '0xcca907ae079db7638a4d2d3e82defaea5fbdf383'),
+('0x4df868336e6d27e9dbbbda536607fcac578d88d7', '0xcca907ae079db7638a4d2d3e82defaea5fbdf383'),
 ('0x9b2e4563fa78236e9f89342a1a5b08a5de72d591', '0xcca907ae079db7638a4d2d3e82defaea5fbdf383'),
 ('0x7ab3ce109c56e1ab1be4dfec2ec5aae4de39ab7c', '0xcca907ae079db7638a4d2d3e82defaea5fbdf383'),
 ('0xcca907ae079db7638a4d2d3e82defaea5fbdf383', '0x9b2e4563fa78236e9f89342a1a5b08a5de72d591'),
-('0xcca907ae079db7638a4d2d3e82defaea5fbdf383', '0x4df868336e6d27e9dbbbbda536607fcac578d88d7'),
+('0xcca907ae079db7638a4d2d3e82defaea5fbdf383', '0x4df868336e6d27e9dbbbda536607fcac578d88d7'),
 ('0x7ab3ce109c56e1ab1be4dfec2ec5aae4de39ab7c', '0x9b2e4563fa78236e9f89342a1a5b08a5de72d591');
 
 -- ── Verify ────────────────────────────────────────────────────────
