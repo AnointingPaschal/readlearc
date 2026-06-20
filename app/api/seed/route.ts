@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { supabase } from "../../../lib/supabase";
+import { supabaseAdmin as supabase } from "../../../lib/supabase";
 
 const AUTHOR_1 = "0xCca907AE079DB7638A4d2D3e82defaea5FBDF383";
 const AUTHOR_2 = "0x4Df868336E6d27E9DBBBDa536607FCaC578D88d7";

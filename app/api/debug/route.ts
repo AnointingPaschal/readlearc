@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { supabase, IS_SUPABASE_CONFIGURED } from "../../../lib/supabase";
+import { supabaseAdmin as supabase, IS_SUPABASE_CONFIGURED } from "../../../lib/supabase";
 
 export async function GET() {
   const env = {

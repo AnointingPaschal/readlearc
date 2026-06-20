@@ -1,22 +1,22 @@
-import { createClient, SupabaseClient } from "@supabase/supabase-js";
+import { createClient } from "@supabase/supabase-js";
 
-const URL = process.env.NEXT_PUBLIC_SUPABASE_URL  || "";
-const KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "";
+const URL = process.env.NEXT_PUBLIC_SUPABASE_URL || "";
+const ANON_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "";
 
-export const IS_SUPABASE_CONFIGURED = !!(URL && KEY && URL !== "" && KEY !== "");
+// Service role key bypasses RLS — server-side API routes only, never expose to client
+const SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || "";
 
-// Safe client — works even when env vars are missing (build-time)
-export const supabase: SupabaseClient = createClient(
+export const IS_SUPABASE_CONFIGURED = !!(URL && ANON_KEY);
+
+// Client-side: uses anon key (respects RLS)
+export const supabase = createClient(
   URL || "https://placeholder.supabase.co",
-  KEY || "placeholder-key"
+  ANON_KEY || "placeholder"
 );
 
-/** Throw a readable error if Supabase isn't configured */
-export function requireSupabase() {
-  if (!IS_SUPABASE_CONFIGURED) {
-    throw new Error(
-      "Supabase not configured. Add NEXT_PUBLIC_SUPABASE_URL and " +
-      "NEXT_PUBLIC_SUPABASE_ANON_KEY to Vercel env vars, then redeploy."
-    );
-  }
-}
+// Server-side: uses service role key (bypasses RLS entirely)
+// Falls back to anon key if service role not set
+export const supabaseAdmin = createClient(
+  URL || "https://placeholder.supabase.co",
+  SERVICE_KEY || ANON_KEY || "placeholder"
+);
