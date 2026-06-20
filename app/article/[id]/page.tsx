@@ -7,6 +7,9 @@ import {
   ExternalLink, Share2, BookOpen, AlertCircle, RefreshCw,
 } from "lucide-react";
 import Navbar from "../../../components/ui/Navbar";
+import Comments from "../../../components/social/Comments";
+import Reactions from "../../../components/social/Reactions";
+import FollowButton from "../../../components/social/FollowButton";
 import { useAuth, EXPLORER_URL } from "../../../lib/auth";
 import { payForArticle, canAfford, formatUsdc, getBalance, PaymentError } from "../../../lib/pay";
 import { ethers } from "ethers";
@@ -352,6 +355,21 @@ export default function ArticlePage() {
               <Link href="/explore" className="btn btn-secondary btn-sm">Browse More</Link>
               <Link href={`/profile/${article.authorAddress}`} className="btn btn-ghost btn-sm">View Author</Link>
             </div>
+          {/* ── Social section ── */}
+          <div style={{ marginTop:48 }}>
+            <Reactions articleId={article.id}/>
+            <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", padding:"20px 0", borderTop:"1px solid var(--border)", borderBottom:"1px solid var(--border)", margin:"24px 0" }}>
+              <div style={{ display:"flex", alignItems:"center", gap:12 }}>
+                <div style={{ width:44, height:44, borderRadius:"50%", background:`linear-gradient(135deg,hsl(${parseInt(article.authorAddress.slice(2,4)||"0",16)*1.4}deg,65%,55%),hsl(${parseInt(article.authorAddress.slice(4,6)||"0",16)*1.4}deg,55%,45%))`, flexShrink:0 }}/>
+                <div>
+                  <div style={{ fontSize:12, fontWeight:700, color:"var(--text)", fontFamily:"Outfit,sans-serif" }}>{article.authorShort}</div>
+                  <div style={{ fontSize:11, color:"var(--text-4)", marginTop:1 }}>Article author</div>
+                </div>
+              </div>
+              {!isAuthor && <FollowButton targetAddress={article.authorAddress}/>}
+            </div>
+            <Comments articleId={article.id}/>
+          </div>
           </>
         )}
       </div>

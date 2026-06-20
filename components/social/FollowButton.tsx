@@ -7,7 +7,7 @@ import { UserPlus, UserCheck, UserMinus } from "lucide-react";
 interface Props { targetAddress: string; }
 
 export default function FollowButton({ targetAddress }: Props) {
-  const { address, isAuth } = useAuth();
+  const { address, isAuth, requireAuth } = useAuth();
   const [following,  setFollowing]  = useState(false);
   const [followers,  setFollowers]  = useState(0);
   const [hovering,   setHovering]   = useState(false);
