@@ -58,7 +58,7 @@ export default function ResearchPage() {
     if (!address) return;
     setSaving(true);
     try {
-      const payload = { authorAddress:address, title, sections, references, keywords, status };
+      const payload = { authorAddress:address, title, sections, refs, keywords, status };
       const url     = draftId ? "/api/drafts/" + draftId : "/api/drafts";
       const method  = draftId ? "PUT" : "POST";
       const r = await fetch(url, { method, headers:{"Content-Type":"application/json"}, body:JSON.stringify(payload) });
@@ -67,7 +67,7 @@ export default function ResearchPage() {
       setLastSaved(new Date());
     } catch {}
     setSaving(false);
-  }, [address, title, sections, references, keywords, status, draftId]);
+  }, [address, title, sections, refs, keywords, status, draftId]);
 
   // Auto-save every 30s
   useEffect(() => {

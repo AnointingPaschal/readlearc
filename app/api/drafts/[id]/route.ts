@@ -16,7 +16,7 @@ export async function PUT(req: NextRequest, { params }: C) {
   const { data, error } = await supabaseAdmin.from("drafts").update({
     title:      b.title,
     sections:   b.sections,
-    references: b.references,
+    refs: b.refs,
     keywords:   b.keywords,
     status:     b.status,
     last_saved: new Date().toISOString(),

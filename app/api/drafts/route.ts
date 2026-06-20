@@ -15,7 +15,7 @@ export async function POST(req: NextRequest) {
     author_address: b.authorAddress.toLowerCase(),
     title:    b.title || "Untitled Draft",
     sections: b.sections || [],
-    references: b.references || [],
+    refs: b.references || [],
     keywords: b.keywords || [],
     status:   b.status || "draft",
     last_saved: new Date().toISOString(),

@@ -127,7 +127,7 @@ CREATE TABLE IF NOT EXISTS drafts (
   author_address VARCHAR(50) NOT NULL,
   title          TEXT        DEFAULT '',
   sections       JSONB       DEFAULT '[]',
-  references     JSONB       DEFAULT '[]',
+  refs           JSONB       DEFAULT '[]',
   keywords       TEXT[]      DEFAULT '{}',
   status         VARCHAR(20) DEFAULT 'draft',
   last_saved     TIMESTAMPTZ NOT NULL DEFAULT NOW(),
