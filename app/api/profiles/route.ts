@@ -11,7 +11,7 @@ export async function GET(req: NextRequest) {
 
 export async function POST(req: NextRequest) {
   const b = await req.json();
-  const { walletAddress, username, displayName, bio, website, twitter, avatarColor } = b;
+  const { walletAddress, username, displayName, bio, website, twitter, avatarColor, chainSignature, savedToChain } = b;
   if (!walletAddress) return NextResponse.json({ error:"walletAddress required" }, { status:400 });
 
   const { data, error } = await supabaseAdmin.from("profiles").upsert({
@@ -19,9 +19,11 @@ export async function POST(req: NextRequest) {
     username:       username?.toLowerCase(),
     display_name:   displayName || null,
     bio:            bio || null,
-    website:        website || null,
-    twitter:        twitter || null,
-    avatar_color:   avatarColor || "#6d28d9",
+    website:         website || null,
+    twitter:         twitter || null,
+    avatar_color:    avatarColor || "#6d28d9",
+    chain_signature: chainSignature || null,
+    saved_to_chain:  savedToChain || false,
   }, { onConflict:"wallet_address" }).select().single();
 
   if (error) return NextResponse.json({ error: error.message }, { status:500 });

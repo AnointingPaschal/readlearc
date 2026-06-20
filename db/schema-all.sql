@@ -153,3 +153,67 @@ CREATE TRIGGER profiles_updated_at
   BEFORE UPDATE ON profiles FOR EACH ROW EXECUTE FUNCTION update_updated_at();
 
 SELECT 'Schema ready! All tables created.' AS status;
+
+-- ── Article AI analysis ───────────────────────────────────────────
+CREATE TABLE IF NOT EXISTS article_analysis (
+  article_id         INTEGER PRIMARY KEY REFERENCES articles(id) ON DELETE CASCADE,
+  plagiarism_score   INTEGER DEFAULT 0,     -- 0-100 (100 = definitely plagiarized)
+  ai_score           INTEGER DEFAULT 0,     -- 0-100 (100 = definitely AI-generated)
+  quality_score      INTEGER DEFAULT 0,     -- 0-100 (100 = excellent quality)
+  originality_score  INTEGER DEFAULT 0,     -- 0-100 (100 = highly original)
+  plagiarism_notes   TEXT,
+  ai_notes           TEXT,
+  quality_notes      TEXT,
+  recommendation     VARCHAR(20) DEFAULT 'pending', -- approve/reject/review
+  analyzed_at        TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+ALTER TABLE article_analysis DISABLE ROW LEVEL SECURITY;
+
+-- ── Earnings (tracks money owed to writers) ───────────────────────
+CREATE TABLE IF NOT EXISTS earnings (
+  id             SERIAL       PRIMARY KEY,
+  writer_address VARCHAR(50)  NOT NULL,
+  article_id     INTEGER      REFERENCES articles(id) ON DELETE SET NULL,
+  reader_address VARCHAR(50)  NOT NULL,
+  gross_amount   NUMERIC(18,6) NOT NULL,  -- what reader paid
+  writer_amount  NUMERIC(18,6) NOT NULL,  -- writer's share (85%)
+  tx_hash        VARCHAR(100),
+  period         VARCHAR(7),              -- YYYY-MM (payout period)
+  status         VARCHAR(20) DEFAULT 'pending', -- pending/paid
+  created_at     TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS idx_earnings_writer ON earnings(writer_address);
+CREATE INDEX IF NOT EXISTS idx_earnings_status ON earnings(status);
+ALTER TABLE earnings DISABLE ROW LEVEL SECURITY;
+
+-- ── Payouts (processed payout records) ───────────────────────────
+CREATE TABLE IF NOT EXISTS payouts (
+  id             SERIAL       PRIMARY KEY,
+  writer_address VARCHAR(50)  NOT NULL,
+  amount         NUMERIC(18,6) NOT NULL,
+  tx_hash        VARCHAR(100),
+  period         VARCHAR(7),
+  processed_by   VARCHAR(50),
+  processed_at   TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+ALTER TABLE payouts DISABLE ROW LEVEL SECURITY;
+
+-- ── Notifications ─────────────────────────────────────────────────
+CREATE TABLE IF NOT EXISTS notifications (
+  id           SERIAL       PRIMARY KEY,
+  user_address VARCHAR(50)  NOT NULL,
+  type         VARCHAR(30)  NOT NULL,  -- comment/reaction/follow/payout/article_approved
+  title        TEXT,
+  body         TEXT,
+  link         TEXT,
+  read         BOOLEAN DEFAULT false,
+  created_at   TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS idx_notifications_user ON notifications(user_address);
+ALTER TABLE notifications DISABLE ROW LEVEL SECURITY;
+
+SELECT 'Schema v2 additions complete' AS status;
+
+-- Add blockchain verification to profiles (run if profiles table already exists)
+ALTER TABLE profiles ADD COLUMN IF NOT EXISTS saved_to_chain  BOOLEAN DEFAULT false;
+ALTER TABLE profiles ADD COLUMN IF NOT EXISTS chain_signature TEXT;

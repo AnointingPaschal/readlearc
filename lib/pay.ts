@@ -12,6 +12,9 @@ import { ethers } from "ethers";
 import { USDC_ADDR, USDC_ABI } from "./internal-wallet";
 import { CONTRACT_ADDRESS, CONTRACT_ABI } from "./auth";
 
+export const TREASURY_ADDRESS = process.env.NEXT_PUBLIC_TREASURY_ADDRESS || "";
+export const WRITER_PCT = 0.85;  // 85% to writer (held in treasury, paid monthly)
+
 export interface PayResult {
   txHash:  string;
   content: string | null;
@@ -71,10 +74,13 @@ export async function payForArticle(
     );
   }
 
-  // ── Route 1: Direct USDC transfer (no contract needed) ───────
+  // ── Route 1: Direct USDC transfer → to TREASURY (no contract needed) ──
   if (!CONTRACT_ADDRESS) {
+    // Send full payment to treasury wallet. Writer earnings are tracked in DB
+    // and paid out monthly by admin.
+    const recipient = TREASURY_ADDRESS || writer; // fallback to writer if no treasury set
     try {
-      const tx = await usdc.transfer(writer, priceWei);
+      const tx = await usdc.transfer(ethers.getAddress(recipient), priceWei);
       const receipt = await tx.wait();
       if (!receipt || receipt.status === 0) throw new PaymentError("Transaction reverted");
       return { txHash: tx.hash, content: null };

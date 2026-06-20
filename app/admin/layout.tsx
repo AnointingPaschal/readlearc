@@ -35,7 +35,8 @@ const NAV = [
     { href:"/admin/ai/prompts",   icon:FileText,label:"Prompts"      },
   ]},
   { label:"Site",      items:[
-    { href:"/admin/settings",      icon:DollarSign,label:"Payment Settings" },
+    { href:"/admin/earnings",       icon:DollarSign,  label:"Earnings & Payouts" },
+    { href:"/admin/settings",      icon:Settings,   label:"Payment Settings" },
     { href:"/admin/settings/branding", icon:Palette,  label:"Brand & Colors"  },
     { href:"/admin/site",          icon:Settings, label:"Site Settings"   },
     { href:"/admin/site/branding", icon:Palette,  label:"Branding" },
