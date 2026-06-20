@@ -1,7 +1,6 @@
 "use client";
 import { useState, useRef, useCallback } from "react";
 import Link from "next/link";
-import { ethers } from "ethers";
 import {
   ArrowLeft, Bold, Italic, Heading2, List, Quote, Code2, Eye,
   EyeOff, Send, DollarSign, Clock, CheckCircle2, AlertCircle,
@@ -11,7 +10,7 @@ import Navbar from "../../components/ui/Navbar";
 import SetupBanner from "../../components/ui/SetupBanner";
 import ConnectGate from "../../components/ui/ConnectGate";
 import { useWallet } from "../../lib/wallet";
-import { CONTRACT_ADDRESS, CONTRACT_ABI, USDC_ADDRESS, EXPLORER_URL, IS_CONFIGURED } from "../../lib/chain";
+import { EXPLORER_URL, dbPublishArticle } from "../../lib/chain";
 
 const CATS = ["Web3","Development","Blockchain","Economics","Research","Guide","AI","DeFi","Culture","Opinion"];
 
@@ -90,33 +89,18 @@ export default function WritePage() {
   ];
 
   async function publish() {
-    if (!signer || !IS_CONFIGURED || !allDone) return;
+    if (!allDone || !address) return;
     setPublishing(true); setError("");
     try {
-      const c          = new ethers.Contract(CONTRACT_ADDRESS, CONTRACT_ABI, signer);
-      const priceUnits = ethers.parseUnits(price.toFixed(6), 6);
-      setStep("Sign transaction in wallet…");
-      const tx = await c.publishArticle(
-        title.trim(), blurb.trim(), body.trim(),
-        priceUnits, category, readTime, isResearch
-      );
-      setStep("Confirming on Arc Testnet…");
-      const receipt = await tx.wait();
-      setTxHash(tx.hash);
-
-      // Parse article ID from ArticlePublished event
-      try {
-        const iface  = new ethers.Interface(["event ArticlePublished(uint256 indexed id,address indexed author,string title,uint256 price)"]);
-        const parsed = receipt.logs.map((l: any) => { try { return iface.parseLog(l); } catch { return null; } }).find(Boolean);
-        if (parsed) setArticleId(parsed.args[0].toString());
-      } catch {}
-
+      setStep("Saving to database…");
+      const result = await dbPublishArticle({
+        title: title.trim(), blurb: blurb.trim(), content: body.trim(),
+        price, category, readTime, isResearch, authorAddress: address,
+      });
+      if (result?.id) setArticleId(result.id);
       setPublished(true);
     } catch (e: any) {
-      const msg = e.reason || e.message || "";
-      if (msg.includes("user rejected") || msg.includes("denied")) setError("Transaction cancelled.");
-      else if (msg.includes("no matching fragment")) setError("ABI mismatch — please redeploy with the new contract.");
-      else setError(msg.slice(0, 180));
+      setError(e.message?.slice(0, 200) || "Failed to publish");
     } finally { setPublishing(false); setStep(""); }
   }
 
@@ -144,7 +128,7 @@ export default function WritePage() {
               {preview ? <><EyeOff size={13}/>Edit</> : <><Eye size={13}/>Preview</>}
             </button>
             <button onClick={publish}
-              disabled={publishing || published || !allDone || !IS_CONFIGURED}
+              disabled={publishing || published || !allDone || !address}
               className="btn btn-primary btn-sm"
               style={{ fontWeight:700, minWidth:140 }}>
               {publishing
@@ -368,14 +352,14 @@ export default function WritePage() {
                     </div>
                   ))}
                 </div>
-                {allDone && IS_CONFIGURED && !published && (
+                {allDone && address && !published && (
                   <button onClick={publish} disabled={publishing} className="btn btn-primary" style={{ marginTop:14, width:"100%", justifyContent:"center", fontWeight:700, fontSize:13 }}>
                     {publishing ? <><div style={{ width:12,height:12,border:"2px solid rgba(255,255,255,.3)",borderTopColor:"white",borderRadius:"50%" }} className="spin"/>Publishing…</> : <><Send size={13}/>Publish to Arc</>}
                   </button>
                 )}
-                {!IS_CONFIGURED && (
+                {!address && (
                   <div style={{ marginTop:10, fontSize:11, color:"#dc2626", textAlign:"center", lineHeight:1.5 }}>
-                    Set contract env vars in Vercel first
+                    Connect wallet first
                   </div>
                 )}
               </div>

@@ -308,3 +308,102 @@ export async function fetchWalletHistory(address: string, provider?: ethers.Prov
     return results.sort((a, b) => b.blockNumber - a.blockNumber);
   } catch { return []; }
 }
+
+// ─── Database-backed article fetching ─────────────────────────────
+// These replace the on-chain versions for content management.
+// Payments still go through USDC on Arc blockchain.
+
+export type DBArticle = {
+  id: string; title: string; blurb: string; content?: string;
+  price: string; priceRaw?: string; category: string; readTime: number;
+  isResearch: boolean; authorAddress: string; authorShort: string;
+  status: string; featured: boolean; reads: number; timestamp: number;
+  hasPaid?: boolean;
+};
+
+export async function dbFetchArticles(opts?: {
+  limit?: number; category?: string; author?: string;
+  search?: string; featured?: boolean;
+}): Promise<DBArticle[]> {
+  const p = new URLSearchParams();
+  if (opts?.limit)    p.set("limit",    String(opts.limit));
+  if (opts?.category && opts.category !== "All") p.set("category", opts.category);
+  if (opts?.author)   p.set("author",   opts.author);
+  if (opts?.search)   p.set("q",        opts.search);
+  if (opts?.featured) p.set("featured", "1");
+  try {
+    const res = await fetch(`/api/articles?${p}`);
+    if (!res.ok) return [];
+    return res.json();
+  } catch { return []; }
+}
+
+export async function dbFetchArticle(id: string, readerAddress?: string): Promise<DBArticle | null> {
+  const p = new URLSearchParams();
+  if (readerAddress) p.set("reader", readerAddress);
+  try {
+    const res = await fetch(`/api/articles/${id}?${p}`);
+    if (!res.ok) return null;
+    return res.json();
+  } catch { return null; }
+}
+
+export async function dbRecordPayment(
+  articleId: string, readerAddress: string, txHash?: string, amountPaid?: string
+): Promise<{ ok: boolean; content?: string }> {
+  try {
+    const res = await fetch(`/api/articles/${articleId}/pay`, {
+      method: "POST", headers: { "Content-Type":"application/json" },
+      body: JSON.stringify({ readerAddress, txHash, amountPaid }),
+    });
+    return res.json();
+  } catch { return { ok: false }; }
+}
+
+export async function dbCheckPaid(articleId: string, readerAddress: string): Promise<boolean> {
+  try {
+    const res = await fetch(`/api/articles/${articleId}/pay?reader=${readerAddress}`);
+    const d   = await res.json();
+    return d.paid === true;
+  } catch { return false; }
+}
+
+export async function dbPublishArticle(data: {
+  title: string; blurb: string; content: string; price: number;
+  category: string; readTime: number; isResearch: boolean; authorAddress: string;
+}): Promise<DBArticle | null> {
+  try {
+    const res = await fetch("/api/articles", {
+      method:"POST", headers:{"Content-Type":"application/json"},
+      body: JSON.stringify(data),
+    });
+    if (!res.ok) throw new Error(await res.text());
+    return res.json();
+  } catch (e: any) { throw e; }
+}
+
+export async function dbUpdateArticle(id: string, data: Partial<{
+  title: string; blurb: string; content: string; price: number;
+  category: string; readTime: number; isResearch: boolean;
+}>, authorAddress: string): Promise<void> {
+  const res = await fetch(`/api/articles/${id}`, {
+    method:"PUT", headers:{"Content-Type":"application/json"},
+    body: JSON.stringify({ ...data, authorAddress }),
+  });
+  if (!res.ok) throw new Error(await res.text());
+}
+
+export async function dbDeleteArticle(id: string, authorAddress: string): Promise<void> {
+  const res = await fetch(`/api/articles/${id}`, {
+    method:"DELETE", headers:{"Content-Type":"application/json"},
+    body: JSON.stringify({ authorAddress }),
+  });
+  if (!res.ok) throw new Error(await res.text());
+}
+
+export async function adminUpdateStatus(id: string, status: string, featured?: boolean): Promise<void> {
+  await fetch(`/api/admin/articles/${id}`, {
+    method:"PATCH", headers:{"Content-Type":"application/json"},
+    body: JSON.stringify({ status, ...(featured !== undefined && { featured }) }),
+  });
+}

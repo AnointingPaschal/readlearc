@@ -288,3 +288,6 @@ textarea.admin-input { height:auto; resize:vertical; line-height:1.55; padding:1
 /* Show only on mobile */
 .hide-desktop { display:flex !important; }
 @media(min-width:641px) { .hide-desktop { display:none !important; } }
+
+/* When network guard bar is showing, push content down */
+.with-network-bar { padding-top:calc(var(--header-h) + 44px) !important; }
