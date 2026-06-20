@@ -1,8 +1,7 @@
 -- Readlearc PostgreSQL Schema
--- Run this in your cPanel PostgreSQL database once
+-- Run each statement ONE AT A TIME in phpPgAdmin (paste + Execute)
 
-CREATE EXTENSION IF NOT EXISTS "pgcrypto";
-
+-- 1. Articles
 CREATE TABLE IF NOT EXISTS articles (
   id             SERIAL PRIMARY KEY,
   title          TEXT NOT NULL,
@@ -20,6 +19,7 @@ CREATE TABLE IF NOT EXISTS articles (
   updated_at     TIMESTAMPTZ   NOT NULL DEFAULT NOW()
 );
 
+-- 2. Read receipts
 CREATE TABLE IF NOT EXISTS read_receipts (
   id             SERIAL      PRIMARY KEY,
   article_id     INTEGER     NOT NULL REFERENCES articles(id) ON DELETE CASCADE,
@@ -30,17 +30,19 @@ CREATE TABLE IF NOT EXISTS read_receipts (
   UNIQUE(article_id, reader_address)
 );
 
+-- 3. Comments (uses SERIAL instead of UUID — no pgcrypto needed)
 CREATE TABLE IF NOT EXISTS comments (
-  id             UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
+  id             SERIAL      PRIMARY KEY,
   article_id     INTEGER     NOT NULL REFERENCES articles(id) ON DELETE CASCADE,
   author_address VARCHAR(42) NOT NULL,
   author_name    VARCHAR(100),
   content        TEXT        NOT NULL,
-  parent_id      UUID        REFERENCES comments(id) ON DELETE CASCADE,
+  parent_id      INTEGER     REFERENCES comments(id) ON DELETE CASCADE,
   edited         BOOLEAN     NOT NULL DEFAULT FALSE,
   created_at     TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
+-- 4. Reactions
 CREATE TABLE IF NOT EXISTS reactions (
   id             SERIAL      PRIMARY KEY,
   article_id     INTEGER     NOT NULL REFERENCES articles(id) ON DELETE CASCADE,
@@ -50,6 +52,7 @@ CREATE TABLE IF NOT EXISTS reactions (
   UNIQUE(article_id, address)
 );
 
+-- 5. Follows
 CREATE TABLE IF NOT EXISTS follows (
   id                SERIAL      PRIMARY KEY,
   follower_address  VARCHAR(42) NOT NULL,
@@ -58,9 +61,16 @@ CREATE TABLE IF NOT EXISTS follows (
   UNIQUE(follower_address, following_address)
 );
 
-CREATE OR REPLACE FUNCTION update_updated_at() RETURNS TRIGGER AS $$
-BEGIN NEW.updated_at = NOW(); RETURN NEW; END; $$ LANGUAGE plpgsql;
+-- 6. Auto-update function
+CREATE OR REPLACE FUNCTION update_updated_at()
+RETURNS TRIGGER AS $$
+BEGIN NEW.updated_at = NOW(); RETURN NEW; END;
+$$ LANGUAGE plpgsql;
 
+-- 7. Drop old trigger (if exists)
 DROP TRIGGER IF EXISTS articles_updated_at ON articles;
-CREATE TRIGGER articles_updated_at BEFORE UPDATE ON articles
+
+-- 8. Create trigger
+CREATE TRIGGER articles_updated_at
+  BEFORE UPDATE ON articles
   FOR EACH ROW EXECUTE FUNCTION update_updated_at();
