@@ -1,45 +1,46 @@
 
 import { NextRequest, NextResponse } from "next/server";
-import { sql } from "../../../../lib/db";
+import { supabase } from "../../../../lib/supabase";
 
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
-  const status   = searchParams.get("status");
-  const limit    = Math.min(parseInt(searchParams.get("limit")||"100"), 500);
-  const search   = searchParams.get("q");
+  const status = searchParams.get("status");
+  const limit  = Math.min(parseInt(searchParams.get("limit")||"200"), 500);
+  const search = searchParams.get("q");
 
-  let where = "WHERE 1=1";
-  const params: any[] = [];
-  let p = 1;
+  try {
+    let q = supabase.from("articles").select(
+      "id,title,blurb,price,category,read_time,is_research,author_address,status,featured,reads,created_at"
+    );
+    if (status && status !== "all") q = q.eq("status", status);
+    if (search) q = q.or(`title.ilike.%${search}%,blurb.ilike.%${search}%`);
 
-  if (status && status !== "all") { where += ` AND a.status=$${p++}`; params.push(status); }
-  if (search) { where += ` AND (a.title ILIKE $${p++} OR a.blurb ILIKE $${p++})`; params.push(`%${search}%`, `%${search}%`); p--; p++; }
-  params.push(limit);
+    const { data, error } = await q.order("created_at", { ascending:false }).limit(limit);
+    if (error) throw new Error(error.message);
 
-  const { rows } = await sql(`
-    SELECT a.id, a.title, a.blurb, a.price::float, a.category,
-           a.read_time, a.is_research, a.author_address,
-           a.status, a.featured, a.reads,
-           EXTRACT(EPOCH FROM a.created_at)::int AS timestamp,
-           (SELECT COUNT(*) FROM read_receipts r WHERE r.article_id=a.id) AS paid_count
-    FROM articles a ${where}
-    ORDER BY a.created_at DESC LIMIT $${p}
-  `, params);
+    // Get paid counts separately
+    const ids = (data||[]).map(a => a.id);
+    const { data: receipts } = await supabase.from("read_receipts").select("article_id").in("article_id", ids);
+    const paidMap: Record<number,number> = {};
+    for (const r of receipts||[]) paidMap[r.article_id] = (paidMap[r.article_id]||0)+1;
 
-  return NextResponse.json(rows.map((r: any) => ({
-    id:            String(r.id),
-    title:         r.title,
-    blurb:         r.blurb,
-    price:         Number(r.price).toFixed(6),
-    category:      r.category,
-    readTime:      r.read_time,
-    isResearch:    r.is_research,
-    authorAddress: r.author_address,
-    authorShort:   r.author_address.slice(0,6)+"…"+r.author_address.slice(-4),
-    status:        r.status,
-    featured:      r.featured,
-    reads:         r.reads,
-    paidCount:     Number(r.paid_count),
-    timestamp:     r.timestamp,
-  })));
+    return NextResponse.json((data||[]).map(r => ({
+      id:            String(r.id),
+      title:         r.title,
+      blurb:         r.blurb,
+      price:         Number(r.price).toFixed(6),
+      category:      r.category,
+      readTime:      r.read_time,
+      isResearch:    r.is_research,
+      authorAddress: r.author_address,
+      authorShort:   r.author_address.slice(0,6)+"…"+r.author_address.slice(-4),
+      status:        r.status,
+      featured:      r.featured,
+      reads:         r.reads,
+      paidCount:     paidMap[r.id]||0,
+      timestamp:     Math.floor(new Date(r.created_at).getTime()/1000),
+    })));
+  } catch (e: any) {
+    return NextResponse.json({ error: e.message }, { status:500 });
+  }
 }
