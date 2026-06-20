@@ -29,7 +29,7 @@ export async function GET(req: NextRequest) {
 
   await run("drop old trigger", `DROP TRIGGER IF EXISTS articles_updated_at ON articles`);
 
-  await run("articles trigger", `CREATE TRIGGER articles_updated_at BEFORE UPDATE ON articles FOR EACH ROW EXECUTE FUNCTION update_updated_at()`);
+  await run("articles trigger", `CREATE TRIGGER articles_updated_at BEFORE UPDATE ON articles FOR EACH ROW EXECUTE PROCEDURE update_updated_at()`);
 
   const { rows } = await sql(`SELECT table_name FROM information_schema.tables WHERE table_schema='public' ORDER BY table_name`).catch(() => ({ rows: [] as any[] }));
 

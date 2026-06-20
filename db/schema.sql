@@ -73,4 +73,4 @@ DROP TRIGGER IF EXISTS articles_updated_at ON articles;
 -- 8. Create trigger
 CREATE TRIGGER articles_updated_at
   BEFORE UPDATE ON articles
-  FOR EACH ROW EXECUTE FUNCTION update_updated_at();
+  FOR EACH ROW EXECUTE PROCEDURE update_updated_at();
