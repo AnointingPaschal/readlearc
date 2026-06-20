@@ -6,7 +6,7 @@ import { Shield, AlertTriangle, CheckCircle2, RefreshCw, ArrowUpRight, Key, User
 import { CONTRACT_ADDRESS, CONTRACT_ABI, EXPLORER_URL, readProvider } from "../../../lib/chain";
 
 export default function SecurityPage() {
-  const { address, signer, isConnected } = useWallet();
+  const { address, signer, connected } = useWallet();
 
   const [contractOwner,  setContractOwner]  = useState("");
   const [isOwner,        setIsOwner]        = useState(false);
@@ -26,14 +26,14 @@ export default function SecurityPage() {
       // owner() is a public state variable
       const owner = await c.owner();
       setContractOwner(owner);
-      if (isConnected && address) {
+      if (connected && address) {
         setIsOwner(address.toLowerCase() === owner.toLowerCase());
       }
     } catch (e) { console.error(e); }
     finally { setLoading(false); }
   }
 
-  useEffect(() => { fetchOwner(); }, [isConnected, address]);
+  useEffect(() => { fetchOwner(); }, [connected, address]);
 
   async function handleTransfer() {
     if (!signer || !newOwner || !CONTRACT_ADDRESS) return;
@@ -67,7 +67,7 @@ export default function SecurityPage() {
       {/* Wallet status */}
       <div className="card" style={{ padding: "18px 20px" }}>
         <h2 style={{ fontSize: 13, fontWeight: 700, color: "var(--text)", marginBottom: 14 }}>Admin Access</h2>
-        {!isConnected ? (
+        {!connected ? (
           <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "12px 14px", background: "rgba(220,38,38,0.06)", border: "1px solid rgba(220,38,38,0.18)", borderRadius: "var(--radius)" }}>
             <AlertTriangle size={15} style={{ color: "#dc2626", flexShrink: 0 }} />
             <span style={{ fontSize: 13, color: "#dc2626" }}>Connect your owner wallet to manage security settings.</span>

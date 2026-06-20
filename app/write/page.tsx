@@ -27,7 +27,7 @@ function renderPreview(text: string) {
 }
 
 export default function WritePage() {
-  const { isConnected, address } = useWallet();
+  const { connected, address } = useWallet();
 
   const [title,      setTitle]      = useState("");
   const [blurb,      setBlurb]      = useState("");
@@ -106,7 +106,7 @@ export default function WritePage() {
     } finally { setPublishing(false); setStep(""); }
   }
 
-  if (!isConnected) return (
+  if (!connected) return (
     <div style={{ minHeight:"100vh", background:"var(--bg)" }}>
       <SetupBanner/><Navbar/>
       <ConnectGate title="Connect to write" body="Connect your wallet to publish articles on Readlearc." icon={PenLine}/>

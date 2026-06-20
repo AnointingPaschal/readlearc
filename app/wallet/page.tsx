@@ -12,8 +12,8 @@ import ConnectGate from "../../components/ui/ConnectGate";
 import { fetchWalletHistory, USDC_ADDRESS, USDC_ABI, EXPLORER_URL } from "../../lib/chain";
 
 export default function WalletPage() {
-  const { address, signer, isConnected, usdcBalance, refreshBalance, provider } = useWallet();
-  const shortAddress = address ? `${address.slice(0,6)}…${address.slice(-4)}` : "";
+  const { address, signer, connected, balance, refresh, provider } = useWallet();
+  const short = address ? `${address.slice(0,6)}…${address.slice(-4)}` : "";
   const [copied,    setCopied]    = useState(false);
   const [txHistory, setTxHistory] = useState<any[]>([]);
   const [loading,   setLoading]   = useState(true);
@@ -27,13 +27,13 @@ export default function WalletPage() {
   const [sendHash,  setSendHash]  = useState("");
 
   const loadHistory = useCallback(async () => {
-    if (!isConnected || !address) return;
+    if (!connected || !address) return;
     setRefreshing(true);
     const hist = await fetchWalletHistory(address, provider||undefined);
     setTxHistory(hist); setLoading(false); setRefreshing(false);
-  }, [isConnected, address, provider]);
+  }, [connected, address, provider]);
 
-  useEffect(() => { if (isConnected) loadHistory(); else setLoading(false); }, [loadHistory]);
+  useEffect(() => { if (connected) loadHistory(); else setLoading(false); }, [loadHistory]);
 
   function copy() { navigator.clipboard.writeText(address); setCopied(true); setTimeout(()=>setCopied(false),2000); }
 
@@ -50,12 +50,12 @@ export default function WalletPage() {
       await tx.wait();
       setSendHash(tx.hash); setSendStep("Sent!");
       setSendTo(""); setSendAmt("");
-      await refreshBalance(); loadHistory();
+      await refresh(); loadHistory();
     } catch(e: any) { setSendErr(e.reason||e.message); }
     finally { setSending(false); }
   }
 
-  if (!isConnected) return (
+  if (!connected) return (
     <div style={{ minHeight:"100vh", background:"var(--bg)" }}>
       <SetupBanner/><Navbar/>
       <ConnectGate title="My Wallet" body="Connect your MetaMask or EIP-1193 wallet to view your USDC balance and transaction history."/>
@@ -93,9 +93,9 @@ export default function WalletPage() {
                   <div style={{ display:"flex", alignItems:"center", gap:7, background:"var(--bg-alt)", border:"1.5px solid var(--border)", borderRadius:"var(--r)", padding:"10px 13px" }}>
                     <span style={{ fontWeight:700, color:"var(--text-4)" }}>$</span>
                     <input type="number" step="0.01" placeholder="0.00" value={sendAmt} onChange={e=>setSendAmt(e.target.value)} style={{ flex:1, border:"none", outline:"none", background:"transparent", fontSize:20, fontWeight:900, fontFamily:"Outfit,sans-serif", color:"#059669" }}/>
-                    <button onClick={() => setSendAmt(usdcBalance)} style={{ fontSize:10, fontWeight:700, color:"var(--brand)", background:"var(--brand-muted)", border:"1px solid var(--border-brand)", borderRadius:4, padding:"2px 7px", cursor:"pointer" }}>MAX</button>
+                    <button onClick={() => setSendAmt(balance)} style={{ fontSize:10, fontWeight:700, color:"var(--brand)", background:"var(--brand-muted)", border:"1px solid var(--border-brand)", borderRadius:4, padding:"2px 7px", cursor:"pointer" }}>MAX</button>
                   </div>
-                  <div style={{ fontSize:10, color:"var(--text-4)", marginTop:3 }}>Available: ${usdcBalance} USDC</div>
+                  <div style={{ fontSize:10, color:"var(--text-4)", marginTop:3 }}>Available: ${balance} USDC</div>
                 </div>
                 {sendErr && <div style={{ fontSize:11, color:"#dc2626" }}>{sendErr}</div>}
                 <button onClick={handleSend} disabled={sending||!sendTo||!sendAmt} className="btn btn-primary" style={{ width:"100%", justifyContent:"center", fontWeight:700 }}>
@@ -118,7 +118,7 @@ export default function WalletPage() {
           <div style={{ position:"relative" }}>
             <div style={{ fontSize:11, color:"rgba(255,255,255,.65)", fontWeight:600, textTransform:"uppercase", letterSpacing:".06em", marginBottom:5 }}>Circle USDC · Arc Testnet</div>
             <div style={{ fontFamily:"Outfit,sans-serif", fontSize:"clamp(36px,7vw,54px)", fontWeight:900, color:"white", lineHeight:1, marginBottom:4, letterSpacing:"-0.03em" }}>
-              ${usdcBalance} <span style={{ fontSize:".42em", fontWeight:600, opacity:.75 }}>USDC</span>
+              ${balance} <span style={{ fontSize:".42em", fontWeight:600, opacity:.75 }}>USDC</span>
             </div>
             <div style={{ display:"flex", alignItems:"center", gap:10, marginTop:14, flexWrap:"wrap" }}>
               <span style={{ fontFamily:"JetBrains Mono,monospace", fontSize:11, color:"rgba(255,255,255,.6)" }}>{address.slice(0,14)}…{address.slice(-6)}</span>

@@ -14,7 +14,7 @@ const STATUS_COLOR: Record<string, string> = {
 };
 
 export default function CreatorPage() {
-  const { address, shortAddress, isConnected, usdcBalance, signer, refreshBalance } = useWallet();
+  const { address, short, connected, balance, signer, refresh } = useWallet();
 
   const [articles,  setArticles]  = useState<DBArticle[]>([]);
   const [loading,   setLoading]   = useState(true);
@@ -43,7 +43,7 @@ export default function CreatorPage() {
     setLoading(false); setRefreshing(false);
   }, [address]);
 
-  useEffect(() => { if (isConnected) load(); else setLoading(false); }, [load, isConnected]);
+  useEffect(() => { if (connected) load(); else setLoading(false); }, [load, connected]);
 
   async function saveEdit(id: string) {
     setSaving(true);
@@ -83,12 +83,12 @@ export default function CreatorPage() {
       const tx   = await usdc.transfer(sendTo, ethers.parseUnits(sendAmt, dec));
       await tx.wait();
       setSendHash(tx.hash); setSendTo(""); setSendAmt("");
-      await refreshBalance();
+      await refresh();
     } catch (e: any) { setSendErr(e.reason || e.message); }
     finally { setSending(false); }
   }
 
-  if (!isConnected) return (
+  if (!connected) return (
     <div style={{ minHeight:"100vh", background:"var(--bg)" }}>
       <SetupBanner/><Navbar/>
       <ConnectGate title="Creator Studio" body="Connect your wallet to manage your articles and earnings." icon={Zap}/>
@@ -109,7 +109,7 @@ export default function CreatorPage() {
         <div style={{ display:"flex", alignItems:"flex-start", justifyContent:"space-between", marginBottom:22, flexWrap:"wrap", gap:12 }}>
           <div>
             <h1 style={{ fontFamily:"Outfit,sans-serif", fontSize:"clamp(20px,4vw,28px)", fontWeight:900, color:"var(--text)", letterSpacing:"-0.02em" }}>Creator Studio</h1>
-            <p style={{ color:"var(--text-4)", fontSize:12, marginTop:3 }}>{shortAddress} · Arc Testnet</p>
+            <p style={{ color:"var(--text-4)", fontSize:12, marginTop:3 }}>{short} · Arc Testnet</p>
           </div>
           <div style={{ display:"flex", gap:8, flexWrap:"wrap" }}>
             <button onClick={load} disabled={refreshing} style={{ width:34,height:34,borderRadius:"50%",border:"1.5px solid var(--border)",background:"var(--bg-alt)",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",color:"var(--text-3)" }}>
@@ -126,7 +126,7 @@ export default function CreatorPage() {
             { label:"Pending",     value:pending.toString(),           color:"#d97706"      },
             { label:"Total Reads", value:totalReads.toLocaleString(),  color:"#0284c7"      },
             { label:"Est. Earned", value:`$${totalEarned.toFixed(4)}`, color:"var(--accent)"},
-            { label:"USDC Balance",value:`$${usdcBalance}`,            color:"var(--accent)"},
+            { label:"USDC Balance",value:`$${balance}`,            color:"var(--accent)"},
           ].map(k=>(
             <div key={k.label} className="card" style={{ padding:"14px" }}>
               <div style={{ fontFamily:"Outfit,sans-serif", fontSize:"clamp(17px,3vw,22px)", fontWeight:900, color:k.color, lineHeight:1 }}>{k.value}</div>
@@ -223,7 +223,7 @@ export default function CreatorPage() {
                 <Zap size={14} style={{ color:"var(--accent)" }}/>
                 <h3 style={{ fontFamily:"Outfit,sans-serif", fontSize:13, fontWeight:700, color:"var(--text)" }}>USDC Balance</h3>
               </div>
-              <div style={{ fontFamily:"Outfit,sans-serif", fontSize:"clamp(22px,4vw,30px)", fontWeight:900, color:"var(--accent)", lineHeight:1, marginBottom:4 }}>${usdcBalance}</div>
+              <div style={{ fontFamily:"Outfit,sans-serif", fontSize:"clamp(22px,4vw,30px)", fontWeight:900, color:"var(--accent)", lineHeight:1, marginBottom:4 }}>${balance}</div>
               <div style={{ fontSize:10, color:"var(--text-4)", marginBottom:14 }}>Your wallet · earnings go here</div>
 
               {!showSend ? (
@@ -240,7 +240,7 @@ export default function CreatorPage() {
                     <span style={{ fontWeight:700, color:"var(--text-4)", fontSize:12 }}>$</span>
                     <input type="number" step="0.01" placeholder="0.00" value={sendAmt} onChange={e=>setSendAmt(e.target.value)}
                       style={{ flex:1,border:"none",outline:"none",background:"transparent",fontSize:15,fontWeight:700,color:"var(--accent)",fontFamily:"Outfit,sans-serif" }}/>
-                    <button onClick={()=>setSendAmt(usdcBalance)} style={{ fontSize:9,fontWeight:700,color:"var(--brand)",background:"var(--brand-muted)",border:"1px solid var(--brand-border)",borderRadius:4,padding:"2px 6px",cursor:"pointer" }}>MAX</button>
+                    <button onClick={()=>setSendAmt(balance)} style={{ fontSize:9,fontWeight:700,color:"var(--brand)",background:"var(--brand-muted)",border:"1px solid var(--brand-border)",borderRadius:4,padding:"2px 6px",cursor:"pointer" }}>MAX</button>
                   </div>
                   {sendErr  && <div style={{ fontSize:10, color:"#dc2626" }}>{sendErr}</div>}
                   {sendHash && <div style={{ fontSize:10, color:"var(--accent)", fontFamily:"JetBrains Mono,monospace" }}>Sent! {sendHash.slice(0,16)}…</div>}

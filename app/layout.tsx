@@ -12,10 +12,10 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="en" suppressHydrationWarning>
       <head>
         <script dangerouslySetInnerHTML={{ __html:
-          `try{var t=localStorage.getItem('rl-theme');if(t==='dark')document.documentElement.setAttribute('data-theme','dark')}catch(e){}`
+          `try{var t=localStorage.getItem("rl-theme");if(t==="dark")document.documentElement.setAttribute("data-theme","dark")}catch(e){}`
         }}/>
       </head>
-      <body className="antialiased">
+      <body>
         <Providers>{children}</Providers>
       </body>
     </html>

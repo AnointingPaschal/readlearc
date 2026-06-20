@@ -12,24 +12,24 @@ import { fetchReadingHistory, type Article } from "../../lib/chain";
 type HistoryItem = Article & { pricePaid: string; txHash: string; blockNumber: number };
 
 export default function DashboardPage() {
-  const { address, isConnected } = useWallet();
-  const shortAddress = address ? `${address.slice(0,6)}…${address.slice(-4)}` : "";
-  const usdcBalance = "—";
+  const { address, connected } = useWallet();
+  const short = address ? `${address.slice(0,6)}…${address.slice(-4)}` : "";
+  const balance = "—";
   const provider = null;
   const [history,  setHistory]  = useState<HistoryItem[]>([]);
   const [loading,  setLoading]  = useState(true);
   const [refreshing, setRefreshing] = useState(false);
 
   async function load() {
-    if (!isConnected || !address) return;
+    if (!connected || !address) return;
     setRefreshing(true);
     const h = await fetchReadingHistory(address, provider||undefined);
     setHistory(h); setLoading(false); setRefreshing(false);
   }
 
-  useEffect(() => { if (isConnected) load(); else setLoading(false); }, [isConnected, address, provider]);
+  useEffect(() => { if (connected) load(); else setLoading(false); }, [connected, address, provider]);
 
-  if (!isConnected) return (
+  if (!connected) return (
     <div style={{ minHeight:"100vh", background:"var(--bg)" }}>
       <SetupBanner /><Navbar />
       <ConnectGate title="Your Reading Dashboard" body="Connect your wallet to see your reading history, USDC spent, and on-chain read receipts." icon={BookOpen} />
@@ -46,7 +46,7 @@ export default function DashboardPage() {
         <div style={{ display:"flex", alignItems:"flex-start", justifyContent:"space-between", marginBottom:24, flexWrap:"wrap", gap:12 }}>
           <div>
             <h1 style={{ fontFamily:"Outfit,sans-serif", fontSize:"clamp(20px,4vw,28px)", fontWeight:900, color:"var(--text)", letterSpacing:"-0.02em", marginBottom:4 }}>Reading Dashboard</h1>
-            <p style={{ color:"var(--text-4)", fontSize:12 }}>{shortAddress} · your on-chain reading record</p>
+            <p style={{ color:"var(--text-4)", fontSize:12 }}>{short} · your on-chain reading record</p>
           </div>
           <div style={{ display:"flex", gap:8, flexWrap:"wrap" }}>
             <button onClick={load} disabled={refreshing} style={{ width:34,height:34,borderRadius:"50%",border:"1.5px solid var(--border)",background:"var(--bg-alt)",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",color:"var(--text-3)" }}>
@@ -63,7 +63,7 @@ export default function DashboardPage() {
             { label:"Articles Read",  value: loading?"…":history.length.toString(),              color:"var(--brand)" },
             { label:"USDC Spent",     value: loading?"…":`$${totalSpent.toFixed(4)}`,            color:"#d97706"      },
             { label:"Reading Time",   value: loading?"…":`${totalTime}m`,                        color:"#0284c7"      },
-            { label:"USDC Balance",   value: `$${usdcBalance}`,                                  color:"#059669"      },
+            { label:"USDC Balance",   value: `$${balance}`,                                  color:"#059669"      },
           ].map(k => (
             <div key={k.label} className="card" style={{ padding:"16px" }}>
               <div style={{ fontFamily:"Outfit,sans-serif", fontSize:"clamp(18px,4vw,24px)", fontWeight:900, color:k.color, lineHeight:1 }}>{k.value}</div>

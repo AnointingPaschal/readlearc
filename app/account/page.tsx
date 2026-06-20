@@ -21,10 +21,10 @@ function load(addr: string) { try { return JSON.parse(localStorage.getItem(`rl-p
 function save(addr: string, d: any) { localStorage.setItem(`rl-profile-${addr.toLowerCase()}`, JSON.stringify(d)); }
 
 export default function AccountPage() {
-  const { address: _a, isConnected } = useWallet();
+  const { address: _a, connected } = useWallet();
   const address = _a || "";
-  const shortAddress = address ? `${address.slice(0,6)}…${address.slice(-4)}` : "";
-  const usdcBalance = "—";
+  const short = address ? `${address.slice(0,6)}…${address.slice(-4)}` : "";
+  const balance = "—";
   const [name,    setName]    = useState("");
   const [bio,     setBio]     = useState("");
   const [website, setWebsite] = useState("");
@@ -46,7 +46,7 @@ export default function AccountPage() {
     setSaved(true); setDirty(false); setTimeout(()=>setSaved(false),3000);
   }
 
-  if (!isConnected) return (
+  if (!connected) return (
     <div style={{ minHeight:"100vh", background:"var(--bg)" }}>
       <SetupBanner/><Navbar/><ConnectGate title="Account Settings" body="Connect your wallet to edit your public profile. Your wallet address is your on-chain identity."/>
     </div>
@@ -58,7 +58,7 @@ export default function AccountPage() {
       <div style={{ maxWidth:600, margin:"0 auto", padding:"76px 16px 60px" }}>
         <div style={{ marginBottom:24 }}>
           <h1 style={{ fontFamily:"Outfit,sans-serif", fontSize:"clamp(20px,4vw,26px)", fontWeight:900, color:"var(--text)", letterSpacing:"-0.02em", marginBottom:3 }}>Account Settings</h1>
-          <p style={{ color:"var(--text-4)", fontSize:12 }}>Linked to <span style={{ fontFamily:"JetBrains Mono,monospace" }}>{shortAddress}</span></p>
+          <p style={{ color:"var(--text-4)", fontSize:12 }}>Linked to <span style={{ fontFamily:"JetBrains Mono,monospace" }}>{short}</span></p>
         </div>
 
         {/* Identity strip */}
@@ -71,7 +71,7 @@ export default function AccountPage() {
             </div>
           </div>
           <div style={{ textAlign:"right" }}>
-            <div style={{ fontSize:17, fontWeight:900, fontFamily:"Outfit,sans-serif", color:"var(--accent)" }}>${usdcBalance} <span style={{ fontSize:10, fontWeight:600, color:"var(--text-4)" }}>USDC</span></div>
+            <div style={{ fontSize:17, fontWeight:900, fontFamily:"Outfit,sans-serif", color:"var(--accent)" }}>${balance} <span style={{ fontSize:10, fontWeight:600, color:"var(--text-4)" }}>USDC</span></div>
             <Link href="/wallet" style={{ fontSize:11, color:"var(--brand)", textDecoration:"none" }}>Manage wallet →</Link>
           </div>
         </div>

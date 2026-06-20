@@ -6,9 +6,7 @@ import { WalletProvider } from "../lib/wallet";
 export default function Providers({ children }: { children: ReactNode }) {
   return (
     <ThemeProvider>
-      <WalletProvider>
-        {children}
-      </WalletProvider>
+      <WalletProvider>{children}</WalletProvider>
     </ThemeProvider>
   );
 }

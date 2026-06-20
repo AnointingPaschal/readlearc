@@ -1,226 +1,198 @@
 "use client";
 import { createContext, useContext, useState, useEffect, useCallback, ReactNode } from "react";
 import { ethers } from "ethers";
-import { USDC_ADDRESS, USDC_ABI } from "./chain";
 
-// ── Arc Testnet constants ─────────────────────────────────────────
-export const ARC_CHAIN_ID  = 5042002;
-export const ARC_CHAIN_HEX = "0x" + ARC_CHAIN_ID.toString(16); // 0x4cef52
-
-export const ARC_NETWORK_PARAMS = [{
-  chainId:           ARC_CHAIN_HEX,
-  chainName:         "Arc Testnet",
-  nativeCurrency:    { name: "USDC", symbol: "USDC", decimals: 6 },
-  rpcUrls:           ["https://rpc.testnet.arc.network"],
-  blockExplorerUrls: ["https://testnet.arcscan.app"],
-}];
-
-// ── Get window.ethereum safely ────────────────────────────────────
-function getEthereum(): any {
-  if (typeof window === "undefined") return null;
-  return (window as any).ethereum ?? null;
-}
-
-// ── Context types ─────────────────────────────────────────────────
-interface WalletCtx {
-  address:        string;
-  shortAddress:   string;
-  isConnected:    boolean;
-  isWrongNetwork: boolean;
-  chainId:        number | null;
-  usdcBalance:    string;
-  provider:       ethers.BrowserProvider | null;
-  signer:         ethers.JsonRpcSigner   | null;
-  hasWallet:      boolean;
-  connecting:     boolean;
-  connect:        () => Promise<void>;
-  disconnect:     () => void;
-  switchToArc:    () => Promise<void>;
-  refreshBalance: () => Promise<void>;
-}
-
-const defaultCtx: WalletCtx = {
-  address:"", shortAddress:"", isConnected:false, isWrongNetwork:false,
-  chainId:null, usdcBalance:"0.00", provider:null, signer:null,
-  hasWallet:false, connecting:false,
-  connect:async()=>{}, disconnect:()=>{},
-  switchToArc:async()=>{}, refreshBalance:async()=>{},
+// ── Arc Testnet (5042002 = 0x4cef52) ─────────────────────────────
+export const ARC = {
+  chainId:    5042002,
+  chainHex:   "0x4cef52",
+  name:       "Arc Testnet",
+  currency:   { name: "USDC", symbol: "USDC", decimals: 6 },
+  rpc:        "https://rpc.testnet.arc.network",
+  explorer:   "https://testnet.arcscan.app",
 };
 
-const Ctx = createContext<WalletCtx>(defaultCtx);
+const eth = (): any =>
+  typeof window !== "undefined" ? (window as any).ethereum ?? null : null;
+
+// ── Types ─────────────────────────────────────────────────────────
+interface WalletState {
+  address:      string;
+  short:        string;
+  connected:    boolean;
+  wrongNetwork: boolean;
+  chainId:      number | null;
+  balance:      string;          // USDC balance
+  signer:       ethers.JsonRpcSigner | null;
+  provider:     ethers.BrowserProvider | null;
+  hasWallet:    boolean;
+  busy:         boolean;
+}
+interface WalletActions {
+  connect:    () => Promise<void>;
+  disconnect: () => void;
+  addArc:     () => Promise<void>;
+  refresh:    () => Promise<void>;
+}
+
+const defaultState: WalletState = {
+  address:"", short:"", connected:false, wrongNetwork:false,
+  chainId:null, balance:"0.00", signer:null, provider:null,
+  hasWallet:false, busy:false,
+};
+
+const Ctx = createContext<WalletState & WalletActions>({
+  ...defaultState,
+  connect:async()=>{}, disconnect:()=>{}, addArc:async()=>{}, refresh:async()=>{},
+});
+
+// ── USDC contract address ─────────────────────────────────────────
+const USDC_ADDRESS = process.env.NEXT_PUBLIC_USDC_ADDRESS ||
+  "0x3600000000000000000000000000000000000000";
+const USDC_ABI = [
+  "function balanceOf(address) view returns (uint256)",
+  "function decimals() view returns (uint8)",
+  "function transfer(address, uint256) returns (bool)",
+  "function approve(address, uint256) returns (bool)",
+  "function allowance(address, address) view returns (uint256)",
+];
 
 // ── Provider ──────────────────────────────────────────────────────
 export function WalletProvider({ children }: { children: ReactNode }) {
-  const [address,    setAddress]    = useState("");
-  const [chainId,    setChainId]    = useState<number|null>(null);
-  const [balance,    setBalance]    = useState("0.00");
-  const [provider,   setProvider]   = useState<ethers.BrowserProvider|null>(null);
-  const [signer,     setSigner]     = useState<ethers.JsonRpcSigner|null>(null);
-  const [connecting, setConnecting] = useState(false);
-  const [hasWallet,  setHasWallet]  = useState(false);
+  const [state, setState] = useState<WalletState>(defaultState);
 
-  // ── Build provider + signer for a given address ───────────────
-  const setupSigner = useCallback(async (acc: string) => {
-    const ethereum = getEthereum();
-    if (!ethereum || !acc) return;
+  // Helper: merge state
+  const patch = (s: Partial<WalletState>) =>
+    setState(prev => ({ ...prev, ...s }));
+
+  // Build provider + signer + balance for an account
+  async function hydrate(address: string) {
+    const e = eth();
+    if (!e || !address) return;
     try {
-      const prov = new ethers.BrowserProvider(ethereum);
-      const s    = await prov.getSigner(acc);
-      const net  = await prov.getNetwork();
-      setProvider(prov);
-      setSigner(s);
-      setChainId(Number(net.chainId));
-      // Fetch USDC balance
-      if (USDC_ADDRESS) {
+      const prov    = new ethers.BrowserProvider(e);
+      const net     = await prov.getNetwork();
+      const chainId = Number(net.chainId);
+      const signer  = await prov.getSigner(address);
+      let   bal     = "0.00";
+      try {
         const usdc = new ethers.Contract(USDC_ADDRESS, USDC_ABI, prov);
-        const [bal, dec] = await Promise.all([usdc.balanceOf(acc), usdc.decimals()]);
-        setBalance(parseFloat(ethers.formatUnits(bal, dec)).toFixed(4));
-      }
-    } catch (e) {
-      console.error("setupSigner:", e);
-    }
-  }, []);
+        const [b, d] = await Promise.all([usdc.balanceOf(address), usdc.decimals()]);
+        bal = parseFloat(ethers.formatUnits(b, d)).toFixed(4);
+      } catch {}
+      patch({
+        address, short: `${address.slice(0,6)}…${address.slice(-4)}`,
+        connected: true, chainId,
+        wrongNetwork: chainId !== ARC.chainId,
+        signer, provider: prov, balance: bal,
+      });
+    } catch (e) { console.error("hydrate:", e); }
+  }
 
-  // ── Boot: detect wallet, get current chain, auto-reconnect ────
+  // Boot
   useEffect(() => {
-    const ethereum = getEthereum();
-    setHasWallet(!!ethereum);
-    if (!ethereum) return;
+    const e = eth();
+    patch({ hasWallet: !!e });
+    if (!e) return;
 
-    // Get current chain immediately (even before connecting)
-    ethereum.request({ method: "eth_chainId" })
-      .then((hex: string) => setChainId(parseInt(hex, 16)))
+    // Get current chain immediately
+    e.request({ method: "eth_chainId" })
+      .then((hex: string) => patch({ chainId: parseInt(hex, 16) }))
       .catch(() => {});
 
-    // Auto-reconnect if previously connected
-    const saved = localStorage.getItem("rl-wallet");
+    // Auto-reconnect
+    const saved = localStorage.getItem("rl-addr");
     if (saved) {
-      ethereum.request({ method: "eth_accounts" })
-        .then((accounts: string[]) => {
-          const match = accounts.find(
-            (a: string) => a.toLowerCase() === saved.toLowerCase()
-          );
-          if (match) {
-            setAddress(match);
-            setupSigner(match);
-          } else {
-            localStorage.removeItem("rl-wallet");
-          }
-        })
-        .catch(() => {});
+      e.request({ method: "eth_accounts" }).then((accs: string[]) => {
+        if (accs.find((a: string) => a.toLowerCase() === saved.toLowerCase()))
+          hydrate(accs[0]);
+        else localStorage.removeItem("rl-addr");
+      }).catch(() => {});
     }
 
-    // ── Listeners ──────────────────────────────────────────────
-    function onAccountsChanged(accounts: string[]) {
-      if (accounts.length === 0) {
-        setAddress(""); setSigner(null); setProvider(null);
-        setBalance("0.00"); localStorage.removeItem("rl-wallet");
+    // Listeners
+    const onAccounts = (accs: string[]) => {
+      if (!accs.length) {
+        localStorage.removeItem("rl-addr");
+        setState(prev => ({ ...prev, ...defaultState, hasWallet: true }));
       } else {
-        setAddress(accounts[0]);
-        localStorage.setItem("rl-wallet", accounts[0]);
-        setupSigner(accounts[0]);
+        localStorage.setItem("rl-addr", accs[0]);
+        hydrate(accs[0]);
       }
-    }
-
-    function onChainChanged(hex: string) {
-      const id = parseInt(hex, 16);
-      setChainId(id);
-      // Rebuild provider for new chain
-      if (address) setupSigner(address);
-    }
-
-    ethereum.on("accountsChanged", onAccountsChanged);
-    ethereum.on("chainChanged",    onChainChanged);
-    return () => {
-      ethereum.removeListener("accountsChanged", onAccountsChanged);
-      ethereum.removeListener("chainChanged",    onChainChanged);
     };
-  }, [setupSigner, address]);
+    const onChain = (hex: string) => {
+      const id = parseInt(hex, 16);
+      patch({ chainId: id, wrongNetwork: !!state.connected && id !== ARC.chainId });
+      if (state.address) hydrate(state.address);
+    };
 
-  // ── Connect ──────────────────────────────────────────────────
-  const connect = useCallback(async () => {
-    const ethereum = getEthereum();
-    if (!ethereum) {
-      alert("No wallet found. Please install MetaMask from metamask.io");
-      return;
-    }
-    setConnecting(true);
-    try {
-      const accounts: string[] = await ethereum.request({
-        method: "eth_requestAccounts",
-      });
-      if (accounts[0]) {
-        setAddress(accounts[0]);
-        localStorage.setItem("rl-wallet", accounts[0]);
-        await setupSigner(accounts[0]);
-      }
-    } catch (e: any) {
-      if (e.code !== 4001) console.error("connect:", e);
-    } finally {
-      setConnecting(false);
-    }
-  }, [setupSigner]);
-
-  // ── Disconnect ───────────────────────────────────────────────
-  const disconnect = useCallback(() => {
-    setAddress(""); setSigner(null); setProvider(null);
-    setBalance("0.00"); localStorage.removeItem("rl-wallet");
+    e.on("accountsChanged", onAccounts);
+    e.on("chainChanged",    onChain);
+    return () => {
+      e.removeListener("accountsChanged", onAccounts);
+      e.removeListener("chainChanged",    onChain);
+    };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // ── Switch / Add Arc Testnet ─────────────────────────────────
-  const switchToArc = useCallback(async () => {
-    const ethereum = getEthereum();
-    if (!ethereum) throw new Error("No wallet found");
-
+  // Connect
+  const connect = async () => {
+    const e = eth();
+    if (!e) { alert("Please install MetaMask from metamask.io"); return; }
+    patch({ busy: true });
     try {
-      // Try switching first (works if network is already added)
-      await ethereum.request({
+      const accs: string[] = await e.request({ method: "eth_requestAccounts" });
+      if (accs[0]) {
+        localStorage.setItem("rl-addr", accs[0]);
+        await hydrate(accs[0]);
+      }
+    } catch (err: any) {
+      if (err.code !== 4001) console.error(err);
+    } finally { patch({ busy: false }); }
+  };
+
+  // Disconnect
+  const disconnect = () => {
+    localStorage.removeItem("rl-addr");
+    setState(prev => ({ ...prev, ...defaultState, hasWallet: prev.hasWallet }));
+  };
+
+  // Add/Switch to Arc
+  const addArc = async () => {
+    const e = eth();
+    if (!e) throw new Error("No wallet");
+    try {
+      await e.request({
         method: "wallet_switchEthereumChain",
-        params: [{ chainId: ARC_CHAIN_HEX }],
+        params: [{ chainId: ARC.chainHex }],
       });
-    } catch (switchErr: any) {
-      // 4902 = chain not added yet; -32603 = same on some wallets
-      if (switchErr.code === 4902 || switchErr.code === -32603) {
-        try {
-          await ethereum.request({
-            method: "wallet_addEthereumChain",
-            params: ARC_NETWORK_PARAMS,
-          });
-        } catch (addErr: any) {
-          // User rejected add → rethrow so UI can show message
-          throw addErr;
-        }
-      } else {
-        throw switchErr;
-      }
+    } catch (err: any) {
+      if (err.code === 4902 || err.code === -32603) {
+        await e.request({
+          method: "wallet_addEthereumChain",
+          params: [{
+            chainId:           ARC.chainHex,
+            chainName:         ARC.name,
+            nativeCurrency:    ARC.currency,
+            rpcUrls:           [ARC.rpc],
+            blockExplorerUrls: [ARC.explorer],
+          }],
+        });
+      } else throw err;
     }
-  }, []);
+  };
 
-  // ── Refresh balance ──────────────────────────────────────────
-  const refreshBalance = useCallback(async () => {
-    if (!address || !provider || !USDC_ADDRESS) return;
-    try {
-      const usdc = new ethers.Contract(USDC_ADDRESS, USDC_ABI, provider);
-      const [bal, dec] = await Promise.all([usdc.balanceOf(address), usdc.decimals()]);
-      setBalance(parseFloat(ethers.formatUnits(bal, dec)).toFixed(4));
-    } catch {}
-  }, [address, provider]);
-
-  const isConnected    = !!address;
-  const isWrongNetwork = isConnected && chainId !== null && chainId !== ARC_CHAIN_ID;
-  const shortAddress   = address
-    ? `${address.slice(0, 6)}…${address.slice(-4)}`
-    : "";
+  // Refresh balance
+  const refresh = async () => {
+    if (state.address) await hydrate(state.address);
+  };
 
   return (
-    <Ctx.Provider value={{
-      address, shortAddress, isConnected, isWrongNetwork, chainId,
-      usdcBalance: balance, provider, signer, hasWallet, connecting,
-      connect, disconnect, switchToArc, refreshBalance,
-    }}>
+    <Ctx.Provider value={{ ...state, connect, disconnect, addArc, refresh }}>
       {children}
     </Ctx.Provider>
   );
 }
 
 export const useWallet = () => useContext(Ctx);
+export { USDC_ADDRESS, USDC_ABI };

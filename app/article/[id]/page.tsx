@@ -49,7 +49,7 @@ function HalfContent({ text }: { text: string }) {
 
 export default function ArticlePage() {
   const { id } = useParams<{ id: string }>();
-  const { address, isConnected, signer, connect } = useWallet();
+  const { address, connected, signer, connect } = useWallet();
   
   const [article, setArticle] = useState<DBArticle | null>(null);
   const [isPaid,  setIsPaid]  = useState(false);
@@ -84,7 +84,7 @@ export default function ArticlePage() {
 
   async function handlePay() {
     if (!article) return;
-    if (!isConnected || !signer) { connect(); return; }
+    if (!connected || !signer) { connect(); return; }
     if (!USDC_ADDRESS) { setPayErr("USDC address not configured."); return; }
     setPaying(true); setPayErr(""); setTxHash("");
     try {

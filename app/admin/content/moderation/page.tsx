@@ -1,271 +1,200 @@
 "use client";
-import { useState, useEffect, useCallback } from "react";
-import { CheckCircle2, Ban, Eye, RefreshCw, Search, Star, Trash2, Edit3, X, Save, AlertCircle, ChevronDown, ChevronUp } from "lucide-react";
+import { useState, useEffect } from "react";
+import { Search, RefreshCw, CheckCircle2, Ban, Star, Trash2, Edit3, Save, X, Eye, ChevronDown, ChevronUp, AlertCircle } from "lucide-react";
 import Link from "next/link";
 
-type Status = "pending"|"approved"|"rejected"|"featured";
-const STATUS_CFG: Record<Status,{label:string;c:string;bg:string;b:string}> = {
-  pending:  { label:"Pending",  c:"#d97706", bg:"rgba(217,119,6,.08)",  b:"rgba(217,119,6,.22)"  },
-  approved: { label:"Approved", c:"#059669", bg:"rgba(5,150,105,.08)",  b:"rgba(5,150,105,.22)"  },
-  featured: { label:"Featured", c:"#ca8a04", bg:"rgba(234,179,8,.08)",  b:"rgba(234,179,8,.22)"  },
-  rejected: { label:"Rejected", c:"#dc2626", bg:"rgba(220,38,38,.08)",  b:"rgba(220,38,38,.22)"  },
+type S = "pending"|"approved"|"rejected"|"featured";
+const SC:Record<S,{label:string;c:string;bg:string}> = {
+  pending: { label:"Pending",  c:"#d97706", bg:"rgba(217,119,6,.09)" },
+  approved:{ label:"Approved", c:"#059669", bg:"rgba(5,150,105,.09)"  },
+  featured:{ label:"Featured", c:"#ca8a04", bg:"rgba(234,179,8,.09)"  },
+  rejected:{ label:"Rejected", c:"#dc2626", bg:"rgba(220,38,38,.09)"  },
 };
 
-interface Article {
-  id:string; title:string; blurb:string; price:string; category:string;
-  readTime:number; isResearch:boolean; authorAddress:string; authorShort:string;
-  status:Status; featured:boolean; reads:number; paidCount:number; timestamp:number;
-}
+interface A { id:string;title:string;blurb:string;price:string;category:string;readTime:number;isResearch:boolean;authorAddress:string;authorShort:string;status:S;featured:boolean;reads:number;paidCount:number;timestamp:number; }
 
 export default function ModerationPage() {
-  const [articles, setArticles]  = useState<Article[]>([]);
-  const [loading,  setLoading]   = useState(true);
-  const [search,   setSearch]    = useState("");
-  const [filter,   setFilter]    = useState<"all"|Status>("all");
-  const [acting,   setActing]    = useState("");
-  const [editing,  setEditing]   = useState<string|null>(null);
-  const [editData, setEditData]  = useState<any>({});
-  const [expanded, setExpanded]  = useState<string|null>(null);
-  const [fullContent, setFullContent] = useState<Record<string,string>>({});
-  const [dbError,  setDbError]   = useState("");
+  const [arts,    setArts]    = useState<A[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [filter,  setFilter]  = useState<"all"|S>("all");
+  const [search,  setSearch]  = useState("");
+  const [editing, setEditing] = useState<string|null>(null);
+  const [eData,   setEData]   = useState<any>({});
+  const [content, setContent] = useState<Record<string,string>>({});
+  const [expanded,setExpanded]= useState<string|null>(null);
+  const [busy,    setBusy]    = useState("");
+  const [err,     setErr]     = useState("");
 
-  const load = useCallback(async (f=filter, s=search) => {
-    setLoading(true); setDbError("");
-    try {
-      const p = new URLSearchParams({ limit:"200" });
-      if (f !== "all") p.set("status", f);
-      if (s) p.set("q", s);
-      const res = await fetch(`/api/admin/articles?${p}`);
-      if (!res.ok) throw new Error((await res.json()).error || res.statusText);
-      setArticles(await res.json());
-    } catch(e:any) { setDbError(e.message); }
-    finally { setLoading(false); }
-  }, [filter, search]);
-
-  useEffect(()=>{ load(); },[]);
-
-  async function applyStatus(id:string, status:Status, featured?:boolean) {
-    setActing(id);
-    try {
-      const res = await fetch(`/api/admin/articles/${id}`, {
-        method:"PATCH", headers:{"Content-Type":"application/json"},
-        body: JSON.stringify({ status, ...(featured!==undefined&&{featured}) }),
-      });
-      if (!res.ok) throw new Error((await res.json()).error);
-      setArticles(prev => prev.map(a => a.id===id ? {...a, status, featured:featured??a.featured} : a));
-    } catch(e:any) { alert("Error: "+e.message); }
-    finally { setActing(""); }
+  async function load() {
+    setLoading(true); setErr("");
+    const p = new URLSearchParams({ limit:"200" });
+    if (filter!=="all") p.set("status",filter);
+    if (search) p.set("q",search);
+    const r = await fetch(`/api/admin/articles?${p}`);
+    const d = await r.json();
+    if (!r.ok) { setErr(d.error||"Failed"); setLoading(false); return; }
+    setArts(d); setLoading(false);
   }
 
-  async function deleteArticle(id:string) {
-    if (!confirm("Permanently delete this article and all its comments/reactions?")) return;
-    setActing(id);
-    try {
-      const res = await fetch(`/api/admin/articles/${id}`, { method:"DELETE" });
-      if (!res.ok) throw new Error((await res.json()).error);
-      setArticles(prev => prev.filter(a => a.id!==id));
-    } catch(e:any) { alert("Error: "+e.message); }
-    finally { setActing(""); }
+  useEffect(()=>{ load(); },[]); // eslint-disable-line
+
+  async function patch(id:string, body:any) {
+    setBusy(id);
+    const r = await fetch(`/api/admin/articles/${id}`,{method:"PATCH",headers:{"Content-Type":"application/json"},body:JSON.stringify(body)});
+    const d = await r.json();
+    if (!r.ok) { alert(d.error); setBusy(""); return; }
+    setArts(prev=>prev.map(a=>a.id===id?{...a,...body,price:body.price?String(body.price):a.price}:a));
+    setBusy("");
+  }
+
+  async function del(id:string) {
+    if (!confirm("Delete this article permanently?")) return;
+    setBusy(id);
+    await fetch(`/api/admin/articles/${id}`,{method:"DELETE"});
+    setArts(prev=>prev.filter(a=>a.id!==id));
+    setBusy("");
   }
 
   async function saveEdit(id:string) {
-    setActing(id);
-    try {
-      const payload: any = {};
-      if (editData.title    !== undefined) payload.title    = editData.title;
-      if (editData.blurb    !== undefined) payload.blurb    = editData.blurb;
-      if (editData.price    !== undefined) payload.price    = parseFloat(editData.price);
-      if (editData.category !== undefined) payload.category = editData.category;
-      if (editData.content  !== undefined) payload.content  = editData.content;
-
-      const res = await fetch(`/api/admin/articles/${id}`, {
-        method:"PATCH", headers:{"Content-Type":"application/json"},
-        body: JSON.stringify(payload),
-      });
-      if (!res.ok) throw new Error((await res.json()).error);
-      setArticles(prev => prev.map(a => a.id===id ? {...a, ...payload, price:String(payload.price??a.price)} : a));
-      if (editData.content) setFullContent(c => ({...c, [id]: editData.content}));
-      setEditing(null); setEditData({});
-    } catch(e:any) { alert("Error: "+e.message); }
-    finally { setActing(""); }
+    const u:any={};
+    if (eData.title)    u.title=eData.title;
+    if (eData.blurb)    u.blurb=eData.blurb;
+    if (eData.price)    u.price=parseFloat(eData.price);
+    if (eData.category) u.category=eData.category;
+    if (eData.content)  u.content=eData.content;
+    await patch(id,u);
+    setEditing(null); setEData({});
   }
 
   async function loadContent(id:string) {
-    if (fullContent[id]) { setExpanded(expanded===id?null:id); return; }
-    try {
-      const res = await fetch(`/api/articles/${id}?admin=1`);
-      const data = await res.json();
-      setFullContent(c => ({...c, [id]: data.content || ""}));
-      setExpanded(id);
-    } catch {}
+    if (content[id]) { setExpanded(expanded===id?null:id); return; }
+    const r = await fetch(`/api/articles/${id}?admin=1`);
+    const d = await r.json();
+    setContent(c=>({...c,[id]:d.content||""}));
+    setExpanded(id);
   }
 
-  const counts: Record<string,number> = { all: articles.length };
-  for(const a of articles) counts[a.status] = (counts[a.status]||0)+1;
-
-  const filtered = articles.filter(a => {
-    const ms = !search || a.title.toLowerCase().includes(search.toLowerCase()) || a.authorAddress.toLowerCase().includes(search.toLowerCase());
-    const mf = filter==="all" || a.status===filter;
-    return ms && mf;
+  const filtered = arts.filter(a=>{
+    if (filter!=="all"&&a.status!==filter) return false;
+    if (search&&!a.title.toLowerCase().includes(search.toLowerCase())&&!a.authorAddress.toLowerCase().includes(search.toLowerCase())) return false;
+    return true;
   });
+
+  const counts:Record<string,number>={all:arts.length};
+  arts.forEach(a=>{ counts[a.status]=(counts[a.status]||0)+1; });
 
   return (
     <div style={{ display:"flex", flexDirection:"column", gap:14 }}>
-
-      {/* Header */}
-      <div style={{ display:"flex", alignItems:"flex-start", justifyContent:"space-between", flexWrap:"wrap", gap:12 }}>
+      <div style={{ display:"flex", alignItems:"flex-start", justifyContent:"space-between", flexWrap:"wrap", gap:10 }}>
         <div>
-          <h1 style={{ fontFamily:"Outfit,sans-serif", fontSize:22, fontWeight:900, color:"var(--text)", letterSpacing:"-0.02em" }}>Content Moderation</h1>
-          <p style={{ color:"var(--text-4)", fontSize:12, marginTop:2 }}>{articles.length} articles in database</p>
+          <h1 style={{ fontFamily:"Outfit,sans-serif", fontSize:22, fontWeight:900, color:"var(--text)", letterSpacing:"-.02em" }}>Content Moderation</h1>
+          <p style={{ fontSize:12, color:"var(--text-4)", marginTop:3 }}>{arts.length} articles in database</p>
         </div>
-        <button onClick={()=>load(filter,search)} disabled={loading} style={{ display:"flex", alignItems:"center", gap:6, padding:"7px 14px", border:"1.5px solid var(--border)", background:"var(--bg-alt)", borderRadius:"var(--r-f)", cursor:"pointer", fontSize:12, fontWeight:600, color:"var(--text-3)" }}>
+        <button onClick={load} disabled={loading} style={{ display:"flex",alignItems:"center",gap:6,padding:"7px 14px",border:"1.5px solid var(--border)",background:"var(--bg-alt)",borderRadius:"var(--r-f)",cursor:"pointer",fontSize:12,fontWeight:600,color:"var(--text-3)" }}>
           <RefreshCw size={13} className={loading?"spin":""}/>Refresh
         </button>
       </div>
 
-      {dbError && (
-        <div style={{ padding:"12px 14px", background:"rgba(220,38,38,.06)", border:"1px solid rgba(220,38,38,.18)", borderRadius:"var(--r-md)", display:"flex", gap:8 }}>
-          <AlertCircle size={14} style={{ color:"#dc2626", flexShrink:0, marginTop:1 }}/>
-          <span style={{ fontSize:12, color:"#dc2626" }}>{dbError} — check NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY in Vercel.</span>
+      {err && (
+        <div style={{ padding:"12px 14px",background:"rgba(220,38,38,.06)",border:"1px solid rgba(220,38,38,.2)",borderRadius:"var(--r-md)",display:"flex",gap:8,fontSize:13,color:"#dc2626" }}>
+          <AlertCircle size={14} style={{ flexShrink:0,marginTop:1 }}/>{err} — check Supabase env vars in Vercel.
         </div>
       )}
 
-      {/* Status filters */}
+      {/* Status filter tabs */}
       <div style={{ display:"flex", gap:6, flexWrap:"wrap" }}>
-        {(["all","pending","approved","featured","rejected"] as const).map(f => {
-          const cfg = STATUS_CFG[f as Status] || { label:"All", c:"var(--brand)", bg:"var(--brand-muted)", b:"var(--brand-border)" };
-          return (
-            <button key={f} onClick={()=>{ setFilter(f); load(f,search); }}
-              style={{ padding:"5px 12px", borderRadius:"var(--r-f)", fontSize:11, fontWeight:700, cursor:"pointer", transition:"all .15s",
-                border:`1.5px solid ${filter===f?cfg.c:"var(--border)"}`, background:filter===f?cfg.bg:"transparent", color:filter===f?cfg.c:"var(--text-3)" }}>
-              {f==="all"?"All":cfg.label} <span style={{ fontSize:10, opacity:.65 }}>({counts[f]||0})</span>
-            </button>
-          );
+        {(["all","pending","approved","featured","rejected"] as const).map(f=>{
+          const cfg = SC[f as S]||{ label:"All", c:"var(--brand)", bg:"var(--brand-muted)" };
+          return <button key={f} onClick={()=>{setFilter(f);}} style={{ padding:"5px 12px",borderRadius:"var(--r-f)",fontSize:11,fontWeight:700,cursor:"pointer",border:`1.5px solid ${filter===f?cfg.c:"var(--border)"}`,background:filter===f?cfg.bg:"transparent",color:filter===f?cfg.c:"var(--text-3)",transition:"all .15s" }}>
+            {f==="all"?"All":cfg.label} ({counts[f]||0})
+          </button>;
         })}
+        <button onClick={load} style={{ padding:"5px 12px",borderRadius:"var(--r-f)",fontSize:11,fontWeight:600,cursor:"pointer",border:"1.5px solid var(--border)",background:"var(--bg-alt)",color:"var(--text-3)" }}>Apply</button>
       </div>
 
       {/* Search */}
       <div style={{ position:"relative" }}>
-        <Search size={13} style={{ position:"absolute", left:12, top:"50%", transform:"translateY(-50%)", color:"var(--text-4)", pointerEvents:"none" }}/>
-        <input value={search} onChange={e=>{setSearch(e.target.value); load(filter,e.target.value);}}
-          placeholder="Search by title or author address…" className="admin-input" style={{ paddingLeft:34 }}/>
+        <Search size={13} style={{ position:"absolute",left:12,top:"50%",transform:"translateY(-50%)",color:"var(--text-4)",pointerEvents:"none" }}/>
+        <input value={search} onChange={e=>setSearch(e.target.value)} onKeyDown={e=>e.key==="Enter"&&load()} placeholder="Search title or author…" className="admin-input" style={{ paddingLeft:34 }}/>
       </div>
 
-      {/* Articles list */}
+      {/* Articles */}
       {loading
-        ? <div>{[1,2,3].map(i=><div key={i} className="skeleton" style={{ height:100, borderRadius:"var(--r-lg)", marginBottom:10 }}/>)}</div>
-        : filtered.length===0
-        ? <div className="card" style={{ padding:"48px 20px", textAlign:"center" }}>
-            <p style={{ fontSize:14, fontWeight:600, color:"var(--text-3)" }}>
-              {dbError ? "Cannot load — check database connection" : articles.length===0 ? "No articles yet. Writers submit via the Write page." : "No articles match this filter."}
-            </p>
-          </div>
-        : filtered.map(a => {
-            const s   = STATUS_CFG[a.status] || STATUS_CFG.pending;
-            const isE = editing === a.id;
-            const isX = expanded === a.id;
-            return (
-              <div key={a.id} className="card" style={{ padding:0, overflow:"hidden", borderLeft:`3px solid ${s.c}` }}>
-
-                {isE ? (
-                  /* ── Edit form ── */
-                  <div style={{ padding:"16px 18px", display:"flex", flexDirection:"column", gap:10 }}>
-                    <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:4 }}>
-                      <span style={{ fontSize:12, fontWeight:700, color:"var(--brand)" }}>Editing article #{a.id}</span>
-                      <div style={{ display:"flex", gap:6 }}>
-                        <button onClick={()=>saveEdit(a.id)} disabled={!!acting} className="btn btn-primary btn-xs">
-                          {acting===a.id?<><div style={{ width:9,height:9,border:"1.5px solid rgba(255,255,255,.3)",borderTopColor:"white",borderRadius:"50%"}} className="spin"/>Saving…</>:<><Save size={10}/>Save</>}
-                        </button>
-                        <button onClick={()=>{setEditing(null);setEditData({});}} className="btn btn-ghost btn-xs"><X size={10}/>Cancel</button>
-                      </div>
-                    </div>
-                    <input defaultValue={a.title} placeholder="Title" onChange={e=>setEditData((d:any)=>({...d,title:e.target.value}))} className="admin-input"/>
-                    <textarea defaultValue={a.blurb} placeholder="Blurb" rows={2} onChange={e=>setEditData((d:any)=>({...d,blurb:e.target.value}))} className="admin-input"/>
-                    <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:8 }}>
-                      <input defaultValue={a.price} type="number" step="0.001" placeholder="Price USDC" onChange={e=>setEditData((d:any)=>({...d,price:e.target.value}))} className="admin-input"/>
-                      <input defaultValue={a.category} placeholder="Category" onChange={e=>setEditData((d:any)=>({...d,category:e.target.value}))} className="admin-input"/>
-                    </div>
-                    <div>
-                      <label style={{ fontSize:10, fontWeight:700, color:"var(--text-4)", textTransform:"uppercase", letterSpacing:".06em", display:"block", marginBottom:5, fontFamily:"Outfit,sans-serif" }}>
-                        Full Content (optional — leave blank to keep existing)
-                      </label>
-                      <textarea defaultValue={fullContent[a.id]||""} placeholder="Article content (markdown)…" rows={8} onChange={e=>setEditData((d:any)=>({...d,content:e.target.value}))}
-                        className="admin-input" style={{ fontFamily:"JetBrains Mono,monospace", fontSize:12, lineHeight:1.7 }}/>
-                    </div>
-                  </div>
-                ) : (
-                  /* ── Article row ── */
-                  <div>
-                    <div style={{ padding:"14px 16px", display:"flex", alignItems:"flex-start", gap:14, flexWrap:"wrap" }}>
-                      <div style={{ flex:1, minWidth:200 }}>
-                        <div style={{ display:"flex", gap:5, marginBottom:7, flexWrap:"wrap", alignItems:"center" }}>
-                          <span style={{ fontSize:10, fontWeight:700, padding:"2px 8px", borderRadius:"var(--r-f)", background:s.bg, color:s.c, border:`1px solid ${s.b}`, fontFamily:"Outfit,sans-serif" }}>{s.label}</span>
-                          {a.featured  && <span className="badge badge-star">Featured</span>}
-                          {a.isResearch && <span className="badge badge-blue">Research</span>}
-                          <span className="badge badge-neutral" style={{ textTransform:"capitalize" }}>{a.category}</span>
-                          <span style={{ fontSize:9, color:"var(--text-4)", fontFamily:"JetBrains Mono,monospace" }}>#{a.id}</span>
-                        </div>
-                        <h3 style={{ fontFamily:"Outfit,sans-serif", fontSize:14, fontWeight:700, color:"var(--text)", marginBottom:4, lineHeight:1.3 }}>{a.title}</h3>
-                        <p style={{ fontSize:11, color:"var(--text-4)", lineHeight:1.5, marginBottom:6, display:"-webkit-box", WebkitLineClamp:2, WebkitBoxOrient:"vertical" as any, overflow:"hidden" }}>{a.blurb}</p>
-                        <div style={{ display:"flex", gap:12, fontSize:10, color:"var(--text-4)", flexWrap:"wrap" }}>
-                          <span style={{ fontFamily:"JetBrains Mono,monospace" }}>{a.authorShort}</span>
-                          <span>${a.price} USDC</span>
-                          <span>{a.reads} reads · {a.paidCount} paid</span>
-                          <span>{new Date(a.timestamp*1000).toLocaleDateString()}</span>
+        ? [1,2,3].map(i=><div key={i} className="skeleton" style={{ height:90,borderRadius:"var(--r-lg)" }}/>)
+        : !filtered.length
+          ? <div className="card" style={{ padding:"48px",textAlign:"center",color:"var(--text-4)",fontSize:14 }}>
+              {arts.length===0?"No articles yet. Writers submit via the Write page.":"No articles match this filter."}
+            </div>
+          : filtered.map(a=>{
+              const cfg = SC[a.status]||SC.pending;
+              const isE = editing===a.id;
+              const isX = expanded===a.id;
+              return (
+                <div key={a.id} className="card" style={{ overflow:"hidden", borderLeft:`3px solid ${cfg.c}`, padding:0 }}>
+                  {isE ? (
+                    <div style={{ padding:"16px 18px", display:"flex", flexDirection:"column", gap:9 }}>
+                      <div style={{ display:"flex",alignItems:"center",justifyContent:"space-between" }}>
+                        <span style={{ fontSize:12,fontWeight:700,color:"var(--brand)" }}>Editing #{a.id}</span>
+                        <div style={{ display:"flex",gap:6 }}>
+                          <button onClick={()=>saveEdit(a.id)} disabled={!!busy} className="btn btn-primary btn-xs"><Save size={10}/>Save</button>
+                          <button onClick={()=>{setEditing(null);setEData({});}} className="btn btn-ghost btn-xs"><X size={10}/>Cancel</button>
                         </div>
                       </div>
-
-                      {/* Action buttons */}
-                      <div style={{ display:"flex", flexDirection:"column", gap:5, flexShrink:0 }}>
-                        <Link href={`/article/${a.id}`} target="_blank" style={{ display:"flex", alignItems:"center", gap:4, padding:"5px 10px", borderRadius:"var(--r)", border:"1px solid var(--border)", background:"var(--bg-alt)", fontSize:10, fontWeight:600, color:"var(--text-3)", textDecoration:"none" }}>
-                          <Eye size={10}/>Preview
-                        </Link>
-                        <button onClick={()=>{ setEditing(a.id); setEditData({}); loadContent(a.id); }}
-                          style={{ display:"flex", alignItems:"center", gap:4, padding:"5px 10px", borderRadius:"var(--r)", border:"1px solid var(--brand-border)", background:"var(--brand-muted)", fontSize:10, fontWeight:700, color:"var(--brand)", cursor:"pointer" }}>
-                          <Edit3 size={10}/>Edit
-                        </button>
-                        {a.status!=="featured" && (
-                          <button onClick={()=>applyStatus(a.id,"featured",true)} disabled={!!acting}
-                            style={{ display:"flex", alignItems:"center", gap:4, padding:"5px 10px", borderRadius:"var(--r)", border:`1px solid ${STATUS_CFG.featured.b}`, background:STATUS_CFG.featured.bg, fontSize:10, fontWeight:700, color:STATUS_CFG.featured.c, cursor:"pointer", opacity:acting===a.id?.5:1 }}>
-                            <Star size={10}/>Feature
-                          </button>
-                        )}
-                        {a.status!=="approved" && (
-                          <button onClick={()=>applyStatus(a.id,"approved",false)} disabled={!!acting}
-                            style={{ display:"flex", alignItems:"center", gap:4, padding:"5px 10px", borderRadius:"var(--r)", border:`1px solid ${STATUS_CFG.approved.b}`, background:STATUS_CFG.approved.bg, fontSize:10, fontWeight:700, color:STATUS_CFG.approved.c, cursor:"pointer", opacity:acting===a.id?.5:1 }}>
-                            <CheckCircle2 size={10}/>Approve
-                          </button>
-                        )}
-                        {a.status!=="rejected" && (
-                          <button onClick={()=>applyStatus(a.id,"rejected")} disabled={!!acting}
-                            style={{ display:"flex", alignItems:"center", gap:4, padding:"5px 10px", borderRadius:"var(--r)", border:`1px solid ${STATUS_CFG.rejected.b}`, background:STATUS_CFG.rejected.bg, fontSize:10, fontWeight:700, color:STATUS_CFG.rejected.c, cursor:"pointer", opacity:acting===a.id?.5:1 }}>
-                            <Ban size={10}/>Reject
-                          </button>
-                        )}
-                        <button onClick={()=>deleteArticle(a.id)} disabled={!!acting}
-                          style={{ display:"flex", alignItems:"center", gap:4, padding:"5px 10px", borderRadius:"var(--r)", border:"1px solid rgba(220,38,38,.3)", background:"rgba(220,38,38,.06)", fontSize:10, fontWeight:700, color:"#dc2626", cursor:"pointer", opacity:acting===a.id?.5:1 }}>
-                          {acting===a.id?<div style={{ width:9,height:9,border:"1.5px solid #dc2626",borderTopColor:"transparent",borderRadius:"50%"}} className="spin"/>:<Trash2 size={10}/>}
-                          Delete
-                        </button>
+                      <input defaultValue={a.title} onChange={e=>setEData((d:any)=>({...d,title:e.target.value}))} className="admin-input" placeholder="Title" style={{ fontFamily:"Outfit,sans-serif",fontWeight:700 }}/>
+                      <textarea defaultValue={a.blurb} rows={2} onChange={e=>setEData((d:any)=>({...d,blurb:e.target.value}))} className="admin-input" placeholder="Blurb"/>
+                      <div style={{ display:"grid",gridTemplateColumns:"1fr 1fr",gap:8 }}>
+                        <input defaultValue={a.price} type="number" step="0.001" onChange={e=>setEData((d:any)=>({...d,price:e.target.value}))} className="admin-input" placeholder="Price"/>
+                        <input defaultValue={a.category} onChange={e=>setEData((d:any)=>({...d,category:e.target.value}))} className="admin-input" placeholder="Category"/>
+                      </div>
+                      <div>
+                        <label style={{ fontSize:10,fontWeight:700,color:"var(--text-4)",display:"block",marginBottom:5,fontFamily:"Outfit,sans-serif",textTransform:"uppercase",letterSpacing:".07em" }}>Full Content</label>
+                        <textarea defaultValue={content[a.id]||""} rows={6} onChange={e=>setEData((d:any)=>({...d,content:e.target.value}))} className="admin-input" style={{ fontFamily:"JetBrains Mono,monospace",fontSize:11,lineHeight:1.6 }} placeholder="Article content (markdown)…"/>
                       </div>
                     </div>
-
-                    {/* Expandable content preview */}
-                    <div style={{ borderTop:"1px solid var(--border)", padding:"6px 16px" }}>
-                      <button onClick={()=>loadContent(a.id)} style={{ display:"flex", alignItems:"center", gap:4, background:"none", border:"none", cursor:"pointer", fontSize:10, fontWeight:600, color:"var(--text-4)", padding:"2px 0" }}>
-                        {isX?<><ChevronUp size={11}/>Hide content</>:<><ChevronDown size={11}/>View full content</>}
-                      </button>
-                      {isX && fullContent[a.id] && (
-                        <div style={{ marginTop:8, padding:"12px 14px", background:"var(--bg-alt)", borderRadius:"var(--r)", fontSize:12, color:"var(--text-3)", lineHeight:1.7, fontFamily:"JetBrains Mono,monospace", maxHeight:300, overflow:"auto", whiteSpace:"pre-wrap", wordBreak:"break-word" }}>
-                          {fullContent[a.id]}
+                  ) : (
+                    <>
+                      <div style={{ padding:"14px 16px",display:"flex",alignItems:"flex-start",gap:14,flexWrap:"wrap" }}>
+                        <div style={{ flex:1,minWidth:200 }}>
+                          <div style={{ display:"flex",gap:5,marginBottom:7,flexWrap:"wrap",alignItems:"center" }}>
+                            <span style={{ fontSize:10,fontWeight:700,padding:"2px 8px",borderRadius:"var(--r-f)",background:cfg.bg,color:cfg.c,fontFamily:"Outfit,sans-serif" }}>{cfg.label}</span>
+                            {a.featured&&<span className="badge badge-star">Featured</span>}
+                            {a.isResearch&&<span className="badge badge-blue">Research</span>}
+                            <span className="badge badge-neutral">{a.category}</span>
+                            <span style={{ fontSize:9,color:"var(--text-4)",fontFamily:"JetBrains Mono,monospace" }}>#{a.id}</span>
+                          </div>
+                          <h3 style={{ fontFamily:"Outfit,sans-serif",fontSize:14,fontWeight:700,color:"var(--text)",marginBottom:4,lineHeight:1.3 }}>{a.title}</h3>
+                          <p style={{ fontSize:11,color:"var(--text-4)",lineHeight:1.5,marginBottom:6,display:"-webkit-box",WebkitLineClamp:2,WebkitBoxOrient:"vertical" as any,overflow:"hidden" }}>{a.blurb}</p>
+                          <div style={{ display:"flex",gap:12,fontSize:10,color:"var(--text-4)",flexWrap:"wrap" }}>
+                            <span style={{ fontFamily:"JetBrains Mono,monospace" }}>{a.authorShort}</span>
+                            <span>${a.price}</span>
+                            <span>{a.reads} reads · {a.paidCount} paid</span>
+                            <span>{new Date(a.timestamp*1000).toLocaleDateString()}</span>
+                          </div>
                         </div>
-                      )}
-                    </div>
-                  </div>
-                )}
-              </div>
-            );
-          })
+                        <div style={{ display:"flex",flexDirection:"column",gap:5,flexShrink:0 }}>
+                          <Link href={`/article/${a.id}`} target="_blank" style={{ display:"flex",alignItems:"center",gap:4,padding:"5px 10px",borderRadius:"var(--r)",border:"1px solid var(--border)",background:"var(--bg-alt)",fontSize:10,fontWeight:600,color:"var(--text-3)",textDecoration:"none" }}><Eye size={10}/>Preview</Link>
+                          <button onClick={()=>{setEditing(a.id);setEData({});loadContent(a.id);}} style={{ display:"flex",alignItems:"center",gap:4,padding:"5px 10px",borderRadius:"var(--r)",border:"1px solid var(--brand-border)",background:"var(--brand-muted)",fontSize:10,fontWeight:700,color:"var(--brand)",cursor:"pointer" }}><Edit3 size={10}/>Edit</button>
+                          {a.status!=="featured"&&<button onClick={()=>patch(a.id,{status:"featured",featured:true})} disabled={busy===a.id} style={{ display:"flex",alignItems:"center",gap:4,padding:"5px 10px",borderRadius:"var(--r)",border:`1px solid ${SC.featured.bg}`,background:SC.featured.bg,fontSize:10,fontWeight:700,color:SC.featured.c,cursor:"pointer" }}><Star size={10}/>Feature</button>}
+                          {a.status!=="approved"&&<button onClick={()=>patch(a.id,{status:"approved",featured:false})} disabled={busy===a.id} style={{ display:"flex",alignItems:"center",gap:4,padding:"5px 10px",borderRadius:"var(--r)",border:`1px solid ${SC.approved.bg}`,background:SC.approved.bg,fontSize:10,fontWeight:700,color:SC.approved.c,cursor:"pointer" }}><CheckCircle2 size={10}/>Approve</button>}
+                          {a.status!=="rejected"&&<button onClick={()=>patch(a.id,{status:"rejected"})} disabled={busy===a.id} style={{ display:"flex",alignItems:"center",gap:4,padding:"5px 10px",borderRadius:"var(--r)",border:`1px solid ${SC.rejected.bg}`,background:SC.rejected.bg,fontSize:10,fontWeight:700,color:SC.rejected.c,cursor:"pointer" }}><Ban size={10}/>Reject</button>}
+                          <button onClick={()=>del(a.id)} disabled={busy===a.id} style={{ display:"flex",alignItems:"center",gap:4,padding:"5px 10px",borderRadius:"var(--r)",border:"1px solid rgba(220,38,38,.3)",background:"rgba(220,38,38,.06)",fontSize:10,fontWeight:700,color:"#dc2626",cursor:"pointer" }}>{busy===a.id?<span className="spin" style={{ width:9,height:9,border:"1.5px solid #dc2626",borderTopColor:"transparent",borderRadius:"50%",display:"inline-block" }}/>:<Trash2 size={10}/>}Delete</button>
+                        </div>
+                      </div>
+                      <div style={{ borderTop:"1px solid var(--border)",padding:"6px 16px" }}>
+                        <button onClick={()=>loadContent(a.id)} style={{ display:"flex",alignItems:"center",gap:4,background:"none",border:"none",cursor:"pointer",fontSize:10,fontWeight:600,color:"var(--text-4)",padding:"2px 0" }}>
+                          {isX?<><ChevronUp size={11}/>Hide content</>:<><ChevronDown size={11}/>View content</>}
+                        </button>
+                        {isX&&content[a.id]&&(
+                          <pre style={{ marginTop:8,padding:"10px 12px",background:"var(--bg-alt)",borderRadius:"var(--r)",fontSize:11,color:"var(--text-3)",lineHeight:1.6,maxHeight:250,overflow:"auto",whiteSpace:"pre-wrap",wordBreak:"break-word",fontFamily:"JetBrains Mono,monospace" }}>
+                            {content[a.id]}
+                          </pre>
+                        )}
+                      </div>
+                    </>
+                  )}
+                </div>
+              );
+            })
       }
     </div>
   );
