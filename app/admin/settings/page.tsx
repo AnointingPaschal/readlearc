@@ -257,6 +257,31 @@ export default function AdminSettingsPage() {
           <Info size={11} style={{ flexShrink:0,marginTop:1 }}/>These settings apply to new earnings records. Smart contract splits need redeployment to change on-chain.
         </div>
       </div>
+    
+      {/* ── Hero Slides ── */}
+      <div className="card" style={{ padding:"20px" }}>
+        <div style={{ display:"flex",alignItems:"center",gap:7,marginBottom:14 }}>
+          <span style={{ fontSize:15 }}>🖼️</span>
+          <h2 style={{ fontFamily:"Outfit,sans-serif",fontSize:15,fontWeight:800,color:"var(--text)" }}>Hero Slider</h2>
+        </div>
+        <p style={{ fontSize:12,color:"var(--text-4)",marginBottom:14,lineHeight:1.65 }}>Customize the homepage hero slides. Paste image URLs for backgrounds.</p>
+        {[1,2,3].map(n=>(
+          <div key={n} style={{ marginBottom:14,padding:"12px 14px",background:"var(--bg-alt)",border:"1.5px solid var(--border)",borderRadius:"var(--r-lg)" }}>
+            <div style={{ fontSize:10,fontWeight:700,color:"var(--brand)",marginBottom:8,fontFamily:"Outfit,sans-serif",textTransform:"uppercase",letterSpacing:".08em" }}>Slide {n}</div>
+            <div style={{ display:"flex",flexDirection:"column",gap:7 }}>
+              <input value={get(`hero_slide_${n}_tag`)} onChange={e=>set(`hero_slide_${n}_tag`,e.target.value)} placeholder="Tag e.g. Academic Publishing · Web3" className="admin-input"/>
+              <input value={get(`hero_slide_${n}_title`)} onChange={e=>set(`hero_slide_${n}_title`,e.target.value)} placeholder="Headline" className="admin-input"/>
+              <textarea value={get(`hero_slide_${n}_sub`)} onChange={e=>set(`hero_slide_${n}_sub`,e.target.value)} placeholder="Subtitle text" rows={2} className="admin-input" style={{ height:"auto",resize:"none" }}/>
+              <div style={{ display:"grid",gridTemplateColumns:"1fr auto",gap:7,alignItems:"center" }}>
+                <input value={get(`hero_slide_${n}_color`)} onChange={e=>set(`hero_slide_${n}_color`,e.target.value)} placeholder="Accent color #6d28d9" className="admin-input" style={{ fontFamily:"JetBrains Mono,monospace" }}/>
+                <input type="color" value={get(`hero_slide_${n}_color`)||"#6d28d9"} onChange={e=>set(`hero_slide_${n}_color`,e.target.value)} style={{ width:36,height:36,border:"1.5px solid var(--border)",borderRadius:"var(--r)",padding:3,cursor:"pointer" }}/>
+              </div>
+              <input value={get(`hero_slide_${n}_image`)} onChange={e=>set(`hero_slide_${n}_image`,e.target.value)} placeholder="Background image URL (optional, e.g. https://...)" className="admin-input"/>
+              {get(`hero_slide_${n}_image`)&&<img src={get(`hero_slide_${n}_image`)} alt="preview" style={{ width:"100%",height:60,objectFit:"cover",borderRadius:"var(--r)",border:"1px solid var(--border)" }}/>}
+            </div>
+          </div>
+        ))}
+      </div>
     </div>
   );
 }

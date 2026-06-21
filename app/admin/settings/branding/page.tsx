@@ -153,6 +153,27 @@ export default function BrandingPage() {
           </div>
         </div>
       </div>
+    
+      {/* ── Hero Slides ── */}
+      <div className="card" style={{ padding:"20px" }}>
+        <h2 style={{ fontFamily:"Outfit,sans-serif",fontSize:15,fontWeight:800,color:"var(--text)",marginBottom:16 }}>Hero Slider</h2>
+        <p style={{ fontSize:12,color:"var(--text-4)",marginBottom:16,lineHeight:1.65 }}>Customize the 3 hero slides. Each slide has a title, subtitle, and optional background image URL. Leave title blank to use platform defaults.</p>
+        {[1,2,3].map(n=>(
+          <div key={n} style={{ marginBottom:20,padding:"14px",background:"var(--bg-alt)",border:"1.5px solid var(--border)",borderRadius:"var(--r-lg)" }}>
+            <div style={{ fontSize:11,fontWeight:700,color:"var(--brand)",marginBottom:10,fontFamily:"Outfit,sans-serif",textTransform:"uppercase",letterSpacing:".08em" }}>Slide {n}</div>
+            <div style={{ display:"flex",flexDirection:"column",gap:8 }}>
+              <input value={get(`hero_slide_${n}_tag`)} onChange={e=>set(`hero_slide_${n}_tag`,e.target.value)} placeholder="Tag line (e.g. For Researchers)" className="admin-input"/>
+              <input value={get(`hero_slide_${n}_title`)} onChange={e=>set(`hero_slide_${n}_title`,e.target.value)} placeholder="Headline (use newlines for line breaks)" className="admin-input"/>
+              <textarea value={get(`hero_slide_${n}_sub`)} onChange={e=>set(`hero_slide_${n}_sub`,e.target.value)} placeholder="Subtitle text" rows={2} className="admin-input" style={{ height:"auto",resize:"none" }}/>
+              <input value={get(`hero_slide_${n}_color`)} onChange={e=>set(`hero_slide_${n}_color`,e.target.value)} placeholder="Accent color e.g. #6d28d9" className="admin-input" style={{ fontFamily:"JetBrains Mono,monospace" }}/>
+              <div style={{ display:"flex",gap:8,alignItems:"flex-start" }}>
+                <input value={get(`hero_slide_${n}_image`)} onChange={e=>set(`hero_slide_${n}_image`,e.target.value)} placeholder="Background image URL (optional)" className="admin-input" style={{ flex:1 }}/>
+                {get(`hero_slide_${n}_image`)&&<img src={get(`hero_slide_${n}_image`)} alt="" style={{ width:60,height:40,objectFit:"cover",borderRadius:"var(--r)",border:"1px solid var(--border)",flexShrink:0 }}/>}
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
     </div>
   );
 }
