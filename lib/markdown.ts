@@ -51,12 +51,17 @@ export function mdToHtml(md: string): string {
       continue;
     }
 
-    // Empty line = paragraph break
-    if (line.trim() === "") { flushList(); out.push("<br/>"); continue; }
+    // Empty line — just flush list, spacing via CSS
+    if (line.trim() === "") { flushList(); continue; }
 
     // Regular paragraph line
     flushList();
-    out.push(`<p>${inline(line)}</p>`);
+    // Merge consecutive text lines into one paragraph
+    const para: string[] = [inline(line)];
+    while (i+1 < lines.length && lines[i+1].trim() !== "" && !/^[#\->*+\d]/.test(lines[i+1])) {
+      i++; para.push(inline(lines[i]));
+    }
+    out.push(`<p>${para.join(" ")}</p>`);
   }
   flushList();
 

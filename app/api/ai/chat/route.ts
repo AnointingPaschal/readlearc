@@ -13,7 +13,7 @@ const ACTIONS: Record<string,string> = {
 };
 
 export async function POST(req: NextRequest) {
-  const { articleId, action, question, articleContent, articleTitle } = await req.json();
+  const { articleId, action, question, articleContent, articleTitle, model: clientModel } = await req.json();
 
   // Get AI config from platform_settings
   const { data: cfg } = await supabaseAdmin.from("platform_settings")
@@ -22,7 +22,7 @@ export async function POST(req: NextRequest) {
   for (const r of cfg||[]) settings[r.key] = r.value;
 
   const apiKey = settings.ai_api_key || "";
-  const model  = settings.ai_model   || "anthropic/claude-haiku-4-5";
+  const model  = clientModel || settings.ai_model || "anthropic/claude-haiku-4-5";
 
   if (!apiKey) return NextResponse.json({ error:"AI not configured. Admin must set OpenRouter API key." }, { status:400 });
 

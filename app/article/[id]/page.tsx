@@ -9,6 +9,9 @@ import {
 } from "lucide-react";
 import Navbar from "../../../components/ui/Navbar";
 import ArticleAI from "../../../components/ui/ArticleAI";
+import Reactions from "../../../components/social/Reactions";
+import Comments from "../../../components/social/Comments";
+import FollowButton from "../../../components/social/FollowButton";
 import { useAuth, EXPLORER_URL } from "../../../lib/auth";
 import { payForArticle, canAfford, formatUsdc, getBalance, PaymentError } from "../../../lib/pay";
 import { toHtml } from "../../../lib/markdown";
@@ -296,7 +299,13 @@ export default function ArticlePage() {
           <>
             {isResearch
               ? <ResearchView content={article.content||""} title={article.title}/>
-              : <div className="article-render"><ArticleBody html={article.content||""}/></div>
+              : (
+                <div style={{background:"#e8eaed",padding:"clamp(10px,3vw,20px) clamp(8px,2vw,12px)",borderRadius:"var(--r-lg)"}}>
+                  <div style={{background:"white",maxWidth:794,margin:"0 auto",padding:"clamp(20px,5vw,72px)",boxShadow:"0 2px 12px rgba(0,0,0,.22),0 0 0 1px rgba(0,0,0,.05)",borderRadius:2,boxSizing:"border-box" as const}}>
+                    <div className="article-render"><ArticleBody html={article.content||""}/></div>
+                  </div>
+                </div>
+              )
             }
             {txHash&&(
               <div style={{marginTop:24,padding:"12px 16px",background:"rgba(5,150,105,.06)",border:"1px solid rgba(5,150,105,.2)",borderRadius:"var(--r-lg)",display:"flex",alignItems:"center",gap:12}}>
@@ -309,7 +318,23 @@ export default function ArticlePage() {
                 </div>
               </div>
             )}
-            {/* AI Assistant — visible after unlock */}
+            {/* Social: Reactions + Author + Comments */}
+            <div style={{marginTop:32}}>
+              <Reactions articleId={article.id}/>
+              <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"16px 0",borderTop:"1px solid var(--border)",borderBottom:"1px solid var(--border)",margin:"20px 0",flexWrap:"wrap",gap:10}}>
+                <div style={{display:"flex",alignItems:"center",gap:12}}>
+                  <div style={{width:44,height:44,borderRadius:"50%",background:`linear-gradient(135deg,hsl(${parseInt(article.authorAddress.slice(2,4)||"0",16)*1.4}deg,65%,55%),hsl(${parseInt(article.authorAddress.slice(4,6)||"0",16)*1.4}deg,55%,45%))`,flexShrink:0}}/>
+                  <div>
+                    <div style={{fontSize:13,fontWeight:700,color:"var(--text)",fontFamily:"Outfit,sans-serif"}}>{article.authorShort}</div>
+                    <div style={{fontSize:11,color:"var(--text-4)",marginTop:1}}>Article author</div>
+                  </div>
+                </div>
+                {!isAuthor && <FollowButton targetAddress={article.authorAddress}/>}
+              </div>
+              <Comments articleId={article.id}/>
+            </div>
+
+            {/* AI Assistant */}
             <ArticleAI
               articleId={article.id}
               articleTitle={article.title}
@@ -330,7 +355,12 @@ export default function ArticlePage() {
                 </div>
               </div>
             ) : (
-              <div className="article-render"><ArticleBody html={previewHtml}/></div>
+              <div style={{background:"#e8eaed",padding:"clamp(10px,3vw,20px) clamp(8px,2vw,12px)",borderRadius:"var(--r-lg)",marginBottom:0}}>
+                <div style={{background:"white",maxWidth:794,margin:"0 auto",padding:"clamp(20px,5vw,72px)",boxShadow:"0 2px 12px rgba(0,0,0,.2),0 0 0 1px rgba(0,0,0,.05)",borderRadius:2,boxSizing:"border-box" as const,position:"relative" as const}}>
+                  <div className="article-render"><ArticleBody html={previewHtml}/></div>
+                  <div style={{position:"absolute",bottom:0,left:0,right:0,height:80,background:"linear-gradient(transparent,white)",borderRadius:"0 0 2px 2px"}}/>
+                </div>
+              </div>
             )}
 
             {/* Paywall CTA */}
@@ -381,22 +411,22 @@ export default function ArticlePage() {
       </div>
 
       <style>{`
-        .article-render{font-family:Georgia,serif;font-size:clamp(14px,2vw,16px);line-height:1.88;color:var(--text-2)}
+        .article-render{font-family:Georgia,serif;font-size:clamp(14px,2vw,15.5px);line-height:1.72;color:var(--text-2)}
         .article-render h1{font-family:Outfit,sans-serif;font-size:clamp(22px,4vw,34px);font-weight:900;color:var(--text);line-height:1.1;margin:28px 0 12px;letter-spacing:-.02em}
         .article-render h2{font-family:Outfit,sans-serif;font-size:clamp(18px,3vw,26px);font-weight:800;color:var(--text);line-height:1.2;margin:24px 0 10px;letter-spacing:-.01em}
         .article-render h3{font-family:Outfit,sans-serif;font-size:clamp(15px,2.5vw,20px);font-weight:700;color:var(--text);margin:20px 0 8px}
         .article-render h4{font-family:Outfit,sans-serif;font-size:clamp(14px,2vw,17px);font-weight:700;color:var(--text);margin:16px 0 6px}
-        .article-render p{margin:0 0 18px}
+        .article-render p{margin:0 0 10px}
         .article-render strong{font-weight:700;color:var(--text)}
         .article-render em{font-style:italic}
         .article-render blockquote{border-left:3px solid var(--brand);padding:4px 0 4px 16px;margin:20px 0;font-style:italic;color:var(--text-3);font-size:1.04em}
         .article-render pre{background:var(--bg-alt);border:1px solid var(--border);border-radius:var(--r-md);padding:14px 16px;font-family:"JetBrains Mono",monospace;font-size:13px;overflow-x:auto;margin:16px 0}
         .article-render code{font-family:"JetBrains Mono",monospace;background:var(--bg-alt);padding:1px 5px;border-radius:3px;font-size:.88em}
         .article-render ul,.article-render ol{padding-left:24px;margin:0 0 16px}
-        .article-render li{margin:6px 0;line-height:1.7}
+        .article-render li{margin:3px 0;line-height:1.6}
         .article-render a{color:var(--brand);text-decoration:underline}
         .article-render img{max-width:100%;border-radius:var(--r-lg);margin:20px 0;display:block}
-        .article-render hr{border:none;border-top:2px solid var(--border);margin:28px 0}
+        .article-render hr{border:none;border-top:1.5px solid var(--border);margin:18px 0}
         .article-render table{border-collapse:collapse;width:100%;margin:20px 0;font-size:14px}
         .article-render td,.article-render th{border:1px solid var(--border);padding:8px 12px}
         .article-render th{background:var(--bg-alt);font-weight:700}
