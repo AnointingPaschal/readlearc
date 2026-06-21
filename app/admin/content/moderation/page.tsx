@@ -46,7 +46,7 @@ interface A { id:string;title:string;blurb:string;price:string;category:string;r
 export default function ModerationPage() {
   const [arts,      setArts]      = useState<A[]>([]);
   const [loading,   setLoading]   = useState(true);
-  const [filter,    setFilter]    = useState<"all"|S>("pending");
+  const [filter,    setFilter]    = useState<"all"|S>("all");
   const [search,    setSearch]    = useState("");
   const [editing,   setEditing]   = useState<string|null>(null);
   const [eData,     setEData]     = useState<any>({});

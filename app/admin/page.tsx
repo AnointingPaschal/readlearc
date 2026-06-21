@@ -1,134 +1,183 @@
-
 "use client";
 import { useState, useEffect } from "react";
 import Link from "next/link";
-import { ethers } from "ethers";
-import { BookOpen, DollarSign, Users, Zap, TrendingUp, Shield, RefreshCw, ExternalLink, ArrowUpRight } from "lucide-react";
-import { CONTRACT_ADDRESS, USDC_ADDRESS, EXPLORER_URL, IS_CONFIGURED, fetchAllEvents, readContract, fetchUsdcBalance } from "../../lib/chain";
+import { BookOpen, DollarSign, Users, Zap, TrendingUp, Shield, RefreshCw, CheckCircle2, Clock, Brain, Star, ArrowRight, AlertTriangle } from "lucide-react";
+
+interface Stats {
+  totalArticles: number; pendingArticles: number; approvedArticles: number; featuredArticles: number;
+  totalUsers: number; totalReads: number;
+  pendingEarnings: number; totalEarnings: number;
+  recentArticles: any[];
+}
 
 export default function AdminDashboard() {
-  const [stats,   setStats]   = useState({ articles:0, writers:0, readers:0, revenue:0, treasury:"0.00" });
-  const [events,  setEvents]  = useState<any[]>([]);
+  const [stats,   setStats]   = useState<Stats|null>(null);
   const [loading, setLoading] = useState(true);
+  const [error,   setError]   = useState("");
 
   async function load() {
-    setLoading(true);
+    setLoading(true); setError("");
     try {
-      if (!CONTRACT_ADDRESS) return;
-      const c = readContract();
-      const count = await c.articleCount();
-      const { pub, read, ver } = await fetchAllEvents();
+      const [artRes, earnRes] = await Promise.all([
+        fetch("/api/admin/articles?limit=200"),
+        fetch("/api/admin/earnings").catch(() => ({ json: () => ({}) })),
+      ]);
+      const arts:any[]  = await artRes.json().catch(() => []);
+      const earn:any    = await (earnRes as any).json().catch(() => ({}));
 
-      const writers  = new Set((pub  as any[]).map(e=>e.args.author));
-      const readers  = new Set((read as any[]).map(e=>e.args.reader));
-      const revenue  = (read as any[]).reduce((s,e)=>s+parseFloat(ethers.formatUnits(e.args.price,6)),0);
+      if (!Array.isArray(arts)) { setError("Failed to load articles"); setLoading(false); return; }
 
-      let treasury = "0.00";
-      try { const owner = await c.owner(); treasury = await fetchUsdcBalance(owner); } catch {}
+      const writers = new Set(arts.map((a:any) => a.authorAddress));
+      const totalReads = arts.reduce((s:number, a:any) => s + (a.reads||0), 0);
 
-      setStats({ articles:Number(count), writers:writers.size, readers:readers.size, revenue, treasury });
-
-      const all: any[] = [
-        ...(pub  as any[]).map(e=>({ type:"ARTICLE_PUBLISHED", color:"var(--brand)", detail:`"${e.args.title?.slice(0,50)}"`, block:e.blockNumber, hash:e.transactionHash })),
-        ...(read as any[]).map(e=>({ type:"ARTICLE_READ",      color:"#059669",      detail:`Article #${e.args.id} · $${ethers.formatUnits(e.args.price,6)} USDC`, block:e.blockNumber, hash:e.transactionHash })),
-        ...(ver  as any[]).map(e=>({ type:"WRITER_VERIFIED",   color:"#0284c7",      detail:`${e.args.writer?.slice(0,14)}… · ${e.args.status?"verified":"unverified"}`, block:e.blockNumber, hash:e.transactionHash })),
-      ].sort((a,b)=>b.block-a.block).slice(0,12);
-      setEvents(all);
-    } catch(e) { console.error(e); }
-    finally { setLoading(false); }
+      setStats({
+        totalArticles:    arts.length,
+        pendingArticles:  arts.filter((a:any) => a.status === "pending").length,
+        approvedArticles: arts.filter((a:any) => a.status === "approved").length,
+        featuredArticles: arts.filter((a:any) => a.status === "featured").length,
+        totalUsers:       writers.size,
+        totalReads,
+        pendingEarnings:  earn.totalPending || 0,
+        totalEarnings:    (earn.totalPending||0) + (earn.totalPaid||0),
+        recentArticles:   arts.slice(0, 6),
+      });
+    } catch(e:any) { setError(e.message); }
+    setLoading(false);
   }
 
   useEffect(() => { load(); }, []);
 
-  const KPI = [
-    { label:"Articles",     value:stats.articles,             color:"var(--brand)", icon:BookOpen   },
-    { label:"Writers",      value:stats.writers,              color:"#0284c7",      icon:Users      },
-    { label:"Readers",      value:stats.readers,              color:"#7c3aed",      icon:Users      },
-    { label:"Total Reads",  value:(events.filter(e=>e.type==="ARTICLE_READ")).length, color:"#d97706", icon:TrendingUp },
-    { label:"Revenue",      value:`$${stats.revenue.toFixed(2)}`, color:"#059669", icon:DollarSign },
-    { label:"Treasury",     value:`$${stats.treasury}`,       color:"#059669",      icon:Zap        },
-  ];
+  const KPI = stats ? [
+    { label:"Total Articles",  value:stats.totalArticles,               icon:BookOpen,   color:"var(--brand)",  href:"/admin/content/moderation" },
+    { label:"Pending Review",  value:stats.pendingArticles,             icon:Clock,      color:"#d97706",       href:"/admin/content/moderation" },
+    { label:"Total Writers",   value:stats.totalUsers,                  icon:Users,      color:"#0284c7",       href:"/admin/users/writers" },
+    { label:"Total Reads",     value:stats.totalReads.toLocaleString(), icon:TrendingUp, color:"#7c3aed",       href:"/admin/content/moderation" },
+    { label:"Pending Payouts", value:`$${stats.pendingEarnings.toFixed(4)}`, icon:DollarSign, color:"#d97706", href:"/admin/earnings" },
+    { label:"Total Earned",    value:`$${stats.totalEarnings.toFixed(4)}`,   icon:Zap,    color:"var(--accent)",href:"/admin/earnings" },
+  ] : [];
+
+  const STATUS_ICON: Record<string,any> = {
+    pending:  { icon:Clock,        color:"#d97706" },
+    approved: { icon:CheckCircle2, color:"var(--accent)" },
+    featured: { icon:Star,         color:"#ca8a04" },
+    rejected: { icon:AlertTriangle,color:"#dc2626" },
+  };
 
   return (
-    <div style={{ display:"flex", flexDirection:"column", gap:18 }}>
-      <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", flexWrap:"wrap", gap:10 }}>
+    <div style={{ display:"flex", flexDirection:"column", gap:20 }}>
+      {/* Header */}
+      <div style={{ display:"flex", alignItems:"flex-start", justifyContent:"space-between", flexWrap:"wrap", gap:10 }}>
         <div>
-          <h1 style={{ fontFamily:"Outfit,sans-serif", fontSize:22, fontWeight:900, color:"var(--text)", letterSpacing:"-0.02em" }}>Dashboard</h1>
-          <p style={{ color:"var(--text-4)", fontSize:12, marginTop:2 }}>
-            {IS_CONFIGURED ? "Live from Arc blockchain" : <span style={{ color:"#dc2626", fontWeight:600 }}>⚠ Contract not configured — set env vars in Vercel</span>}
-          </p>
+          <h1 style={{ fontFamily:"Outfit,sans-serif", fontSize:22, fontWeight:900, color:"var(--text)", letterSpacing:"-.02em" }}>Dashboard</h1>
+          <p style={{ fontSize:12, color:"var(--text-4)", marginTop:2 }}>Readlearc admin overview</p>
         </div>
-        <button onClick={load} disabled={loading} style={{ display:"flex", alignItems:"center", gap:6, padding:"7px 14px", border:"1.5px solid var(--border)", background:"var(--bg-alt)", borderRadius:"var(--rfull)", cursor:"pointer", fontSize:12, fontWeight:600, color:"var(--text-3)" }}>
-          <RefreshCw size={13} className={loading?"spin":""}/>Refresh
+        <button onClick={load} disabled={loading} style={{ display:"flex",alignItems:"center",gap:5,padding:"7px 13px",border:"1.5px solid var(--border)",background:"var(--bg-alt)",borderRadius:"var(--r-f)",cursor:"pointer",fontSize:12,fontWeight:600,color:"var(--text-3)" }}>
+          <RefreshCw size={12} className={loading?"spin":""}/>Refresh
         </button>
       </div>
 
-      <div className="admin-kpi-grid">
-        {KPI.map(k => (
-          <div key={k.label} className="card" style={{ padding:"16px" }}>
-            <k.icon size={14} style={{ color:k.color, marginBottom:8 }}/>
-            {loading ? <div className="skeleton" style={{ height:26, borderRadius:5, marginBottom:6 }}/> :
-              <div style={{ fontFamily:"Outfit,sans-serif", fontSize:22, fontWeight:900, color:k.color, lineHeight:1 }}>{k.value}</div>}
-            <div style={{ fontSize:11, color:"var(--text-3)", fontWeight:600, marginTop:4 }}>{k.label}</div>
-          </div>
+      {error && (
+        <div style={{ padding:"12px 14px",background:"rgba(220,38,38,.06)",border:"1px solid rgba(220,38,38,.2)",borderRadius:"var(--r-md)",fontSize:13,color:"#dc2626",display:"flex",gap:8 }}>
+          <AlertTriangle size={14} style={{ flexShrink:0,marginTop:1 }}/>{error}
+          {error.includes("table") && <span> — Run <code>db/schema-all.sql</code> in Supabase SQL Editor.</span>}
+        </div>
+      )}
+
+      {/* KPI grid */}
+      <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fill,minmax(160px,1fr))", gap:12 }}>
+        {loading ? [1,2,3,4,5,6].map(i => <div key={i} className="skeleton" style={{ height:88, borderRadius:"var(--r-lg)" }}/>) :
+         KPI.map(k => (
+          <Link key={k.label} href={k.href} style={{ textDecoration:"none" }}>
+            <div className="card card-hover" style={{ padding:"16px 14px" }}>
+              <div style={{ display:"flex",alignItems:"center",gap:7,marginBottom:8 }}>
+                <div style={{ width:28,height:28,borderRadius:8,background:`${k.color}14`,display:"flex",alignItems:"center",justifyContent:"center" }}>
+                  <k.icon size={13} style={{ color:k.color }}/>
+                </div>
+                <span style={{ fontSize:10,fontWeight:700,color:"var(--text-4)",textTransform:"uppercase",letterSpacing:".07em",fontFamily:"Outfit,sans-serif" }}>{k.label}</span>
+              </div>
+              <div style={{ fontFamily:"Outfit,sans-serif",fontSize:24,fontWeight:900,color:k.color,lineHeight:1 }}>{k.value}</div>
+            </div>
+          </Link>
         ))}
       </div>
 
-      <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fill,minmax(280px,1fr))", gap:16 }}>
-        {/* Live activity */}
-        <div className="card" style={{ padding:"18px 20px" }}>
-          <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:14 }}>
-            <h2 style={{ fontSize:14, fontWeight:700, color:"var(--text)", fontFamily:"Outfit,sans-serif" }}>Live Activity</h2>
-            <Link href="/admin/logs" style={{ fontSize:11, color:"var(--brand)", textDecoration:"none", fontWeight:600, display:"flex", alignItems:"center", gap:2 }}>All logs <ArrowUpRight size={10}/></Link>
+      {/* Content overview + Quick actions */}
+      <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:14 }}>
+
+        {/* Recent articles */}
+        <div className="card" style={{ overflow:"hidden", padding:0 }}>
+          <div style={{ padding:"13px 16px",borderBottom:"1px solid var(--border)",display:"flex",alignItems:"center",justifyContent:"space-between" }}>
+            <h3 style={{ fontFamily:"Outfit,sans-serif",fontSize:14,fontWeight:700,color:"var(--text)" }}>Recent Articles</h3>
+            <Link href="/admin/content/moderation" style={{ fontSize:11,color:"var(--brand)",textDecoration:"none",display:"flex",alignItems:"center",gap:3 }}>
+              View all <ArrowRight size={10}/>
+            </Link>
           </div>
-          {loading ? [1,2,3,4].map(i=><div key={i} className="skeleton" style={{ height:40, borderRadius:7, marginBottom:7 }}/>) :
-           events.length === 0 ? <div style={{ textAlign:"center", padding:"24px 0", color:"var(--text-4)", fontSize:13 }}>{IS_CONFIGURED?"No events yet":"Contract not configured"}</div> :
-           events.map((ev,i) => (
-            <div key={ev.hash+i} style={{ display:"flex", alignItems:"flex-start", justifyContent:"space-between", padding:"8px 0", borderBottom:i<events.length-1?"1px solid var(--border)":"none", gap:8 }}>
-              <div style={{ flex:1, minWidth:0 }}>
-                <div style={{ display:"flex", alignItems:"center", gap:5, marginBottom:2, flexWrap:"wrap" }}>
-                  <span style={{ fontFamily:"JetBrains Mono,monospace", fontSize:9, fontWeight:700, color:ev.color }}>{ev.type}</span>
-                  <span style={{ fontSize:9, fontWeight:700, color:"#059669", background:"rgba(5,150,105,.08)", border:"1px solid rgba(5,150,105,.18)", padding:"1px 5px", borderRadius:3 }}>ON-CHAIN</span>
-                </div>
-                <div style={{ fontSize:11, color:"var(--text-3)", overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{ev.detail}</div>
-                <div style={{ fontSize:9, color:"var(--text-4)", marginTop:1 }}>Block #{ev.block}</div>
-              </div>
-              <a href={`${EXPLORER_URL}/tx/${ev.hash}`} target="_blank" rel="noopener noreferrer" style={{ color:"var(--text-4)", display:"flex", flexShrink:0 }}><ExternalLink size={11}/></a>
-            </div>
-          ))}
+          {loading ? [1,2,3].map(i=><div key={i} className="skeleton" style={{ height:50,margin:"8px 16px",borderRadius:"var(--r)" }}/>) :
+           !stats?.recentArticles.length ? <div style={{ padding:"24px",textAlign:"center",color:"var(--text-4)",fontSize:12 }}>No articles yet.</div> :
+           stats.recentArticles.map((a:any) => {
+             const S = STATUS_ICON[a.status] || STATUS_ICON.pending;
+             return (
+               <div key={a.id} style={{ padding:"10px 16px",borderBottom:"1px solid var(--border)",display:"flex",alignItems:"center",gap:10 }}>
+                 <S.icon size={13} style={{ color:S.color,flexShrink:0 }}/>
+                 <div style={{ flex:1,minWidth:0 }}>
+                   <div style={{ fontSize:12,fontWeight:600,color:"var(--text)",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap" }}>{a.title}</div>
+                   <div style={{ fontSize:10,color:"var(--text-4)",marginTop:1 }}>{a.authorShort} · {a.reads} reads</div>
+                 </div>
+                 <span style={{ fontSize:10,fontWeight:700,color:S.color,flexShrink:0,textTransform:"capitalize" }}>{a.status}</span>
+               </div>
+             );
+           })}
         </div>
 
-        {/* Quick links */}
-        <div className="card" style={{ padding:"18px 20px" }}>
-          <h2 style={{ fontSize:14, fontWeight:700, color:"var(--text)", fontFamily:"Outfit,sans-serif", marginBottom:14 }}>Quick Actions</h2>
-          <div style={{ display:"flex", flexDirection:"column", gap:7 }}>
+        {/* Quick actions */}
+        <div style={{ display:"flex",flexDirection:"column",gap:10 }}>
+          <h3 style={{ fontFamily:"Outfit,sans-serif",fontSize:14,fontWeight:700,color:"var(--text)",marginBottom:2 }}>Quick Actions</h3>
+          {[
+            { href:"/admin/content/moderation", icon:Clock,   label:"Review Pending Articles",  desc:`${stats?.pendingArticles||0} waiting for review`,            color:"#d97706" },
+            { href:"/admin/earnings",           icon:DollarSign,label:"Process Payouts",         desc:`$${stats?.pendingEarnings?.toFixed(4)||"0.0000"} pending`,    color:"var(--accent)" },
+            { href:"/admin/settings",           icon:Brain,   label:"AI & Settings",             desc:"Configure AI model, treasury, prices",                       color:"var(--brand)" },
+            { href:"/admin/settings/branding",  icon:Zap,     label:"Brand & Colors",            desc:"Customize site appearance",                                  color:"#7c3aed" },
+            { href:"/admin/users/roles",        icon:Shield,  label:"Manage Admin Roles",        desc:"Grant/revoke admin access",                                  color:"#0284c7" },
+          ].map(a => (
+            <Link key={a.href} href={a.href} style={{ textDecoration:"none" }}>
+              <div className="card card-hover" style={{ padding:"12px 14px",display:"flex",alignItems:"center",gap:12 }}>
+                <div style={{ width:34,height:34,borderRadius:10,background:`${a.color}12`,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0 }}>
+                  <a.icon size={15} style={{ color:a.color }}/>
+                </div>
+                <div style={{ flex:1,minWidth:0 }}>
+                  <div style={{ fontSize:13,fontWeight:700,color:"var(--text)" }}>{a.label}</div>
+                  <div style={{ fontSize:11,color:"var(--text-4)",marginTop:1 }}>{a.desc}</div>
+                </div>
+                <ArrowRight size={12} style={{ color:"var(--text-4)",flexShrink:0 }}/>
+              </div>
+            </Link>
+          ))}
+        </div>
+      </div>
+
+      {/* Status breakdown */}
+      {stats && (
+        <div className="card" style={{ padding:"16px" }}>
+          <h3 style={{ fontFamily:"Outfit,sans-serif",fontSize:14,fontWeight:700,color:"var(--text)",marginBottom:14 }}>Article Status Breakdown</h3>
+          <div style={{ display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(120px,1fr))",gap:10 }}>
             {[
-              { href:"/admin/content/moderation",label:"Review all articles",     color:"var(--brand)" },
-              { href:"/admin/users/writers",      label:"Verify writers",          color:"#0284c7"      },
-              { href:"/admin/finance/fees",       label:"Check fee splits",        color:"#059669"      },
-              { href:"/admin/security",           label:"Contract ownership",      color:"#7c3aed"      },
-              { href:"/admin/finance/payouts",    label:"Treasury & payouts",      color:"#d97706"      },
-              { href:"/admin/logs",               label:"On-chain event logs",     color:"var(--text-3)"},
-            ].map(l => (
-              <Link key={l.href} href={l.href} style={{ display:"flex", alignItems:"center", gap:9, padding:"10px 12px", borderRadius:"var(--r)", background:"var(--bg-alt)", border:"1px solid var(--border)", textDecoration:"none", transition:"all .15s" }}
-                onMouseEnter={e=>{(e.currentTarget as any).style.borderColor="var(--border-brand)";(e.currentTarget as any).style.background="var(--brand-muted)"}}
-                onMouseLeave={e=>{(e.currentTarget as any).style.borderColor="var(--border)";(e.currentTarget as any).style.background="var(--bg-alt)"}}
-              >
-                <span style={{ width:8, height:8, borderRadius:"50%", background:l.color, flexShrink:0 }}/>
-                <span style={{ fontSize:13, fontWeight:600, color:"var(--text-2)", flex:1 }}>{l.label}</span>
-                <ArrowUpRight size={11} style={{ color:"var(--text-4)" }}/>
+              { label:"Approved",  v:stats.approvedArticles,  c:"var(--accent)", status:"approved" },
+              { label:"Featured",  v:stats.featuredArticles,  c:"#ca8a04",       status:"featured" },
+              { label:"Pending",   v:stats.pendingArticles,   c:"#d97706",       status:"pending"  },
+              { label:"Total",     v:stats.totalArticles,     c:"var(--brand)",  status:"all"      },
+            ].map(s => (
+              <Link key={s.label} href={`/admin/content/moderation?status=${s.status}`} style={{ textDecoration:"none" }}>
+                <div style={{ padding:"12px",background:"var(--bg-alt)",borderRadius:"var(--r-lg)",border:"1.5px solid var(--border)",textAlign:"center",cursor:"pointer",transition:"border-color .15s" }}
+                  onMouseEnter={e=>(e.currentTarget as any).style.borderColor=s.c}
+                  onMouseLeave={e=>(e.currentTarget as any).style.borderColor="var(--border)"}>
+                  <div style={{ fontFamily:"Outfit,sans-serif",fontSize:24,fontWeight:900,color:s.c,marginBottom:3 }}>{s.v}</div>
+                  <div style={{ fontSize:11,fontWeight:600,color:"var(--text-4)" }}>{s.label}</div>
+                </div>
               </Link>
             ))}
           </div>
-          <div style={{ marginTop:14, padding:"10px 12px", background:"var(--bg-alt)", border:"1px solid var(--border)", borderRadius:"var(--r)" }}>
-            <div style={{ display:"flex", alignItems:"center", gap:5, marginBottom:3 }}>
-              <span style={{ width:6, height:6, borderRadius:"50%", background:IS_CONFIGURED?"#059669":"#dc2626" }}/>
-              <span style={{ fontSize:11, fontWeight:700, color:"var(--text-3)" }}>{IS_CONFIGURED?"Contract connected":"Contract not configured"}</span>
-            </div>
-            {CONTRACT_ADDRESS && <a href={`${EXPLORER_URL}/address/${CONTRACT_ADDRESS}`} target="_blank" rel="noopener noreferrer" style={{ fontSize:10, fontFamily:"JetBrains Mono,monospace", color:"var(--brand)", textDecoration:"none", display:"flex", alignItems:"center", gap:3 }}>{CONTRACT_ADDRESS.slice(0,16)}… <ExternalLink size={9}/></a>}
-          </div>
         </div>
-      </div>
+      )}
     </div>
   );
 }

@@ -217,3 +217,11 @@ SELECT 'Schema v2 additions complete' AS status;
 -- Add blockchain verification to profiles (run if profiles table already exists)
 ALTER TABLE profiles ADD COLUMN IF NOT EXISTS saved_to_chain  BOOLEAN DEFAULT false;
 ALTER TABLE profiles ADD COLUMN IF NOT EXISTS chain_signature TEXT;
+
+-- Ensure AI and treasury settings keys exist (safe to re-run)
+INSERT INTO platform_settings (key, value, label) VALUES
+  ('ai_provider',    'openrouter',                    'AI Provider'),
+  ('ai_model',       'anthropic/claude-haiku-4-5',   'AI Model'),
+  ('ai_api_key',     '',                              'AI API Key'),
+  ('treasury_address','',                             'Treasury Wallet Address')
+ON CONFLICT (key) DO NOTHING;
