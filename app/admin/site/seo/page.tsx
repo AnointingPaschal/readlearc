@@ -1,101 +1,77 @@
 "use client";
 import { useState, useEffect } from "react";
-import { Save, CheckCircle2, Search, Globe } from "lucide-react";
-
-const SEO_DEFAULTS = {
-  metaTitle: "Readlearc — Pay per word. Own every read.",
-  metaDescription: "A pay-per-read article platform built on Arc blockchain. Writers publish, readers pay in USDC, all on-chain.",
-  metaKeywords: "pay-per-read, Arc blockchain, USDC, nanopayments, Circle, web3, articles",
-  ogTitle: "Readlearc — Pay per word. Own every read.",
-  ogDescription: "Pay-per-read articles on Arc blockchain. USDC nanopayments. Sub-second settlement.",
-  twitterCard: "summary_large_image",
-  siteUrl: "",
-};
-
-function loadSEO() {
-  try { return { ...SEO_DEFAULTS, ...JSON.parse(localStorage.getItem("rl-seo") || "{}") }; }
-  catch { return SEO_DEFAULTS; }
-}
+import { Save, CheckCircle2, Search } from "lucide-react";
 
 export default function SEOPage() {
-  const [cfg, setCfg] = useState(SEO_DEFAULTS);
-  const [saved, setSaved] = useState(false);
+  const [s,      setS]      = useState<Record<string,string>>({});
+  const [loading,setLoading]= useState(true);
+  const [saving, setSaving] = useState(false);
+  const [saved,  setSaved]  = useState(false);
 
-  useEffect(() => { setCfg(loadSEO()); }, []);
+  function get(k:string,fb="") { return s[k]??fb; }
+  function set(k:string,v:string) { setS(p=>({...p,[k]:v})); }
 
-  function set(key: string, val: string) { setCfg(c => ({ ...c, [key]: val })); }
-  function save() {
-    localStorage.setItem("rl-seo", JSON.stringify(cfg));
-    setSaved(true);
-    setTimeout(() => setSaved(false), 3000);
+  async function load() {
+    setLoading(true);
+    const r = await fetch("/api/admin/settings");
+    const d = await r.json();
+    setS(d||{}); setLoading(false);
+  }
+  useEffect(()=>{ load(); },[]);
+
+  async function save() {
+    setSaving(true);
+    await fetch("/api/admin/settings",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(s)});
+    setSaved(true); setSaving(false); setTimeout(()=>setSaved(false),3000);
   }
 
-  const Field = ({ label, helpText, children }: any) => (
-    <div>
-      <div style={{ marginBottom: 6 }}>
-        <label style={{ fontSize: 12, fontWeight: 700, color: "var(--text-2)", display: "block" }}>{label}</label>
-        {helpText && <span style={{ fontSize: 11, color: "var(--text-4)" }}>{helpText}</span>}
-      </div>
-      {children}
-    </div>
-  );
+  const fields = [
+    { key:"seo_title",       label:"Default Page Title",   placeholder:"Readlearc — Pay per word. Own every read.", rows:1  },
+    { key:"seo_description", label:"Default Meta Description",placeholder:"Pay-per-read publishing on Arc blockchain. Writers earn 85% in USDC instantly.", rows:2 },
+    { key:"seo_keywords",    label:"Keywords (comma-separated)",placeholder:"web3 publishing, blockchain, usdc, arc network", rows:2 },
+    { key:"og_image_url",    label:"Open Graph Image URL", placeholder:"https://yoursite.com/og-image.png", rows:1 },
+    { key:"robots_txt",      label:"Robots.txt Content",   placeholder:"User-agent: *\nAllow: /\nDisallow: /admin/", rows:3 },
+  ];
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 20, maxWidth: 640 }}>
-      <div>
-        <h1 style={{ fontFamily: "Outfit, sans-serif", fontSize: 22, fontWeight: 900, color: "var(--text)", letterSpacing: "-0.02em" }}>SEO Settings</h1>
-        <p style={{ color: "var(--text-4)", fontSize: 12, marginTop: 3 }}>Meta tags and search engine configuration</p>
-      </div>
-
-      {/* Basic meta */}
-      <div className="card" style={{ padding: "20px", display: "flex", flexDirection: "column", gap: 14 }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 8 }}><Search size={14} style={{ color: "var(--brand)" }} /><h2 style={{ fontSize: 13, fontWeight: 700, color: "var(--text)" }}>Basic Meta Tags</h2></div>
-        <Field label="Meta Title" helpText={`${cfg.metaTitle.length}/70 chars`}>
-          <input value={cfg.metaTitle} onChange={e => set("metaTitle", e.target.value)} className="admin-input" maxLength={70} />
-        </Field>
-        <Field label="Meta Description" helpText={`${cfg.metaDescription.length}/160 chars`}>
-          <textarea value={cfg.metaDescription} onChange={e => set("metaDescription", e.target.value)} className="admin-input" rows={3} maxLength={160} style={{ resize: "vertical", height: "auto" }} />
-        </Field>
-        <Field label="Keywords" helpText="Comma-separated">
-          <input value={cfg.metaKeywords} onChange={e => set("metaKeywords", e.target.value)} className="admin-input" />
-        </Field>
-        <Field label="Site URL" helpText="Your production domain">
-          <div style={{ position: "relative" }}>
-            <Globe size={13} style={{ position: "absolute", left: 12, top: "50%", transform: "translateY(-50%)", color: "var(--text-4)", pointerEvents: "none" }} />
-            <input value={cfg.siteUrl} onChange={e => set("siteUrl", e.target.value)} className="admin-input" style={{ paddingLeft: 34 }} placeholder="https://readlearc.io" type="url" />
-          </div>
-        </Field>
-      </div>
-
-      {/* OG */}
-      <div className="card" style={{ padding: "20px", display: "flex", flexDirection: "column", gap: 14 }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 8 }}><Globe size={14} style={{ color: "#0284c7" }} /><h2 style={{ fontSize: 13, fontWeight: 700, color: "var(--text)" }}>Open Graph (Social Sharing)</h2></div>
-        <Field label="OG Title">
-          <input value={cfg.ogTitle} onChange={e => set("ogTitle", e.target.value)} className="admin-input" />
-        </Field>
-        <Field label="OG Description">
-          <textarea value={cfg.ogDescription} onChange={e => set("ogDescription", e.target.value)} className="admin-input" rows={2} style={{ resize: "vertical", height: "auto" }} />
-        </Field>
-      </div>
-
-      {/* Preview */}
-      <div className="card" style={{ padding: "20px" }}>
-        <h2 style={{ fontSize: 13, fontWeight: 700, color: "var(--text)", marginBottom: 12 }}>Google Search Preview</h2>
-        <div style={{ padding: "14px 16px", background: "var(--bg-alt)", borderRadius: "var(--radius)", border: "1px solid var(--border)" }}>
-          <div style={{ fontSize: 18, color: "#1a0dab", marginBottom: 2, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{cfg.metaTitle}</div>
-          <div style={{ fontSize: 13, color: "#006621", marginBottom: 4 }}>{cfg.siteUrl || "https://readlearc.io"}</div>
-          <div style={{ fontSize: 13, color: "#545454", lineHeight: 1.5, display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical" as any, overflow: "hidden" }}>{cfg.metaDescription}</div>
+    <div style={{ display:"flex",flexDirection:"column",gap:16,maxWidth:600 }}>
+      <div style={{ display:"flex",alignItems:"flex-start",justifyContent:"space-between",gap:10 }}>
+        <div>
+          <h1 style={{ fontFamily:"Outfit,sans-serif",fontSize:22,fontWeight:900,color:"var(--text)",letterSpacing:"-.02em" }}>SEO Settings</h1>
+          <p style={{ fontSize:12,color:"var(--text-4)",marginTop:2 }}>Meta tags, Open Graph, and search engine settings</p>
         </div>
-      </div>
-
-      <div style={{ display: "flex", justifyContent: "flex-end" }}>
-        <button onClick={save} className="btn btn-primary" style={{ fontWeight: 700, minWidth: 130 }}>
-          {saved ? <><CheckCircle2 size={14} /> Saved!</> : <><Save size={14} /> Save SEO</>}
+        <button onClick={save} disabled={saving} className="btn btn-primary" style={{ gap:6 }}>
+          {saved?<><CheckCircle2 size={12}/>Saved!</>:saving?"Saving…":<><Save size={12}/>Save</>}
         </button>
       </div>
 
-      <div style={{ padding: "12px 14px", background: "var(--bg-alt)", border: "1px solid var(--border)", borderRadius: "var(--radius)", fontSize: 11, color: "var(--text-4)", lineHeight: 1.6 }}>
-        To apply SEO changes to your live site, update the <code style={{ fontFamily: "JetBrains Mono, monospace" }}>metadata</code> object in <code style={{ fontFamily: "JetBrains Mono, monospace" }}>app/layout.tsx</code> with these values and redeploy on Vercel.
+      <div className="card" style={{ padding:"20px" }}>
+        <div style={{ display:"flex",alignItems:"center",gap:7,marginBottom:16 }}>
+          <Search size={14} style={{ color:"var(--brand)" }}/>
+          <h2 style={{ fontFamily:"Outfit,sans-serif",fontSize:14,fontWeight:700,color:"var(--text)" }}>Search & Social</h2>
+        </div>
+        {loading ? [1,2,3].map(i=><div key={i} className="skeleton" style={{ height:48,borderRadius:"var(--r)",marginBottom:10 }}/>) :
+        <div style={{ display:"flex",flexDirection:"column",gap:12 }}>
+          {fields.map(f=>(
+            <div key={f.key}>
+              <label style={{ fontSize:11,fontWeight:700,color:"var(--text-3)",textTransform:"uppercase",letterSpacing:".07em",display:"block",marginBottom:5,fontFamily:"Outfit,sans-serif" }}>{f.label}</label>
+              {f.rows>1
+                ? <textarea value={get(f.key)} onChange={e=>set(f.key,e.target.value)} rows={f.rows} placeholder={f.placeholder} className="admin-input" style={{ height:"auto",resize:"vertical" }}/>
+                : <input value={get(f.key)} onChange={e=>set(f.key,e.target.value)} placeholder={f.placeholder} className="admin-input"/>
+              }
+            </div>
+          ))}
+        </div>}
+      </div>
+
+      {/* Preview */}
+      <div className="card" style={{ padding:"20px" }}>
+        <h2 style={{ fontFamily:"Outfit,sans-serif",fontSize:14,fontWeight:700,color:"var(--text)",marginBottom:14 }}>Google Preview</h2>
+        <div style={{ background:"white",border:"1px solid #dfe1e5",borderRadius:8,padding:"14px 16px" }}>
+          <div style={{ fontSize:13,color:"#1a0dab",fontWeight:400,marginBottom:2,textDecoration:"underline",cursor:"pointer" }}>{get("seo_title","Readlearc — Pay per word. Own every read.")}</div>
+          <div style={{ fontSize:11,color:"#006621",marginBottom:4 }}>readlearc.vercel.app</div>
+          <div style={{ fontSize:12,color:"#545454",lineHeight:1.5 }}>{get("seo_description","Pay-per-read publishing on Arc blockchain.").slice(0,160)}</div>
+        </div>
       </div>
     </div>
   );

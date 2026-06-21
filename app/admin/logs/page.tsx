@@ -1,163 +1,91 @@
 "use client";
 import { useState, useEffect } from "react";
-import { ethers } from "ethers";
-import { RefreshCw, ExternalLink, BookOpen, Users, UserCheck, Filter } from "lucide-react";
+import { RefreshCw, ExternalLink, BookOpen, Users, UserCheck, Bell, DollarSign, Filter } from "lucide-react";
 import Link from "next/link";
-import { CONTRACT_ADDRESS, CONTRACT_ABI, EXPLORER_URL, readProvider } from "../../../lib/chain";
 
-type LogEntry = {
-  type: "ArticlePublished" | "ArticleRead" | "WriterVerified";
-  blockNumber: number;
-  txHash: string;
-  data: any;
-};
-
-const TYPE_META = {
-  ArticlePublished: { label: "Article Published", color: "var(--brand)", bg: "var(--brand-muted)", icon: BookOpen },
-  ArticleRead:      { label: "Article Read",      color: "#059669", bg: "rgba(5,150,105,0.08)", icon: Users },
-  WriterVerified:   { label: "Writer Verified",   color: "#0284c7", bg: "rgba(2,132,199,0.08)", icon: UserCheck },
+const TYPE_META: Record<string,{label:string;color:string;bg:string;icon:any}> = {
+  sale:             { label:"Article Sale",      color:"var(--accent)", bg:"rgba(5,150,105,.08)",   icon:DollarSign },
+  follow:           { label:"New Follow",        color:"var(--brand)",  bg:"var(--brand-muted)",    icon:Users      },
+  comment:          { label:"New Comment",       color:"#7c3aed",       bg:"rgba(124,58,237,.08)",  icon:BookOpen   },
+  payout:           { label:"Payout Processed",  color:"#0284c7",       bg:"rgba(2,132,199,.08)",   icon:DollarSign },
+  article_approved: { label:"Article Approved",  color:"var(--accent)", bg:"rgba(5,150,105,.08)",   icon:BookOpen   },
+  reaction:         { label:"Reaction",          color:"#d97706",       bg:"rgba(217,119,6,.08)",   icon:Bell       },
 };
 
 export default function LogsPage() {
-  const [logs,    setLogs]    = useState<LogEntry[]>([]);
+  const [logs,    setLogs]    = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-  const [filter,  setFilter]  = useState<string>("All");
+  const [filter,  setFilter]  = useState("All");
 
-  async function fetchLogs() {
+  async function load() {
     setLoading(true);
-    try {
-      if (!CONTRACT_ADDRESS) return;
-      const prov = readProvider();
-      const c    = new ethers.Contract(CONTRACT_ADDRESS, CONTRACT_ABI, prov);
+    const r = await fetch("/api/activity").catch(()=>null);
+    const d = r ? await r.json().catch(()=>[]) : [];
+    setLogs(Array.isArray(d) ? d : []);
+    setLoading(false);
+  }
+  useEffect(()=>{ load(); },[]);
 
-      const [pubEvs, readEvs, verEvs] = await Promise.all([
-        c.queryFilter(c.filters.ArticlePublished(), -100000),
-        c.queryFilter(c.filters.ArticleRead(),      -100000),
-        c.queryFilter(c.filters.WriterVerified(),   -100000),
-      ]);
+  const types  = ["All", ...Array.from(new Set(logs.map(l=>l.action_type)))];
+  const visible = filter==="All" ? logs : logs.filter(l=>l.action_type===filter);
 
-      const all: LogEntry[] = [
-        ...pubEvs.map((e: any) => ({
-          type: "ArticlePublished" as const,
-          blockNumber: e.blockNumber,
-          txHash: e.transactionHash,
-          data: { id: e.args.id?.toString(), author: e.args.author, title: e.args.title },
-        })),
-        ...readEvs.map((e: any) => ({
-          type: "ArticleRead" as const,
-          blockNumber: e.blockNumber,
-          txHash: e.transactionHash,
-          data: { id: e.args.id?.toString(), reader: e.args.reader, price: ethers.formatUnits(e.args.price, 6) },
-        })),
-        ...verEvs.map((e: any) => ({
-          type: "WriterVerified" as const,
-          blockNumber: e.blockNumber,
-          txHash: e.transactionHash,
-          data: { writer: e.args.writer, status: e.args.status },
-        })),
-      ].sort((a, b) => b.blockNumber - a.blockNumber);
-
-      setLogs(all);
-    } catch (err) { console.error(err); }
-    finally { setLoading(false); }
+  function timeAgo(ts:string) {
+    const s = (Date.now()-new Date(ts).getTime())/1000;
+    if(s<60) return "just now"; if(s<3600) return `${Math.floor(s/60)}m ago`;
+    if(s<86400) return `${Math.floor(s/3600)}h ago`; return `${Math.floor(s/86400)}d ago`;
   }
 
-  useEffect(() => { fetchLogs(); }, []);
-
-  const filtered = filter === "All" ? logs : logs.filter(l => l.type === filter);
-
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-      <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", flexWrap: "wrap", gap: 12 }}>
+    <div style={{ display:"flex", flexDirection:"column", gap:14 }}>
+      <div style={{ display:"flex", alignItems:"flex-start", justifyContent:"space-between", gap:10 }}>
         <div>
-          <h1 style={{ fontFamily: "Outfit, sans-serif", fontSize: 22, fontWeight: 900, color: "var(--text)", letterSpacing: "-0.02em" }}>Activity Logs</h1>
-          <p style={{ color: "var(--text-4)", fontSize: 12, marginTop: 3 }}>
-            All on-chain events · {logs.length} total events
-          </p>
+          <h1 style={{ fontFamily:"Outfit,sans-serif", fontSize:22, fontWeight:900, color:"var(--text)", letterSpacing:"-.02em" }}>Activity Logs</h1>
+          <p style={{ fontSize:12, color:"var(--text-4)", marginTop:2 }}>{logs.length} events recorded</p>
         </div>
-        <button onClick={fetchLogs} disabled={loading} style={{ display: "flex", alignItems: "center", gap: 6, padding: "7px 14px", border: "1.5px solid var(--border)", background: "var(--bg-alt)", borderRadius: "var(--radius)", cursor: "pointer", fontSize: 12, fontWeight: 600, color: "var(--text-3)" }}>
-          <RefreshCw size={13} style={loading ? { animation: "rl-spin 1s linear infinite" } : {}} />
-          Refresh
+        <button onClick={load} disabled={loading} style={{ display:"flex",alignItems:"center",gap:5,padding:"7px 12px",border:"1.5px solid var(--border)",background:"var(--bg-alt)",borderRadius:"var(--r-f)",cursor:"pointer",fontSize:12,fontWeight:600,color:"var(--text-3)" }}>
+          <RefreshCw size={12} className={loading?"spin":""}/>Refresh
         </button>
       </div>
 
-      {/* Filter pills */}
-      <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-        {["All", "ArticlePublished", "ArticleRead", "WriterVerified"].map(f => (
-          <button key={f} onClick={() => setFilter(f)} style={{
-            padding: "5px 12px", borderRadius: "var(--radius-full)", fontSize: 12, fontWeight: 600, cursor: "pointer", transition: "all .15s",
-            border: `1.5px solid ${filter === f ? "var(--brand)" : "var(--border)"}`,
-            background: filter === f ? "var(--brand-muted)" : "transparent",
-            color: filter === f ? "var(--brand)" : "var(--text-3)",
-          }}>
-            {f === "All" ? "All Events" : TYPE_META[f as keyof typeof TYPE_META]?.label ?? f}
-            {f !== "All" && <span style={{ marginLeft: 5, fontSize: 10, color: "var(--text-4)" }}>
-              ({logs.filter(l => l.type === f).length})
-            </span>}
+      {/* Filter tabs */}
+      <div style={{ display:"flex", gap:6, flexWrap:"wrap" }}>
+        {types.map(t=>(
+          <button key={t} onClick={()=>setFilter(t)} style={{ padding:"4px 11px",borderRadius:"var(--r-f)",fontSize:11,fontWeight:600,cursor:"pointer",border:`1.5px solid ${filter===t?"var(--brand)":"var(--border)"}`,background:filter===t?"var(--brand-muted)":"transparent",color:filter===t?"var(--brand)":"var(--text-3)",transition:"all .15s" }}>
+            {t==="All"?t:TYPE_META[t]?.label||t}
           </button>
         ))}
       </div>
 
-      {/* Log list */}
-      <div className="card" style={{ overflow: "hidden", padding: 0 }}>
-        {loading ? (
-          <div style={{ padding: 16 }}>{[1,2,3,4,5].map(i => <div key={i} className="skeleton" style={{ height: 56, borderRadius: 8, marginBottom: 8 }} />)}</div>
-        ) : filtered.length === 0 ? (
-          <div style={{ padding: "48px 20px", textAlign: "center", color: "var(--text-4)", fontSize: 13 }}>
-            {logs.length === 0 ? "No on-chain events found. Deploy the contract and start publishing." : "No events match this filter."}
-          </div>
-        ) : (
-          <div>
-            {filtered.map((log, i) => {
-              const meta = TYPE_META[log.type];
-              return (
-                <div key={`${log.txHash}-${i}`} style={{ display: "flex", alignItems: "flex-start", gap: 12, padding: "14px 16px", borderBottom: i < filtered.length - 1 ? "1px solid var(--border)" : "none" }}>
-                  {/* Icon */}
-                  <div style={{ width: 34, height: 34, borderRadius: 8, background: meta.bg, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-                    <meta.icon size={15} style={{ color: meta.color }} />
-                  </div>
-
-                  {/* Content */}
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 3, flexWrap: "wrap" }}>
-                      <span style={{ fontSize: 12, fontWeight: 700, color: meta.color }}>{meta.label}</span>
-                      <span style={{ fontSize: 10, color: "var(--text-4)", fontFamily: "JetBrains Mono, monospace" }}>block #{log.blockNumber}</span>
-                    </div>
-
-                    {/* Event detail */}
-                    <div style={{ fontSize: 11, color: "var(--text-3)", lineHeight: 1.6 }}>
-                      {log.type === "ArticlePublished" && (
-                        <span>
-                          Article #{log.data.id} · <em>"{log.data.title?.slice(0,50)}{log.data.title?.length > 50 ? "…" : ""}"</em>
-                          {" · "}<Link href={`/profile/${log.data.author}`} style={{ color: "var(--brand)", textDecoration: "none", fontFamily: "JetBrains Mono, monospace" }}>{log.data.author?.slice(0,10)}…</Link>
-                        </span>
-                      )}
-                      {log.type === "ArticleRead" && (
-                        <span>
-                          Article #{log.data.id} · Paid <strong style={{ color: "#059669" }}>${log.data.price} USDC</strong>
-                          {" · reader "}<span style={{ fontFamily: "JetBrains Mono, monospace" }}>{log.data.reader?.slice(0,10)}…</span>
-                        </span>
-                      )}
-                      {log.type === "WriterVerified" && (
-                        <span>
-                          <span style={{ fontFamily: "JetBrains Mono, monospace" }}>{log.data.writer?.slice(0,10)}…</span>
-                          {" · "}<strong style={{ color: log.data.status ? "#059669" : "#dc2626" }}>{log.data.status ? "Verified" : "Unverified"}</strong>
-                        </span>
-                      )}
-                    </div>
-                  </div>
-
-                  {/* Tx link */}
-                  <a href={`${EXPLORER_URL}/tx/${log.txHash}`} target="_blank" rel="noopener noreferrer" style={{ color: "var(--text-4)", display: "flex", flexShrink: 0, marginTop: 2 }} title="View transaction">
-                    <ExternalLink size={13} />
-                  </a>
-                </div>
-              );
-            })}
-          </div>
-        )}
+      <div className="card" style={{ overflow:"hidden", padding:0 }}>
+        {loading ? [1,2,3,4,5].map(i=><div key={i} className="skeleton" style={{ height:56,margin:"8px 16px",borderRadius:"var(--r)" }}/>) :
+         !visible.length ? <div style={{ padding:"48px",textAlign:"center",color:"var(--text-4)",fontSize:13 }}>No activity logs yet.</div> :
+         visible.map((log:any,i:number) => {
+           const meta = TYPE_META[log.action_type] || { label:log.action_type, color:"var(--text-3)", bg:"var(--bg-alt)", icon:Bell };
+           const Icon = meta.icon;
+           return (
+             <div key={i} style={{ padding:"12px 16px", borderBottom:"1px solid var(--border)", display:"flex", alignItems:"flex-start", gap:12 }}>
+               <div style={{ width:32,height:32,borderRadius:"50%",background:meta.bg,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,marginTop:2 }}>
+                 <Icon size={13} style={{ color:meta.color }}/>
+               </div>
+               <div style={{ flex:1, minWidth:0 }}>
+                 <div style={{ display:"flex", alignItems:"center", gap:7, flexWrap:"wrap", marginBottom:3 }}>
+                   <span style={{ fontSize:11,fontWeight:700,color:meta.color,background:meta.bg,padding:"2px 7px",borderRadius:"var(--r-f)" }}>{meta.label}</span>
+                   <span style={{ fontSize:10,color:"var(--text-4)" }}>{timeAgo(log.created_at)}</span>
+                 </div>
+                 <div style={{ fontSize:12,color:"var(--text-2)",marginBottom:log.article_id?3:0 }}>
+                   <span style={{ fontFamily:"JetBrains Mono,monospace",fontSize:10,color:"var(--text-4)" }}>{log.actor_address?.slice(0,10)}…</span>
+                   {log.target_address && <> → <span style={{ fontFamily:"JetBrains Mono,monospace",fontSize:10,color:"var(--text-4)" }}>{log.target_address.slice(0,10)}…</span></>}
+                 </div>
+                 {log.articles?.title && (
+                   <Link href={`/article/${log.article_id}`} style={{ fontSize:11,color:"var(--brand)",textDecoration:"none",display:"inline-flex",alignItems:"center",gap:3 }}>
+                     {log.articles.title.slice(0,60)}{log.articles.title.length>60?"…":""} <ExternalLink size={9}/>
+                   </Link>
+                 )}
+               </div>
+             </div>
+           );
+         })}
       </div>
-      <style>{`@keyframes rl-spin{to{transform:rotate(360deg)}}`}</style>
     </div>
   );
 }

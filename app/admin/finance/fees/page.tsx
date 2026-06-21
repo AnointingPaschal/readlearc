@@ -1,145 +1,88 @@
 "use client";
-import { useAuth } from "../../../../lib/auth";
 import { useState, useEffect } from "react";
-import { ethers } from "ethers";
-import { RefreshCw, ExternalLink, Info } from "lucide-react";
-import { CONTRACT_ADDRESS, CONTRACT_ABI, EXPLORER_URL, readProvider } from "../../../../lib/chain";
+import { Save, CheckCircle2, Info, RefreshCw } from "lucide-react";
 
 export default function FeesConfigPage() {
-    const [onChain,  setOnChain]  = useState<any>(null);
-  const [loading,  setLoading]  = useState(true);
+  const [s,       setS]       = useState({ writer_pct:"85", platform_pct:"10", referrer_pct:"5" });
+  const [loading, setLoading] = useState(true);
+  const [saving,  setSaving]  = useState(false);
+  const [saved,   setSaved]   = useState(false);
+  const [error,   setError]   = useState("");
 
-  async function fetchFees() {
+  async function load() {
     setLoading(true);
-    try {
-      if (!CONTRACT_ADDRESS) return;
-      const prov = readProvider();
-      const c    = new ethers.Contract(CONTRACT_ADDRESS, CONTRACT_ABI, prov);
+    const r = await fetch("/api/admin/settings");
+    const d = await r.json();
+    setS({ writer_pct:d.writer_pct||"85", platform_pct:d.platform_pct||"10", referrer_pct:d.referrer_pct||"5" });
+    setLoading(false);
+  }
+  useEffect(()=>{ load(); },[]);
 
-      const [
-        defaultWriterBps, defaultPlatformBps, defaultReferrerBps,
-        verifiedWriterBps, verifiedPlatformBps, verifiedReferrerBps,
-      ] = await Promise.all([
-        c.defaultWriterBps(),
-        c.defaultPlatformBps(),
-        c.defaultReferrerBps(),
-        c.verifiedWriterBps(),
-        c.verifiedPlatformBps(),
-        c.verifiedReferrerBps(),
-      ]);
-
-      setOnChain({
-        defaultWriterBps:    Number(defaultWriterBps),
-        defaultPlatformBps:  Number(defaultPlatformBps),
-        defaultReferrerBps:  Number(defaultReferrerBps),
-        verifiedWriterBps:   Number(verifiedWriterBps),
-        verifiedPlatformBps: Number(verifiedPlatformBps),
-        verifiedReferrerBps: Number(verifiedReferrerBps),
-      });
-    } catch (err) { console.error(err); }
-    finally { setLoading(false); }
+  async function save() {
+    const sum = parseFloat(s.writer_pct)+parseFloat(s.platform_pct)+parseFloat(s.referrer_pct);
+    if(Math.abs(sum-100)>0.1){ setError(`Must sum to 100% (currently ${sum.toFixed(1)}%)`); return; }
+    setSaving(true); setError("");
+    await fetch("/api/admin/settings",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(s)});
+    setSaved(true); setSaving(false); setTimeout(()=>setSaved(false),3000);
   }
 
-  useEffect(() => { fetchFees(); }, []);
-
-  function bpsToPercent(bps: number) { return (bps / 100).toFixed(1) + "%"; }
-
-  const SplitBar = ({ writer, platform, referrer }: { writer: number; platform: number; referrer: number }) => (
-    <div style={{ height: 10, borderRadius: "var(--radius-full)", overflow: "hidden", display: "flex", background: "var(--bg-alt)", border: "1px solid var(--border)", marginTop: 10 }}>
-      <div style={{ width: `${writer / 100}%`,   background: "#059669", transition: "width .3s" }} title={`Writer: ${bpsToPercent(writer)}`} />
-      <div style={{ width: `${platform / 100}%`, background: "var(--brand)", transition: "width .3s" }} title={`Platform: ${bpsToPercent(platform)}`} />
-      <div style={{ width: `${referrer / 100}%`, background: "#0284c7", transition: "width .3s" }} title={`Referrer: ${bpsToPercent(referrer)}`} />
-    </div>
-  );
-
-  const SplitRow = ({ label, color, value }: { label: string; color: string; value: number }) => (
-    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "10px 14px", background: "var(--bg-alt)", border: "1px solid var(--border)", borderRadius: "var(--radius-sm)" }}>
-      <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-        <div style={{ width: 10, height: 10, borderRadius: "50%", background: color, flexShrink: 0 }} />
-        <span style={{ fontSize: 13, fontWeight: 600, color: "var(--text-2)" }}>{label}</span>
-      </div>
-      <div style={{ textAlign: "right" }}>
-        <div style={{ fontFamily: "Outfit, sans-serif", fontSize: 18, fontWeight: 900, color }}>{bpsToPercent(value)}</div>
-        <div style={{ fontSize: 10, color: "var(--text-4)", fontFamily: "JetBrains Mono, monospace" }}>{value} bps</div>
-      </div>
-    </div>
-  );
+  const w=parseFloat(s.writer_pct||"0"), p=parseFloat(s.platform_pct||"0"), ref=parseFloat(s.referrer_pct||"0");
+  const sum = w+p+ref; const ok = Math.abs(sum-100)<0.1;
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 20, maxWidth: 600 }}>
-      <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between" }}>
+    <div style={{ display:"flex", flexDirection:"column", gap:14, maxWidth:560 }}>
+      <div style={{ display:"flex", alignItems:"flex-start", justifyContent:"space-between", gap:10 }}>
         <div>
-          <h1 style={{ fontFamily: "Outfit, sans-serif", fontSize: 22, fontWeight: 900, color: "var(--text)", letterSpacing: "-0.02em" }}>Fee Configuration</h1>
-          <p style={{ color: "var(--text-4)", fontSize: 12, marginTop: 3 }}>Live on-chain payment splits from Readlearc.sol</p>
+          <h1 style={{ fontFamily:"Outfit,sans-serif", fontSize:22, fontWeight:900, color:"var(--text)", letterSpacing:"-.02em" }}>Fee Splits</h1>
+          <p style={{ fontSize:12, color:"var(--text-4)", marginTop:2 }}>Configure how payments are split between writers, platform, and referrers</p>
         </div>
-        <button onClick={fetchFees} disabled={loading} style={{ display: "flex", alignItems: "center", gap: 6, padding: "7px 14px", border: "1.5px solid var(--border)", background: "var(--bg-alt)", borderRadius: "var(--radius)", cursor: "pointer", fontSize: 12, fontWeight: 600, color: "var(--text-3)" }}>
-          <RefreshCw size={13} style={loading ? { animation: "rl-spin 1s linear infinite" } : {}} /> Refresh
+        <button onClick={save} disabled={saving||!ok} className="btn btn-primary" style={{ gap:6 }}>
+          {saved?<><CheckCircle2 size={12}/>Saved!</>:saving?<><div style={{ width:12,height:12,border:"2px solid rgba(255,255,255,.3)",borderTopColor:"white",borderRadius:"50%"}} className="spin"/>Saving…</>:<><Save size={12}/>Save</>}
         </button>
       </div>
 
-      {/* Info banner */}
-      <div style={{ display: "flex", gap: 10, padding: "12px 14px", background: "var(--brand-muted)", border: "1px solid var(--border-brand)", borderRadius: "var(--radius)" }}>
-        <Info size={14} style={{ color: "var(--brand)", flexShrink: 0, marginTop: 1 }} />
-        <div style={{ fontSize: 12, color: "var(--text-3)", lineHeight: 1.6 }}>
-          These values are read directly from the deployed <code style={{ fontFamily: "JetBrains Mono, monospace", fontSize: 11 }}>Readlearc.sol</code> contract.
-          To change fee splits you need to redeploy the contract with updated <code style={{ fontFamily: "JetBrains Mono, monospace", fontSize: 11 }}>defaultWriterBps</code> values, or upgrade to the new contract version that includes <code style={{ fontFamily: "JetBrains Mono, monospace", fontSize: 11 }}>updateDefaultSplits()</code>.
+      {error && <div style={{ padding:"10px 14px",background:"rgba(220,38,38,.06)",border:"1px solid rgba(220,38,38,.2)",borderRadius:"var(--r-md)",fontSize:13,color:"#dc2626" }}>{error}</div>}
+
+      <div className="card" style={{ padding:"22px" }}>
+        {/* Visual bar */}
+        <div style={{ height:14,borderRadius:99,overflow:"hidden",display:"flex",marginBottom:20 }}>
+          {[[w,"var(--accent)"],[p,"var(--brand)"],[ref,"#0284c7"]].map(([v,c],i)=>(
+            <div key={i} style={{ flex:Number(v),background:String(c),transition:"flex .3s" }}/>
+          ))}
+        </div>
+        <div style={{ display:"flex",gap:16,marginBottom:24,flexWrap:"wrap" }}>
+          {[["Writer",w,"var(--accent)"],["Platform",p,"var(--brand)"],["Referrer",ref,"#0284c7"]].map(([l,v,c])=>(
+            <div key={String(l)} style={{ display:"flex",alignItems:"center",gap:6 }}>
+              <div style={{ width:12,height:12,borderRadius:3,background:String(c) }}/>
+              <span style={{ fontSize:12,fontWeight:700,color:"var(--text-3)" }}>{l}: {Number(v).toFixed(1)}%</span>
+            </div>
+          ))}
+          <span style={{ marginLeft:"auto",fontSize:12,fontWeight:700,color:ok?"var(--accent)":"#dc2626" }}>Total: {sum.toFixed(1)}%</span>
+        </div>
+
+        {[
+          { key:"writer_pct",   label:"Writer Payout",  desc:"Goes directly to the article author", color:"var(--accent)" },
+          { key:"platform_pct", label:"Platform Fee",   desc:"Readlearc platform fee",              color:"var(--brand)"  },
+          { key:"referrer_pct", label:"Referrer Bonus", desc:"Bonus to whoever referred the reader",color:"#0284c7"       },
+        ].map(f=>(
+          <div key={f.key} style={{ marginBottom:18 }}>
+            <div style={{ display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:6 }}>
+              <span style={{ fontSize:13,fontWeight:700,color:"var(--text)" }}>{f.label}</span>
+              <div style={{ display:"flex",alignItems:"center",gap:4,width:70,background:"var(--bg-alt)",border:"1.5px solid var(--border)",borderRadius:"var(--r)",padding:"5px 9px" }}>
+                <input type="number" min="0" max="100" step="0.5" value={(s as any)[f.key]} onChange={e=>setS(prev=>({...prev,[f.key]:e.target.value}))}
+                  style={{ width:"100%",border:"none",outline:"none",background:"transparent",fontSize:14,fontWeight:700,color:f.color,textAlign:"right",fontFamily:"Outfit,sans-serif" }}/>
+                <span style={{ fontSize:12,fontWeight:700,color:"var(--text-4)",flexShrink:0 }}>%</span>
+              </div>
+            </div>
+            <input type="range" min="0" max="100" step="0.5" value={parseFloat((s as any)[f.key]||"0")} onChange={e=>setS(prev=>({...prev,[f.key]:e.target.value}))} style={{ width:"100%",accentColor:f.color }}/>
+            <p style={{ fontSize:11,color:"var(--text-4)",marginTop:3 }}>{f.desc}</p>
+          </div>
+        ))}
+
+        <div style={{ padding:"9px 12px",background:"var(--bg-alt)",border:"1px solid var(--border)",borderRadius:"var(--r)",display:"flex",gap:6,fontSize:11,color:"var(--text-4)" }}>
+          <Info size={11} style={{ flexShrink:0,marginTop:1 }}/>These settings apply to earnings tracking. Smart contract splits need redeployment.
         </div>
       </div>
-
-      {loading ? (
-        <div>{[1,2].map(i => <div key={i} className="skeleton" style={{ height: 160, borderRadius: 14, marginBottom: 12 }} />)}</div>
-      ) : !onChain ? (
-        <div className="card" style={{ padding: "32px 20px", textAlign: "center", fontSize: 13, color: "var(--text-4)" }}>
-          Could not read contract. Make sure <code style={{ fontFamily: "JetBrains Mono, monospace", fontSize: 11 }}>NEXT_PUBLIC_CONTRACT_ADDRESS</code> is set in Vercel.
-        </div>
-      ) : (<>
-        {/* Default splits */}
-        <div className="card" style={{ padding: "20px" }}>
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14 }}>
-            <h2 style={{ fontSize: 14, fontWeight: 700, color: "var(--text)" }}>Default Split <span style={{ fontSize: 11, fontWeight: 500, color: "var(--text-4)" }}>(unverified writers)</span></h2>
-            <span style={{ fontSize: 12, fontWeight: 700, color: onChain.defaultWriterBps + onChain.defaultPlatformBps + onChain.defaultReferrerBps === 10000 ? "#059669" : "#dc2626" }}>
-              Total: {((onChain.defaultWriterBps + onChain.defaultPlatformBps + onChain.defaultReferrerBps) / 100).toFixed(0)}%
-            </span>
-          </div>
-          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-            <SplitRow label="Writer"   color="#059669"    value={onChain.defaultWriterBps} />
-            <SplitRow label="Platform" color="var(--brand)" value={onChain.defaultPlatformBps} />
-            <SplitRow label="Referrer" color="#0284c7"    value={onChain.defaultReferrerBps} />
-          </div>
-          <SplitBar writer={onChain.defaultWriterBps} platform={onChain.defaultPlatformBps} referrer={onChain.defaultReferrerBps} />
-          <div style={{ display: "flex", gap: 14, marginTop: 10, flexWrap: "wrap" }}>
-            {[{ label: "Writer", c: "#059669" }, { label: "Platform", c: "var(--brand)" }, { label: "Referrer", c: "#0284c7" }].map(l => (
-              <div key={l.label} style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 11, color: "var(--text-4)" }}>
-                <div style={{ width: 8, height: 8, borderRadius: 2, background: l.c }} /> {l.label}
-              </div>
-            ))}
-          </div>
-        </div>
-
-        {/* Verified splits */}
-        <div className="card" style={{ padding: "20px" }}>
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14 }}>
-            <h2 style={{ fontSize: 14, fontWeight: 700, color: "var(--text)" }}>Verified Writer Split</h2>
-            <span style={{ fontSize: 12, fontWeight: 700, color: onChain.verifiedWriterBps + onChain.verifiedPlatformBps + onChain.verifiedReferrerBps === 10000 ? "#059669" : "#dc2626" }}>
-              Total: {((onChain.verifiedWriterBps + onChain.verifiedPlatformBps + onChain.verifiedReferrerBps) / 100).toFixed(0)}%
-            </span>
-          </div>
-          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-            <SplitRow label="Writer"   color="#059669"    value={onChain.verifiedWriterBps} />
-            <SplitRow label="Platform" color="var(--brand)" value={onChain.verifiedPlatformBps} />
-            <SplitRow label="Referrer" color="#0284c7"    value={onChain.verifiedReferrerBps} />
-          </div>
-          <SplitBar writer={onChain.verifiedWriterBps} platform={onChain.verifiedPlatformBps} referrer={onChain.verifiedReferrerBps} />
-        </div>
-
-        {/* Contract link */}
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "center" }}>
-          <a href={`${EXPLORER_URL}/address/${CONTRACT_ADDRESS}`} target="_blank" rel="noopener noreferrer" style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12, color: "var(--brand)", textDecoration: "none", fontWeight: 600 }}>
-            <ExternalLink size={13} /> View contract on Arc Explorer
-          </a>
-        </div>
-      </>)}
-      <style>{`@keyframes rl-spin{to{transform:rotate(360deg)}}`}</style>
     </div>
   );
 }
