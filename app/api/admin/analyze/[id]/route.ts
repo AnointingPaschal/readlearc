@@ -3,182 +3,169 @@ import { supabaseAdmin } from "../../../../../lib/supabase";
 
 type C = { params: Promise<{id:string}> };
 
-// ── Unified AI caller ─────────────────────────────────────────────
-async function callAI(provider: string, model: string, apiKey: string, prompt: string): Promise<string> {
-  switch (provider) {
-    // OpenRouter — single endpoint for 300+ models
-    case "openrouter": {
-      const res = await fetch("https://openrouter.ai/api/v1/chat/completions", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "Authorization": `Bearer ${apiKey}`,
-          "HTTP-Referer": "https://readlearc.vercel.app",
-          "X-Title": "Readlearc Content Analysis",
-        },
-        body: JSON.stringify({
-          model,
-          max_tokens: 600,
-          messages: [{ role:"user", content:prompt }],
-          response_format: { type:"json_object" },
-        }),
-      });
-      const d = await res.json();
-      if (!res.ok) throw new Error(d.error?.message || `OpenRouter error: ${JSON.stringify(d.error)}`);
-      return d.choices?.[0]?.message?.content || "";
-    }
+// Read AI config — always from platform_settings (set via AI Providers page)
+async function getAIConfig() {
+  const { data } = await supabaseAdmin
+    .from("platform_settings")
+    .select("key,value")
+    .in("key", ["ai_api_key","ai_model","ai_provider","ai_auto_approve"]);
 
-    case "openai": {
-      const res = await fetch("https://api.openai.com/v1/chat/completions", {
-        method: "POST",
-        headers: { "Content-Type":"application/json", "Authorization":`Bearer ${apiKey}` },
-        body: JSON.stringify({
-          model, max_tokens:600,
-          messages:[{ role:"user", content:prompt }],
-          response_format:{ type:"json_object" },
-        }),
-      });
-      const d = await res.json();
-      if (!res.ok) throw new Error(d.error?.message || "OpenAI error");
-      return d.choices?.[0]?.message?.content || "";
-    }
+  const cfg: Record<string,string> = {};
+  for (const r of data||[]) cfg[r.key] = r.value;
 
-    case "anthropic": {
-      const res = await fetch("https://api.anthropic.com/v1/messages", {
-        method:"POST",
-        headers:{ "Content-Type":"application/json","x-api-key":apiKey,"anthropic-version":"2023-06-01" },
-        body: JSON.stringify({ model, max_tokens:600, messages:[{ role:"user", content:prompt }] }),
-      });
-      const d = await res.json();
-      if (!res.ok) throw new Error(d.error?.message || "Anthropic error");
-      return d.content?.[0]?.text || "";
-    }
+  return {
+    provider:    cfg.ai_provider    || "openrouter",
+    model:       cfg.ai_model       || "anthropic/claude-haiku-4-5",
+    apiKey:      cfg.ai_api_key     || "",
+    autoApprove: cfg.ai_auto_approve === "true",
+  };
+}
 
-    case "gemini": {
-      const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
-      const res = await fetch(url, {
-        method:"POST",
-        headers:{ "Content-Type":"application/json" },
-        body: JSON.stringify({ contents:[{ parts:[{ text:prompt }] }], generationConfig:{ maxOutputTokens:600, responseMimeType:"application/json" } }),
-      });
-      const d = await res.json();
-      if (!res.ok) throw new Error(d.error?.message || "Gemini error");
-      return d.candidates?.[0]?.content?.parts?.[0]?.text || "";
-    }
+// Call OpenRouter (or any OpenAI-compatible API)
+async function callOpenRouter(apiKey: string, model: string, prompt: string): Promise<string> {
+  const res = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+    method: "POST",
+    headers: {
+      "Content-Type":  "application/json",
+      "Authorization": `Bearer ${apiKey}`,
+      "HTTP-Referer":  "https://readlearc.vercel.app",
+      "X-Title":       "Readlearc Content Analysis",
+    },
+    body: JSON.stringify({
+      model,
+      max_tokens:      600,
+      temperature:     0.1,
+      messages:        [{ role:"user", content:prompt }],
+      response_format: { type:"json_object" },
+    }),
+  });
 
-    case "groq": {
-      const res = await fetch("https://api.groq.com/openai/v1/chat/completions", {
-        method:"POST",
-        headers:{ "Content-Type":"application/json","Authorization":`Bearer ${apiKey}` },
-        body: JSON.stringify({ model, max_tokens:600, messages:[{ role:"user", content:prompt }], response_format:{type:"json_object"} }),
-      });
-      const d = await res.json();
-      if (!res.ok) throw new Error(d.error?.message || "Groq error");
-      return d.choices?.[0]?.message?.content || "";
-    }
-
-    case "deepseek": {
-      const res = await fetch("https://api.deepseek.com/chat/completions", {
-        method:"POST",
-        headers:{ "Content-Type":"application/json","Authorization":`Bearer ${apiKey}` },
-        body: JSON.stringify({ model, max_tokens:600, messages:[{ role:"user", content:prompt }], response_format:{type:"json_object"} }),
-      });
-      const d = await res.json();
-      if (!res.ok) throw new Error(d.error?.message || "DeepSeek error");
-      return d.choices?.[0]?.message?.content || "";
-    }
-
-    default:
-      throw new Error(`Unknown AI provider: ${provider}`);
+  const d = await res.json();
+  if (!res.ok) {
+    const errMsg = d.error?.message || d.error || JSON.stringify(d);
+    throw new Error(`OpenRouter error: ${errMsg}`);
   }
+  return d.choices?.[0]?.message?.content || "";
 }
 
-// ── Analysis prompt ───────────────────────────────────────────────
 function buildPrompt(title: string, content: string, wordCount: number): string {
-  return `You are an expert content quality analyst. Analyze the following article.
-Return ONLY a valid JSON object — no markdown, no extra text.
+  return `You are an expert content quality analyst for a pay-per-read publishing platform. Analyze the following article and return ONLY a valid JSON object — no markdown, no extra text, no explanation.
 
-Article Title: ${title}
+Article Title: "${title}"
 Word Count: ${wordCount}
-Content:
+Content Preview:
 ---
-${content.slice(0, 3000)}${wordCount > 500 ? "\n...[truncated]" : ""}
+${content.slice(0, 3000)}${wordCount > 500 ? "\n...[content truncated]" : ""}
 ---
 
-Return this exact JSON:
+Return this exact JSON structure with integer scores 0-100:
 {
-  "plagiarism_score": <0-100>,
-  "plagiarism_notes": "<max 100 chars>",
-  "ai_score": <0-100>,
-  "ai_notes": "<max 100 chars>",
-  "quality_score": <0-100>,
-  "quality_notes": "<max 100 chars>",
-  "originality_score": <0-100>,
-  "originality_notes": "<max 100 chars>",
-  "recommendation": "<approve|reject|review>",
-  "summary": "<1-2 sentence overall assessment>"
+  "plagiarism_score": <0-100, where 0=completely original, 100=definitely plagiarized>,
+  "plagiarism_notes": "<one sentence explanation, max 120 chars>",
+  "ai_score": <0-100, where 0=clearly human-written, 100=clearly AI-generated with no value>,
+  "ai_notes": "<one sentence explanation, max 120 chars>",
+  "quality_score": <0-100, where 0=very poor quality, 100=excellent quality>,
+  "quality_notes": "<one sentence explanation, max 120 chars>",
+  "originality_score": <0-100, where 0=completely generic, 100=highly original unique insights>,
+  "originality_notes": "<one sentence explanation, max 120 chars>",
+  "recommendation": "<approve|review|reject>",
+  "summary": "<2-3 sentence overall assessment of this article>"
 }
 
-Scoring guide:
-- plagiarism_score >70 → reject | ai_score >80 → review
-- quality_score <30 → reject | quality_score >70 + plagiarism<40 + originality>60 → approve`;
+Scoring criteria:
+- plagiarism_score > 70 → likely copied from elsewhere → recommend reject
+- ai_score > 85 → likely pure AI output with no human insight → recommend review or reject
+- quality_score < 25 → too short, incoherent, or gibberish → recommend reject
+- All good (plagiarism<40, ai<60, quality>65, originality>55) → recommend approve
+- Word count < 100 → quality_score should be below 30`;
 }
 
+// POST: analyze single article
 export async function POST(_: NextRequest, { params }: C) {
   const { id } = await params;
 
-  // Get article
-  const { data: article } = await supabaseAdmin
-    .from("articles").select("title,content").eq("id", id).single();
-  if (!article) return NextResponse.json({ error:"Article not found" }, { status:404 });
+  const { data: article, error: artErr } = await supabaseAdmin
+    .from("articles")
+    .select("title,content,status")
+    .eq("id", id)
+    .single();
 
-  // Get AI config from platform_settings
-  const { data: settings } = await supabaseAdmin
-    .from("platform_settings")
-    .select("key,value")
-    .in("key", ["ai_provider","ai_model","ai_api_key"]);
+  if (artErr || !article) {
+    return NextResponse.json({ error:"Article not found" }, { status:404 });
+  }
 
-  const cfg: Record<string,string> = {};
-  for (const s of settings||[]) cfg[s.key] = s.value;
+  const { provider, model, apiKey, autoApprove } = await getAIConfig();
 
-  const provider = cfg.ai_provider || "anthropic";
-  const model    = cfg.ai_model    || "claude-haiku-4-5-20251001";
-  const apiKey   = cfg.ai_api_key  || process.env.ANTHROPIC_API_KEY || "";
+  if (!apiKey) {
+    return NextResponse.json({
+      error: "No API key configured. Go to Admin → AI → OpenRouter AI, paste your key and save."
+    }, { status:400 });
+  }
 
-  if (!apiKey) return NextResponse.json({
-    error: `No API key set for ${provider}. Go to Admin → Settings → AI Model.`
-  }, { status:400 });
+  if (!model) {
+    return NextResponse.json({
+      error: "No active model selected. Go to Admin → AI → OpenRouter AI and select a model."
+    }, { status:400 });
+  }
 
-  const wordCount = (article.content||"").split(/\s+/).filter(Boolean).length;
-  const prompt    = buildPrompt(article.title, article.content||"", wordCount);
+  const wordCount = (article.content || "").split(/\s+/).filter(Boolean).length;
+  const prompt    = buildPrompt(article.title, article.content || "", wordCount);
 
   try {
-    const raw  = await callAI(provider, model, apiKey, prompt);
-    const clean = raw.replace(/```json|```/g,"").trim();
+    const raw      = await callOpenRouter(apiKey, model, prompt);
+    const clean    = raw.replace(/```json|```/g, "").trim();
     const analysis = JSON.parse(clean);
 
-    await supabaseAdmin.from("article_analysis").upsert({
-      article_id:        parseInt(id),
-      plagiarism_score:  Math.min(100,Math.max(0, analysis.plagiarism_score||0)),
-      ai_score:          Math.min(100,Math.max(0, analysis.ai_score||0)),
-      quality_score:     Math.min(100,Math.max(0, analysis.quality_score||0)),
-      originality_score: Math.min(100,Math.max(0, analysis.originality_score||0)),
-      plagiarism_notes:  analysis.plagiarism_notes||"",
-      ai_notes:          analysis.ai_notes||"",
-      quality_notes:     analysis.quality_notes||"",
-      recommendation:    analysis.recommendation||"review",
-      analyzed_at:       new Date().toISOString(),
-    }, { onConflict:"article_id" });
+    const clamp = (n: number) => Math.min(100, Math.max(0, Math.round(n)));
 
-    return NextResponse.json({ ok:true, provider, model, analysis });
-  } catch(e:any) {
-    return NextResponse.json({ error: e.message }, { status:500 });
+    const row = {
+      article_id:        parseInt(id),
+      plagiarism_score:  clamp(analysis.plagiarism_score  || 0),
+      ai_score:          clamp(analysis.ai_score           || 0),
+      quality_score:     clamp(analysis.quality_score      || 0),
+      originality_score: clamp(analysis.originality_score  || 0),
+      plagiarism_notes:  (analysis.plagiarism_notes   || "").slice(0, 200),
+      ai_notes:          (analysis.ai_notes            || "").slice(0, 200),
+      quality_notes:     (analysis.quality_notes       || "").slice(0, 200),
+      originality_notes: (analysis.originality_notes   || "").slice(0, 200),
+      recommendation:    ["approve","review","reject"].includes(analysis.recommendation)
+                           ? analysis.recommendation : "review",
+      analyzed_at:       new Date().toISOString(),
+    };
+
+    await supabaseAdmin
+      .from("article_analysis")
+      .upsert(row, { onConflict:"article_id" });
+
+    // Auto-approve if enabled and recommendation is approve
+    if (autoApprove && row.recommendation === "approve" && article.status === "pending") {
+      await supabaseAdmin
+        .from("articles")
+        .update({ status:"approved" })
+        .eq("id", id);
+    }
+
+    return NextResponse.json({
+      ok:       true,
+      provider: "openrouter",
+      model,
+      analysis: { ...row, summary: analysis.summary || "" },
+      autoApproved: autoApprove && row.recommendation === "approve",
+    });
+
+  } catch (e: any) {
+    console.error("Analysis error:", e);
+    return NextResponse.json({ error: e.message || "Analysis failed" }, { status:500 });
   }
 }
 
+// GET: fetch existing analysis for an article
 export async function GET(_: NextRequest, { params }: C) {
   const { id } = await params;
   const { data } = await supabaseAdmin
-    .from("article_analysis").select("*").eq("article_id", id).maybeSingle();
+    .from("article_analysis")
+    .select("*")
+    .eq("article_id", id)
+    .maybeSingle();
   return NextResponse.json(data || null);
 }
