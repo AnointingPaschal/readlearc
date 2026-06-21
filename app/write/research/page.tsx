@@ -190,10 +190,10 @@ export default function ResearchPage() {
         )}
 
         {/* ── Mobile tabs ── */}
-        <div className="mobile-only" style={{display:"flex",borderRadius:"var(--r-lg)",overflow:"hidden",border:"1.5px solid var(--border)",marginBottom:12}}>
+        <div className="mobile-only" style={{display:"flex",borderRadius:"var(--r)",overflow:"hidden",border:"1.5px solid var(--border)",marginBottom:10}}>
           {(["write","sections"] as const).map(t=>(
-            <button key={t} onClick={()=>setMobileTab(t)} style={{flex:1,padding:"10px 8px",border:"none",cursor:"pointer",fontFamily:"Outfit,sans-serif",fontSize:13,fontWeight:700,transition:"all .15s",background:mobileTab===t?"var(--brand)":"var(--bg-alt)",color:mobileTab===t?"white":"var(--text-4)"}}>
-              {t==="write"?<><PenLine size={13} style={{verticalAlign:"middle",marginRight:5}}/>Write</>:<><List size={13} style={{verticalAlign:"middle",marginRight:5}}/>Sections ({sections.length})</>}
+            <button key={t} onClick={()=>setMobileTab(t)} style={{flex:1,padding:"7px 8px",border:"none",cursor:"pointer",fontFamily:"Outfit,sans-serif",fontSize:12,fontWeight:700,transition:"all .15s",background:mobileTab===t?"var(--brand)":"var(--bg-alt)",color:mobileTab===t?"white":"var(--text-4)",display:"flex",alignItems:"center",justifyContent:"center",gap:5}}>
+              {t==="write"?<><PenLine size={11}/>Write</>:<><List size={11}/>Sections ({sections.length})</>}
             </button>
           ))}
         </div>

@@ -15,8 +15,8 @@ const LINE_SPACINGS = [
   {l:"Double",v:"2"},{l:"2.5",v:"2.5"},{l:"Triple",v:"3"},
 ];
 const MARGINS = [
-  {l:'Normal (1")',v:"96px"},{l:'Narrow (0.5")',v:"48px"},
-  {l:'Wide (2")',v:"192px"},{l:"Moderate",v:"72px"},
+  {l:"Compact",v:"20px"},{l:'Normal (1")',v:"96px"},
+  {l:'Narrow (0.5")',v:"48px"},{l:'Wide (2")',v:"192px"},
 ];
 const HEADINGS = [
   {l:"Normal",t:"p"},{l:"Heading 1",t:"h1"},{l:"Heading 2",t:"h2"},
@@ -39,7 +39,7 @@ function Sep() { return <div style={{width:1,height:16,background:"#e5e7eb",marg
 export default function WordEditor({value,onChange,placeholder="Start writing…"}:Props) {
   const editorRef  = useRef<HTMLDivElement>(null);
   const [mounted,  setMounted]  = useState(false);
-  const [margin,   setMargin]   = useState("96px");
+  const [margin,   setMargin]   = useState("20px");
   const [spacing,  setSpacing]  = useState("1.5");
   const [showLink, setShowLink] = useState(false);
   const [showImg,  setShowImg]  = useState(false);
@@ -67,9 +67,9 @@ export default function WordEditor({value,onChange,placeholder="Start writing…
   return (
     <div style={{border:"1.5px solid var(--border)",borderRadius:"var(--r-lg)",overflow:"hidden",background:"#fff"}}>
 
-      {/* Scrollable toolbar */}
-      <div style={{overflowX:"auto",background:"#f3f4f6",borderBottom:"1px solid #e5e7eb"}}>
-        <div style={{display:"flex",alignItems:"center",padding:"4px 8px",gap:2,minWidth:"max-content"}}>
+      {/* Wrapping toolbar */}
+      <div style={{background:"#f3f4f6",borderBottom:"1px solid #e5e7eb"}}>
+        <div style={{display:"flex",alignItems:"center",padding:"3px 6px",gap:1,flexWrap:"wrap",rowGap:2}}>
 
           <Btn onClick={()=>exec("undo")} title="Undo"><Undo2 size={12}/></Btn>
           <Btn onClick={()=>exec("redo")} title="Redo"><Redo2 size={12}/></Btn>
