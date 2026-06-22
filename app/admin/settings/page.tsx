@@ -282,6 +282,38 @@ export default function AdminSettingsPage() {
           </div>
         ))}
       </div>
+    
+      {/* ── Site Visuals ── */}
+      <div className="card" style={{ padding:"20px" }}>
+        <div style={{ display:"flex",alignItems:"center",gap:7,marginBottom:14 }}>
+          <span style={{ fontSize:16 }}>🖼️</span>
+          <h2 style={{ fontFamily:"Outfit,sans-serif",fontSize:15,fontWeight:800,color:"var(--text)" }}>Site Images</h2>
+        </div>
+        <div style={{ display:"flex",flexDirection:"column",gap:12 }}>
+          <div>
+            <label style={{ fontSize:11,fontWeight:700,color:"var(--text-3)",textTransform:"uppercase",letterSpacing:".07em",display:"block",marginBottom:5,fontFamily:"Outfit,sans-serif" }}>Hero Background Image URL</label>
+            <input value={get("hero_image")} onChange={e=>set("hero_image",e.target.value)} placeholder="https://... (full-width hero banner)" className="admin-input"/>
+            {get("hero_image")&&<img src={get("hero_image")} alt="" style={{ marginTop:6,width:"100%",height:80,objectFit:"cover",borderRadius:"var(--r)",border:"1px solid var(--border)" }}/>}
+          </div>
+          <div>
+            <label style={{ fontSize:11,fontWeight:700,color:"var(--text-3)",textTransform:"uppercase",letterSpacing:".07em",display:"block",marginBottom:5,fontFamily:"Outfit,sans-serif" }}>Hero Title</label>
+            <input value={get("hero_title")} onChange={e=>set("hero_title",e.target.value)} placeholder="Your headline text" className="admin-input"/>
+          </div>
+          <div>
+            <label style={{ fontSize:11,fontWeight:700,color:"var(--text-3)",textTransform:"uppercase",letterSpacing:".07em",display:"block",marginBottom:5,fontFamily:"Outfit,sans-serif" }}>Hero Subtitle</label>
+            <textarea value={get("hero_sub")} onChange={e=>set("hero_sub",e.target.value)} rows={2} placeholder="Hero subtitle / tagline" className="admin-input" style={{ height:"auto",resize:"none" }}/>
+          </div>
+          <div>
+            <label style={{ fontSize:11,fontWeight:700,color:"var(--text-3)",textTransform:"uppercase",letterSpacing:".07em",display:"block",marginBottom:5,fontFamily:"Outfit,sans-serif" }}>CTA Button Label</label>
+            <input value={get("hero_cta")} onChange={e=>set("hero_cta",e.target.value)} placeholder="Explore Articles" className="admin-input"/>
+          </div>
+          <div>
+            <label style={{ fontSize:11,fontWeight:700,color:"var(--text-3)",textTransform:"uppercase",letterSpacing:".07em",display:"block",marginBottom:5,fontFamily:"Outfit,sans-serif" }}>Site Banner Image URL</label>
+            <input value={get("site_banner")} onChange={e=>set("site_banner",e.target.value)} placeholder="https://... (banner shown below hero)" className="admin-input"/>
+            {get("site_banner")&&<img src={get("site_banner")} alt="" style={{ marginTop:6,width:"100%",height:60,objectFit:"cover",borderRadius:"var(--r)",border:"1px solid var(--border)" }}/>}
+          </div>
+        </div>
+      </div>
     </div>
   );
 }

@@ -1,196 +1,33 @@
 "use client";
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import Navbar from "../components/ui/Navbar";
-import {
-  ArrowRight, BookOpen, PenLine, Zap, Users, TrendingUp,
-  Star, ChevronLeft, ChevronRight, Clock, Shield, Award,
-  BarChart3, Globe, Flame, FlaskConical, Search,
-} from "lucide-react";
+import { ArrowRight, BookOpen, PenLine, Zap, Users, TrendingUp, Star, Clock, Shield, FlaskConical, Search, Flame } from "lucide-react";
 
-interface Article {
-  id:string; title:string; blurb:string; price:string; category:string;
-  readTime:number; isResearch:boolean; authorShort:string; authorAddress:string;
-  reads:number; status:string; featured:boolean; timestamp:number;
-}
-interface Stats { articles:number; writers:number; reads:number; }
+interface Article { id:string;title:string;blurb:string;price:string;category:string;readTime:number;isResearch:boolean;authorShort:string;authorAddress:string;reads:number;status:string;featured:boolean;timestamp:number; }
+interface SiteConfig { hero_image?:string;hero_title?:string;hero_sub?:string;hero_cta?:string;site_banner?:string;brand_name?:string;brand_tagline?:string;brand_color?:string;accent_color?:string; }
 
-const DEFAULT_SLIDES = [
-  {
-    tag:      "Academic Publishing · Web3",
-    headline: "Your Research\nDeserves an\nAudience.",
-    sub:      "Publish peer-level articles and research papers. Readers pay directly to writers in USDC — no middlemen, no ads, no algorithms deciding who earns.",
-    cta1:     { label:"Start Publishing", href:"/write"    },
-    cta2:     { label:"Browse Research",  href:"/explore"  },
-    accent:   "#6d28d9",
-    bg:       "linear-gradient(135deg,#0f0a1e 0%,#1a0938 50%,#0c1a2e 100%)",
-    image:    "",
-  },
-  {
-    tag:      "For Readers",
-    headline: "Read Smart.\nOwn What\nYou Learn.",
-    sub:      "Every article you unlock is recorded on Arc blockchain — cryptographic proof of your reading history. Build a portfolio of knowledge you permanently own.",
-    cta1:     { label:"Explore Articles", href:"/explore" },
-    cta2:     { label:"How It Works",    href:"/explore" },
-    accent:   "#059669",
-    bg:       "linear-gradient(135deg,#022c22 0%,#064e3b 50%,#0f1628 100%)",
-    image:    "",
-  },
-  {
-    tag:      "For Researchers",
-    headline: "Section-by-\nSection.\nPublish as\nYou Write.",
-    sub:      "Our Research Studio lets you build papers section by section — Abstract, Methodology, Results — publishing each as you complete it. Auto-saves. Word-quality editor.",
-    cta1:     { label:"Research Studio",  href:"/write/research" },
-    cta2:     { label:"View Papers",     href:"/explore"        },
-    accent:   "#0284c7",
-    bg:       "linear-gradient(135deg,#0c1a2e 0%,#0e2340 50%,#1a0938 100%)",
-    image:    "",
-  },
-];
-
-function HeroSlider({ slides }: { slides: typeof DEFAULT_SLIDES }) {
-  const [cur,  setCur]  = useState(0);
-  const [prev, setPrev] = useState(-1);
-  const [anim, setAnim] = useState(false);
-  const timer = useRef<ReturnType<typeof setInterval>|null>(null);
-
-  function go(idx: number) {
-    if (anim || idx === cur) return;
-    setPrev(cur); setCur(idx); setAnim(true);
-    setTimeout(() => { setAnim(false); setPrev(-1); }, 600);
-    if (timer.current) { clearInterval(timer.current); startTimer(); }
-  }
-  function startTimer() {
-    timer.current = setInterval(() => {
-      setCur(c => { const n=(c+1)%slides.length; setPrev(c); setAnim(true); setTimeout(()=>{setAnim(false);setPrev(-1);},600); return n; });
-    }, 5500);
-  }
-  useEffect(() => { startTimer(); return () => { if(timer.current) clearInterval(timer.current); }; }, [slides.length]);
-
-  const s = slides[cur];
-
-  return (
-    <div style={{ position:"relative", minHeight:"clamp(520px,85vh,760px)", overflow:"hidden", background:s.bg, transition:"background 0.7s" }}>
-      {/* Background image if set */}
-      {s.image && <div style={{ position:"absolute",inset:0,backgroundImage:`url(${s.image})`,backgroundSize:"cover",backgroundPosition:"center",opacity:.18 }}/>}
-
-      {/* Noise texture overlay */}
-      <div style={{ position:"absolute",inset:0,opacity:.04,backgroundImage:"url(\"data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E\")" }}/>
-
-      {/* Gradient orbs */}
-      <div style={{ position:"absolute",top:"-20%",right:"-10%",width:"60%",paddingBottom:"60%",borderRadius:"50%",background:`radial-gradient(circle,${s.accent}30 0%,transparent 70%)`,pointerEvents:"none" }}/>
-      <div style={{ position:"absolute",bottom:"-20%",left:"-10%",width:"50%",paddingBottom:"50%",borderRadius:"50%",background:`radial-gradient(circle,${s.accent}20 0%,transparent 70%)`,pointerEvents:"none" }}/>
-
-      {/* Content */}
-      <div className="container" style={{ position:"relative",zIndex:2,display:"flex",flexDirection:"column",justifyContent:"center",minHeight:"clamp(520px,85vh,760px)",padding:"clamp(60px,10vw,120px) 16px clamp(60px,8vw,100px)" }}>
-        <div style={{ maxWidth:660 }}>
-          {/* Tag */}
-          <div style={{ display:"inline-flex",alignItems:"center",gap:6,background:`${s.accent}20`,border:`1px solid ${s.accent}40`,borderRadius:99,padding:"5px 13px",marginBottom:20,backdropFilter:"blur(10px)" }}>
-            <div style={{ width:6,height:6,borderRadius:"50%",background:s.accent }}/>
-            <span style={{ fontSize:11,fontWeight:700,color:s.accent,letterSpacing:".08em",textTransform:"uppercase",fontFamily:"Outfit,sans-serif" }}>{s.tag}</span>
-          </div>
-
-          {/* Headline */}
-          <h1 style={{ fontFamily:"Outfit,sans-serif",fontSize:"clamp(36px,7vw,72px)",fontWeight:900,color:"white",lineHeight:1.02,letterSpacing:"-.04em",marginBottom:20,whiteSpace:"pre-line" }}>
-            {s.headline.split("\n").map((line,i)=>(
-              <span key={i}>
-                {i===0&&<>{line}<br/></>}
-                {i===1&&<span style={{ color:s.accent }}>{line}<br/></span>}
-                {i>1&&<>{line}{i<s.headline.split("\n").length-1&&<br/>}</>}
-              </span>
-            ))}
-          </h1>
-
-          {/* Sub */}
-          <p style={{ fontSize:"clamp(14px,2vw,17px)",color:"rgba(255,255,255,.72)",lineHeight:1.7,marginBottom:32,maxWidth:520 }}>{s.sub}</p>
-
-          {/* CTAs */}
-          <div style={{ display:"flex",gap:12,flexWrap:"wrap" }}>
-            <Link href={s.cta1.href} style={{ display:"inline-flex",alignItems:"center",gap:8,padding:"13px 24px",background:s.accent,borderRadius:99,fontFamily:"Outfit,sans-serif",fontWeight:800,fontSize:15,color:"white",textDecoration:"none",transition:"opacity .15s",boxShadow:`0 8px 28px ${s.accent}50` }}
-              onMouseEnter={e=>(e.currentTarget.style.opacity=".88")} onMouseLeave={e=>(e.currentTarget.style.opacity="1")}>
-              {s.cta1.label} <ArrowRight size={15}/>
-            </Link>
-            <Link href={s.cta2.href} style={{ display:"inline-flex",alignItems:"center",gap:8,padding:"13px 24px",background:"rgba(255,255,255,.1)",border:"1.5px solid rgba(255,255,255,.2)",borderRadius:99,fontFamily:"Outfit,sans-serif",fontWeight:700,fontSize:15,color:"white",textDecoration:"none",transition:"all .15s",backdropFilter:"blur(10px)" }}
-              onMouseEnter={e=>{ (e.currentTarget as HTMLElement).style.background="rgba(255,255,255,.18)"; }} onMouseLeave={e=>{ (e.currentTarget as HTMLElement).style.background="rgba(255,255,255,.1)"; }}>
-              {s.cta2.label}
-            </Link>
-          </div>
-        </div>
-      </div>
-
-      {/* Slide dots */}
-      <div style={{ position:"absolute",bottom:24,left:"50%",transform:"translateX(-50%)",display:"flex",gap:8,zIndex:3 }}>
-        {slides.map((_,i)=>(
-          <button key={i} onClick={()=>go(i)}
-            style={{ width:i===cur?28:8,height:8,borderRadius:99,border:"none",cursor:"pointer",background:i===cur?"white":"rgba(255,255,255,.35)",transition:"all .3s",padding:0 }}/>
-        ))}
-      </div>
-
-      {/* Prev/Next */}
-      {[{ dir:-1,icon:ChevronLeft,pos:"left" },{ dir:1,icon:ChevronRight,pos:"right" }].map(({dir,icon:Icon,pos})=>(
-        <button key={pos} onClick={()=>go((cur+dir+slides.length)%slides.length)}
-          style={{ position:"absolute",[pos]:16,top:"50%",transform:"translateY(-50%)",zIndex:3,width:40,height:40,borderRadius:"50%",border:"1.5px solid rgba(255,255,255,.2)",background:"rgba(255,255,255,.1)",backdropFilter:"blur(10px)",cursor:"pointer",color:"white",display:"flex",alignItems:"center",justifyContent:"center" }}>
-          <Icon size={18}/>
-        </button>
-      ))}
-    </div>
-  );
-}
-
-function StatsBanner({ stats }: { stats: Stats }) {
-  const items = [
-    { icon:BookOpen,   label:"Articles Published",    value:stats.articles.toLocaleString()+"+" },
-    { icon:Users,      label:"Writers Earning",        value:stats.writers.toLocaleString()+"+"  },
-    { icon:TrendingUp, label:"Total Reads",            value:stats.reads.toLocaleString()+"+"    },
-    { icon:Zap,        label:"Avg Writer Share",       value:"85%"                               },
-    { icon:Shield,     label:"On-chain Proof",         value:"Every Read"                        },
-    { icon:Globe,      label:"Blockchain",             value:"Arc Testnet"                       },
-  ];
-  return (
-    <div style={{ background:"var(--bg-card)",borderTop:"1px solid var(--border)",borderBottom:"1px solid var(--border)",overflowX:"auto" }}>
-      <div style={{ display:"flex",minWidth:"max-content",padding:"0 16px" }}>
-        {items.map((s,i)=>(
-          <div key={i} style={{ display:"flex",alignItems:"center",gap:10,padding:"16px 24px",borderRight:"1px solid var(--border)",flexShrink:0 }}>
-            <div style={{ width:32,height:32,borderRadius:9,background:"var(--brand-muted)",border:"1px solid var(--brand-border)",display:"flex",alignItems:"center",justifyContent:"center" }}>
-              <s.icon size={13} style={{ color:"var(--brand)" }}/>
-            </div>
-            <div>
-              <div style={{ fontFamily:"Outfit,sans-serif",fontSize:16,fontWeight:900,color:"var(--text)",lineHeight:1 }}>{s.value}</div>
-              <div style={{ fontSize:10,color:"var(--text-4)",marginTop:2,fontWeight:600 }}>{s.label}</div>
-            </div>
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-}
-
-function ArticleCard({ a, size="normal" }: { a:Article; size?:"large"|"normal"|"compact" }) {
+function ArticleCard({ a }: { a:Article }) {
   const addr = a.authorAddress||"";
-  const gradH = parseInt((addr||'').slice(2,4)||'0',16)*1.4;
+  const h = parseInt((addr||"000000").slice(2,4)||"0",16)*1.4;
   return (
-    <Link href={`/article/${a.id}`} style={{ textDecoration:"none",display:"flex",flexDirection:"column" }}>
-      <div className="card card-hover" style={{ padding:0,overflow:"hidden",display:"flex",flexDirection:"column",height:"100%" }}>
-        {/* Cover strip */}
-        <div style={{ height:size==="large"?120:size==="compact"?40:60,background:`linear-gradient(135deg,hsl(${gradH}deg,50%,25%),hsl(${gradH+60}deg,50%,15%))`,flexShrink:0,position:"relative" }}>
-          {a.isResearch&&<div style={{ position:"absolute",top:8,left:8,background:"rgba(2,132,199,.85)",padding:"2px 8px",borderRadius:99,fontSize:9,fontWeight:700,color:"white",fontFamily:"Outfit,sans-serif",backdropFilter:"blur(6px)" }}>RESEARCH</div>}
-          {a.featured&&<div style={{ position:"absolute",top:8,right:8,display:"flex",alignItems:"center",gap:3,background:"rgba(202,138,4,.85)",padding:"2px 8px",borderRadius:99,fontSize:9,fontWeight:700,color:"white",backdropFilter:"blur(6px)" }}><Star size={8}/>FEATURED</div>}
+    <Link href={`/article/${a.id}`} style={{ textDecoration:"none" }}>
+      <div className="card card-hover" style={{ padding:"14px",display:"flex",flexDirection:"column",height:"100%",gap:8 }}>
+        <div style={{ display:"flex",gap:5,flexWrap:"wrap",alignItems:"center" }}>
+          <span style={{ fontSize:9,fontWeight:700,padding:"2px 7px",borderRadius:99,background:"var(--brand-muted)",color:"var(--brand)",border:"1px solid var(--brand-border)",fontFamily:"Outfit,sans-serif" }}>{a.category}</span>
+          {a.isResearch&&<span style={{ fontSize:9,fontWeight:700,padding:"2px 7px",borderRadius:99,background:"rgba(2,132,199,.1)",color:"#0284c7",border:"1px solid rgba(2,132,199,.2)" }}>Research</span>}
+          {a.featured&&<Star size={10} style={{ color:"#ca8a04" }}/>}
         </div>
-        <div style={{ padding:size==="compact"?"10px 12px":"14px",display:"flex",flexDirection:"column",flex:1 }}>
-          <div style={{ display:"flex",gap:5,marginBottom:7,flexWrap:"wrap",alignItems:"center" }}>
-            <span style={{ fontSize:9,fontWeight:700,padding:"2px 7px",borderRadius:99,background:"var(--brand-muted)",color:"var(--brand)",border:"1px solid var(--brand-border)",fontFamily:"Outfit,sans-serif" }}>{a.category}</span>
-            <span style={{ fontSize:9,fontWeight:700,padding:"2px 7px",borderRadius:99,background:"rgba(5,150,105,.09)",color:"var(--accent)",border:"1px solid rgba(5,150,105,.2)",fontFamily:"Outfit,sans-serif" }}>${parseFloat(a.price).toFixed(3)}</span>
+        <h3 style={{ fontFamily:"Outfit,sans-serif",fontSize:14,fontWeight:800,color:"var(--text)",lineHeight:1.3,display:"-webkit-box",WebkitLineClamp:3,WebkitBoxOrient:"vertical" as any,overflow:"hidden",flex:1 }}>{a.title}</h3>
+        <p style={{ fontSize:11,color:"var(--text-4)",lineHeight:1.5,display:"-webkit-box",WebkitLineClamp:2,WebkitBoxOrient:"vertical" as any,overflow:"hidden" }}>{a.blurb}</p>
+        <div style={{ display:"flex",alignItems:"center",justifyContent:"space-between",paddingTop:8,borderTop:"1px solid var(--border)" }}>
+          <div style={{ display:"flex",alignItems:"center",gap:5 }}>
+            <div style={{ width:18,height:18,borderRadius:"50%",background:`linear-gradient(135deg,hsl(${h}deg,65%,55%),hsl(${h+40}deg,55%,45%))`,flexShrink:0 }}/>
+            <span style={{ fontFamily:"JetBrains Mono,monospace",fontSize:9,color:"var(--text-4)" }}>{a.authorShort}</span>
           </div>
-          <h3 style={{ fontFamily:"Outfit,sans-serif",fontSize:size==="large"?17:size==="compact"?12:14,fontWeight:800,color:"var(--text)",lineHeight:1.25,marginBottom:6,display:"-webkit-box",WebkitLineClamp:size==="compact"?2:3,WebkitBoxOrient:"vertical" as any,overflow:"hidden" }}>
-            {a.title}
-          </h3>
-          {size!=="compact"&&<p style={{ fontSize:11,color:"var(--text-4)",lineHeight:1.55,marginBottom:10,display:"-webkit-box",WebkitLineClamp:2,WebkitBoxOrient:"vertical" as any,overflow:"hidden",flex:1 }}>{a.blurb}</p>}
-          <div style={{ display:"flex",alignItems:"center",justifyContent:"space-between",marginTop:"auto" }}>
-            <div style={{ display:"flex",alignItems:"center",gap:5 }}>
-              <div style={{ width:20,height:20,borderRadius:"50%",background:`linear-gradient(135deg,hsl(${gradH}deg,65%,55%),hsl(${gradH+40}deg,55%,45%))`,flexShrink:0 }}/>
-              <span style={{ fontFamily:"JetBrains Mono,monospace",fontSize:9,color:"var(--text-4)" }}>{a.authorShort}</span>
-            </div>
-            <span style={{ fontSize:9,color:"var(--text-4)",display:"flex",alignItems:"center",gap:3 }}><Clock size={9}/>{a.readTime}m · {a.reads} reads</span>
+          <div style={{ display:"flex",gap:8,alignItems:"center" }}>
+            <span style={{ fontSize:9,color:"var(--text-4)" }}><Clock size={8}/> {a.readTime}m</span>
+            <span style={{ fontFamily:"Outfit,sans-serif",fontSize:12,fontWeight:800,color:"var(--accent)" }}>${parseFloat(a.price).toFixed(3)}</span>
           </div>
         </div>
       </div>
@@ -199,145 +36,185 @@ function ArticleCard({ a, size="normal" }: { a:Article; size?:"large"|"normal"|"
 }
 
 export default function HomePage() {
-  const [featured,  setFeatured]  = useState<Article[]>([]);
-  const [trending,  setTrending]  = useState<Article[]>([]);
-  const [research,  setResearch]  = useState<Article[]>([]);
-  const [recent,    setRecent]    = useState<Article[]>([]);
-  const [stats,     setStats]     = useState<Stats>({ articles:0, writers:0, reads:0 });
-  const [slides,    setSlides]    = useState(DEFAULT_SLIDES);
-  const [search,    setSearch]    = useState("");
-  const [activeTag, setActiveTag] = useState("All");
-  const [allCats,   setAllCats]   = useState<string[]>([]);
-  const [loading,   setLoading]   = useState(true);
+  const [featured, setFeatured] = useState<Article[]>([]);
+  const [trending, setTrending] = useState<Article[]>([]);
+  const [research, setResearch] = useState<Article[]>([]);
+  const [recent,   setRecent]   = useState<Article[]>([]);
+  const [stats,    setStats]    = useState({ articles:0, writers:0, reads:0 });
+  const [cfg,      setCfg]      = useState<SiteConfig>({});
+  const [search,   setSearch]   = useState("");
+  const [activeTag,setActiveTag]= useState("All");
+  const [cats,     setCats]     = useState<string[]>([]);
+  const [loading,  setLoading]  = useState(true);
 
   useEffect(() => {
     Promise.all([
       fetch("/api/articles?status=featured&limit=6").then(r=>r.json()).catch(()=>[]),
-      fetch("/api/articles?status=approved&limit=12&sort=reads").then(r=>r.json()).catch(()=>[]),
-      fetch("/api/articles?status=approved&isResearch=true&limit=4").then(r=>r.json()).catch(()=>[]),
-      fetch("/api/articles?status=approved&limit=6&sort=new").then(r=>r.json()).catch(()=>[]),
+      fetch("/api/articles?limit=100").then(r=>r.json()).catch(()=>[]),
+      fetch("/api/articles?isResearch=true&limit=4").then(r=>r.json()).catch(()=>[]),
       fetch("/api/admin/settings").then(r=>r.json()).catch(()=>({})),
-    ]).then(([feat,appr,res,rec,cfg]) => {
+    ]).then(([feat,all,res,settings]) => {
       const feats = Array.isArray(feat)?feat:[];
-      const apprs = Array.isArray(appr)?appr:[];
+      const alls  = Array.isArray(all)?all:[];
       const ress  = Array.isArray(res)?res:[];
-      const recs  = Array.isArray(rec)?rec:[];
-      const all   = [...feats,...apprs];
-      setFeatured(feats.slice(0,5));
-      setTrending(apprs.slice(0,6));
+      setFeatured(feats.slice(0,6));
+      setTrending(alls.sort((a:Article,b:Article)=>b.reads-a.reads).slice(0,6));
       setResearch(ress.slice(0,4));
-      setRecent(recs);
-      const cats = Array.from(new Set(all.map((a:Article)=>a.category).filter(Boolean))) as string[];
-      setAllCats(cats);
-      const writers = new Set(all.map((a:Article)=>a.authorAddress)).size;
-      const reads   = all.reduce((s:number,a:Article)=>s+(a.reads||0),0);
-      setStats({ articles:all.length, writers, reads });
-      // Load custom slides if configured
-      if (cfg.hero_slide_1_title) {
-        const customSlides = [1,2,3].map(n=>{
-          const t=cfg[`hero_slide_${n}_title`]; if(!t)return null;
-          return { tag:cfg[`hero_slide_${n}_tag`]||DEFAULT_SLIDES[n-1].tag, headline:cfg[`hero_slide_${n}_title`], sub:cfg[`hero_slide_${n}_sub`]||DEFAULT_SLIDES[n-1].sub, cta1:DEFAULT_SLIDES[n-1].cta1, cta2:DEFAULT_SLIDES[n-1].cta2, accent:cfg[`hero_slide_${n}_color`]||DEFAULT_SLIDES[n-1].accent, bg:DEFAULT_SLIDES[n-1].bg, image:cfg[`hero_slide_${n}_image`]||"" };
-        }).filter(Boolean) as typeof DEFAULT_SLIDES;
-        if (customSlides.length) setSlides(customSlides);
-      }
+      setRecent(alls.slice(0,8));
+      const cs = Array.from(new Set(alls.map((a:Article)=>a.category).filter(Boolean))) as string[];
+      setCats(cs);
+      const writers = new Set(alls.map((a:Article)=>a.authorAddress)).size;
+      const reads   = alls.reduce((s:number,a:Article)=>s+(a.reads||0),0);
+      setStats({ articles:alls.length, writers, reads });
+      setCfg(settings||{});
       setLoading(false);
     });
-  }, []);
+  },[]);
 
-  const TAGS = ["All", ...allCats.slice(0,8)];
-  const browseFeed = (activeTag==="All"?trending:trending.filter(a=>a.category===activeTag)).slice(0,6);
+  const TAGS = ["All",...cats.slice(0,7)];
+  const feed = (activeTag==="All"?trending:trending.filter(a=>a.category===activeTag)).slice(0,6);
+
+  const heroTitle = cfg.hero_title || (cfg.brand_name ? `Welcome to ${cfg.brand_name}` : "Academic Publishing on the Blockchain");
+  const heroSub   = cfg.hero_sub   || cfg.brand_tagline || "Writers earn 85% in USDC. Readers own proof of every article they unlock. No ads. No algorithms.";
+  const heroCta   = cfg.hero_cta   || "Explore Articles";
+  const heroImg   = cfg.hero_image || "";
+  const banner    = cfg.site_banner || "";
 
   return (
-    <div style={{ minHeight:"100vh", background:"var(--bg)" }}>
+    <div style={{ minHeight:"100vh",background:"var(--bg)" }}>
       <Navbar/>
 
-      {/* Hero */}
-      <div style={{ marginTop:"var(--header-h)" }}>
-        <HeroSlider slides={slides}/>
+      {/* ── Hero ── */}
+      <div style={{ marginTop:"var(--header-h)",position:"relative",height:"clamp(280px,40vh,420px)",overflow:"hidden" }}>
+        {heroImg
+          ? <img src={heroImg} alt="hero" style={{ width:"100%",height:"100%",objectFit:"cover",display:"block" }}/>
+          : <div style={{ width:"100%",height:"100%",background:`linear-gradient(135deg,#0f0a1e 0%,${cfg.brand_color||"#1a0938"} 60%,#0c1a2e 100%)` }}/>
+        }
+        <div style={{ position:"absolute",inset:0,background:"rgba(0,0,0,.45)" }}/>
+        <div className="container" style={{ position:"absolute",inset:0,display:"flex",flexDirection:"column",justifyContent:"center",padding:"0 clamp(16px,4vw,40px)" }}>
+          <div style={{ maxWidth:600 }}>
+            <div style={{ display:"inline-flex",alignItems:"center",gap:5,background:"rgba(255,255,255,.12)",border:"1px solid rgba(255,255,255,.2)",borderRadius:99,padding:"4px 12px",marginBottom:14,backdropFilter:"blur(8px)" }}>
+              <div style={{ width:6,height:6,borderRadius:"50%",background:"var(--accent)" }}/>
+              <span style={{ fontSize:11,fontWeight:700,color:"rgba(255,255,255,.9)",letterSpacing:".06em",textTransform:"uppercase",fontFamily:"Outfit,sans-serif" }}>Readlearc · Arc Testnet</span>
+            </div>
+            <h1 style={{ fontFamily:"Outfit,sans-serif",fontSize:"clamp(24px,5vw,48px)",fontWeight:900,color:"white",lineHeight:1.06,letterSpacing:"-.03em",marginBottom:12 }}>{heroTitle}</h1>
+            <p style={{ fontSize:"clamp(13px,2vw,16px)",color:"rgba(255,255,255,.75)",lineHeight:1.6,marginBottom:20,maxWidth:500 }}>{heroSub}</p>
+            <div style={{ display:"flex",gap:10,flexWrap:"wrap" }}>
+              <Link href="/explore" style={{ display:"inline-flex",alignItems:"center",gap:7,padding:"11px 22px",background:"var(--accent)",borderRadius:99,fontFamily:"Outfit,sans-serif",fontWeight:800,fontSize:14,color:"white",textDecoration:"none",boxShadow:"0 6px 20px rgba(5,150,105,.4)" }}>
+                {heroCta} <ArrowRight size={14}/>
+              </Link>
+              <Link href="/write" style={{ display:"inline-flex",alignItems:"center",gap:7,padding:"11px 22px",background:"rgba(255,255,255,.12)",border:"1.5px solid rgba(255,255,255,.25)",borderRadius:99,fontFamily:"Outfit,sans-serif",fontWeight:700,fontSize:14,color:"white",textDecoration:"none",backdropFilter:"blur(8px)" }}>
+                <PenLine size={13}/>Start Writing
+              </Link>
+            </div>
+          </div>
+        </div>
       </div>
 
-      {/* Stats bar */}
-      <StatsBanner stats={stats}/>
+      {/* ── Site Banner (if set) ── */}
+      {banner&&(
+        <div style={{ width:"100%",maxHeight:120,overflow:"hidden" }}>
+          <img src={banner} alt="banner" style={{ width:"100%",objectFit:"cover",display:"block",maxHeight:120 }}/>
+        </div>
+      )}
 
-      <div className="container" style={{ padding:"40px 16px 80px" }}>
+      {/* ── Stats ── */}
+      <div style={{ background:"var(--bg-card)",borderTop:"1px solid var(--border)",borderBottom:"1px solid var(--border)",overflowX:"auto" }}>
+        <div className="container" style={{ display:"flex",gap:0,minWidth:"max-content",padding:"0 16px" }}>
+          {[
+            { icon:BookOpen,   label:"Articles",       v:stats.articles+"+" },
+            { icon:Users,      label:"Writers",         v:stats.writers+"+"  },
+            { icon:TrendingUp, label:"Total Reads",     v:stats.reads+"+"    },
+            { icon:Zap,        label:"Writer Earnings", v:"85%"              },
+            { icon:Shield,     label:"On-chain Proof",  v:"Every Read"       },
+          ].map((s,i)=>(
+            <div key={i} style={{ display:"flex",alignItems:"center",gap:9,padding:"13px 20px",borderRight:"1px solid var(--border)",flexShrink:0 }}>
+              <div style={{ width:28,height:28,borderRadius:8,background:"var(--brand-muted)",display:"flex",alignItems:"center",justifyContent:"center" }}>
+                <s.icon size={12} style={{ color:"var(--brand)" }}/>
+              </div>
+              <div>
+                <div style={{ fontFamily:"Outfit,sans-serif",fontSize:15,fontWeight:900,color:"var(--text)",lineHeight:1 }}>{s.v}</div>
+                <div style={{ fontSize:9,color:"var(--text-4)",marginTop:2,fontWeight:600,textTransform:"uppercase",letterSpacing:".05em" }}>{s.label}</div>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      <div className="container" style={{ padding:"32px 16px 60px" }}>
 
         {/* ── Featured ── */}
         {featured.length>0&&(
-          <section style={{ marginBottom:52 }}>
-            <div style={{ display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:18 }}>
-              <div style={{ display:"flex",alignItems:"center",gap:8 }}>
-                <Star size={16} style={{ color:"#ca8a04" }}/>
-                <h2 style={{ fontFamily:"Outfit,sans-serif",fontSize:20,fontWeight:900,color:"var(--text)",letterSpacing:"-.02em" }}>Featured</h2>
+          <section style={{ marginBottom:40 }}>
+            <div style={{ display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:14 }}>
+              <div style={{ display:"flex",alignItems:"center",gap:7 }}>
+                <Star size={15} style={{ color:"#ca8a04" }}/>
+                <h2 style={{ fontFamily:"Outfit,sans-serif",fontSize:18,fontWeight:900,color:"var(--text)",letterSpacing:"-.02em" }}>Featured</h2>
               </div>
-              <Link href="/explore?filter=featured" style={{ display:"flex",alignItems:"center",gap:4,fontSize:12,color:"var(--brand)",textDecoration:"none",fontWeight:600 }}>View all<ArrowRight size={12}/></Link>
+              <Link href="/explore?filter=featured" style={{ fontSize:11,color:"var(--brand)",textDecoration:"none",fontWeight:600,display:"flex",alignItems:"center",gap:3 }}>View all<ArrowRight size={11}/></Link>
             </div>
-            <div style={{ display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(280px,1fr))",gap:14 }}>
-              {featured.slice(0,3).map(a=><ArticleCard key={a.id} a={a} size="large"/>)}
+            <div style={{ display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(260px,1fr))",gap:12 }}>
+              {featured.slice(0,3).map(a=><ArticleCard key={a.id} a={a}/>)}
             </div>
           </section>
         )}
 
-        {/* ── Search + browse ── */}
-        <section style={{ marginBottom:52 }}>
-          <div style={{ display:"flex",alignItems:"center",gap:8,marginBottom:14 }}>
-            <Flame size={16} style={{ color:"var(--accent)" }}/>
-            <h2 style={{ fontFamily:"Outfit,sans-serif",fontSize:20,fontWeight:900,color:"var(--text)",letterSpacing:"-.02em" }}>Trending</h2>
+        {/* ── Trending + search ── */}
+        <section style={{ marginBottom:40 }}>
+          <div style={{ display:"flex",alignItems:"center",gap:7,marginBottom:14 }}>
+            <Flame size={15} style={{ color:"var(--accent)" }}/>
+            <h2 style={{ fontFamily:"Outfit,sans-serif",fontSize:18,fontWeight:900,color:"var(--text)",letterSpacing:"-.02em" }}>Trending</h2>
           </div>
-          {/* Search */}
-          <form onSubmit={e=>{e.preventDefault();if(search.trim())window.location.href=`/explore?q=${encodeURIComponent(search)}`;}} style={{ position:"relative",marginBottom:14 }}>
-            <Search size={14} style={{ position:"absolute",left:14,top:"50%",transform:"translateY(-50%)",color:"var(--text-4)",pointerEvents:"none" }}/>
-            <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Search articles, topics, researchers…"
-              style={{ width:"100%",padding:"12px 14px 12px 40px",background:"var(--bg-card)",border:"1.5px solid var(--border)",borderRadius:"var(--r-lg)",fontSize:14,color:"var(--text)",outline:"none",boxSizing:"border-box" as const }}/>
+          <form onSubmit={e=>{e.preventDefault();if(search.trim())window.location.href=`/explore?q=${encodeURIComponent(search)}`;}} style={{ position:"relative",marginBottom:12 }}>
+            <Search size={14} style={{ position:"absolute",left:13,top:"50%",transform:"translateY(-50%)",color:"var(--text-4)",pointerEvents:"none" }}/>
+            <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Search articles, topics, authors…"
+              style={{ width:"100%",padding:"10px 14px 10px 38px",background:"var(--bg-card)",border:"1.5px solid var(--border)",borderRadius:"var(--r-lg)",fontSize:13,color:"var(--text)",outline:"none",boxSizing:"border-box" as const }}/>
           </form>
-          {/* Category pills */}
-          <div style={{ display:"flex",gap:6,flexWrap:"wrap",marginBottom:18 }}>
+          <div style={{ display:"flex",gap:5,flexWrap:"wrap",marginBottom:14 }}>
             {TAGS.map(t=>(
               <button key={t} onClick={()=>setActiveTag(t)}
-                style={{ padding:"5px 13px",borderRadius:99,border:`1.5px solid ${activeTag===t?"var(--brand)":"var(--border)"}`,background:activeTag===t?"var(--brand-muted)":"transparent",fontSize:11,fontWeight:700,color:activeTag===t?"var(--brand)":"var(--text-3)",cursor:"pointer",transition:"all .12s",fontFamily:"Outfit,sans-serif" }}>
+                style={{ padding:"4px 12px",borderRadius:99,border:`1.5px solid ${activeTag===t?"var(--brand)":"var(--border)"}`,background:activeTag===t?"var(--brand-muted)":"transparent",fontSize:11,fontWeight:700,color:activeTag===t?"var(--brand)":"var(--text-3)",cursor:"pointer",fontFamily:"Outfit,sans-serif",transition:"all .1s" }}>
                 {t}
               </button>
             ))}
           </div>
           {loading ? (
-            <div style={{ display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(250px,1fr))",gap:12 }}>
-              {[1,2,3,4,5,6].map(i=><div key={i} className="skeleton" style={{ height:200,borderRadius:"var(--r-lg)" }}/>)}
+            <div style={{ display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(240px,1fr))",gap:10 }}>
+              {[1,2,3,4,5,6].map(i=><div key={i} className="skeleton" style={{ height:180,borderRadius:"var(--r-lg)" }}/>)}
             </div>
           ) : (
-            <div style={{ display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(250px,1fr))",gap:12 }}>
-              {browseFeed.map(a=><ArticleCard key={a.id} a={a}/>)}
+            <div style={{ display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(240px,1fr))",gap:10 }}>
+              {feed.map(a=><ArticleCard key={a.id} a={a}/>)}
             </div>
           )}
-          <div style={{ textAlign:"center",marginTop:20 }}>
-            <Link href="/explore" className="btn btn-secondary" style={{ gap:6 }}>See All Articles <ArrowRight size={13}/></Link>
+          <div style={{ textAlign:"center",marginTop:18 }}>
+            <Link href="/explore" className="btn btn-secondary" style={{ gap:6 }}>All Articles <ArrowRight size={12}/></Link>
           </div>
         </section>
 
-        {/* ── Research papers ── */}
+        {/* ── Research ── */}
         {research.length>0&&(
-          <section style={{ marginBottom:52 }}>
-            <div style={{ display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:18 }}>
-              <div style={{ display:"flex",alignItems:"center",gap:8 }}>
-                <FlaskConical size={16} style={{ color:"#0284c7" }}/>
-                <h2 style={{ fontFamily:"Outfit,sans-serif",fontSize:20,fontWeight:900,color:"var(--text)",letterSpacing:"-.02em" }}>Research Papers</h2>
+          <section style={{ marginBottom:40 }}>
+            <div style={{ display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:14 }}>
+              <div style={{ display:"flex",alignItems:"center",gap:7 }}>
+                <FlaskConical size={15} style={{ color:"#0284c7" }}/>
+                <h2 style={{ fontFamily:"Outfit,sans-serif",fontSize:18,fontWeight:900,color:"var(--text)",letterSpacing:"-.02em" }}>Research Papers</h2>
               </div>
-              <Link href="/explore?filter=research" style={{ display:"flex",alignItems:"center",gap:4,fontSize:12,color:"var(--brand)",textDecoration:"none",fontWeight:600 }}>View all<ArrowRight size={12}/></Link>
+              <Link href="/explore?filter=research" style={{ fontSize:11,color:"var(--brand)",textDecoration:"none",fontWeight:600,display:"flex",alignItems:"center",gap:3 }}>View all<ArrowRight size={11}/></Link>
             </div>
-            <div style={{ display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(300px,1fr))",gap:12 }}>
+            <div style={{ display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(280px,1fr))",gap:10 }}>
               {research.map(a=>(
                 <Link key={a.id} href={`/article/${a.id}`} style={{ textDecoration:"none" }}>
-                  <div className="card card-hover" style={{ padding:"16px",display:"flex",gap:12 }}>
-                    <div style={{ width:48,height:48,borderRadius:"var(--r)",background:"rgba(2,132,199,.1)",border:"1px solid rgba(2,132,199,.2)",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0 }}>
-                      <FlaskConical size={20} style={{ color:"#0284c7" }}/>
+                  <div className="card card-hover" style={{ padding:"14px",display:"flex",gap:12,alignItems:"flex-start" }}>
+                    <div style={{ width:40,height:40,borderRadius:"var(--r)",background:"rgba(2,132,199,.1)",border:"1px solid rgba(2,132,199,.2)",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0 }}>
+                      <FlaskConical size={18} style={{ color:"#0284c7" }}/>
                     </div>
                     <div style={{ flex:1,minWidth:0 }}>
-                      <div style={{ display:"flex",gap:5,marginBottom:5 }}>
-                        <span style={{ fontSize:9,fontWeight:700,padding:"2px 6px",borderRadius:99,background:"rgba(2,132,199,.1)",color:"#0284c7",border:"1px solid rgba(2,132,199,.2)" }}>RESEARCH</span>
-                        <span style={{ fontSize:9,fontWeight:700,padding:"2px 6px",borderRadius:99,background:"rgba(5,150,105,.09)",color:"var(--accent)",border:"1px solid rgba(5,150,105,.2)" }}>${parseFloat(a.price).toFixed(3)}</span>
-                      </div>
-                      <h4 style={{ fontFamily:"Outfit,sans-serif",fontSize:13,fontWeight:700,color:"var(--text)",lineHeight:1.3,marginBottom:4,display:"-webkit-box",WebkitLineClamp:2,WebkitBoxOrient:"vertical" as any,overflow:"hidden" }}>{a.title}</h4>
-                      <div style={{ fontSize:10,color:"var(--text-4)",display:"flex",gap:8 }}>
+                      <h4 style={{ fontFamily:"Outfit,sans-serif",fontSize:13,fontWeight:700,color:"var(--text)",lineHeight:1.3,marginBottom:5,display:"-webkit-box",WebkitLineClamp:2,WebkitBoxOrient:"vertical" as any,overflow:"hidden" }}>{a.title}</h4>
+                      <div style={{ display:"flex",gap:8,fontSize:10,color:"var(--text-4)" }}>
                         <span>{a.authorShort}</span>
                         <span>{a.reads} reads</span>
+                        <span style={{ color:"var(--accent)",fontWeight:700 }}>${parseFloat(a.price).toFixed(3)}</span>
                       </div>
                     </div>
                   </div>
@@ -348,25 +225,23 @@ export default function HomePage() {
         )}
 
         {/* ── How it works ── */}
-        <section style={{ marginBottom:52,padding:"40px clamp(16px,4vw,40px)",background:"var(--bg-card)",borderRadius:"var(--r-xl)",border:"1px solid var(--border)" }}>
-          <h2 style={{ fontFamily:"Outfit,sans-serif",fontSize:22,fontWeight:900,color:"var(--text)",textAlign:"center",letterSpacing:"-.02em",marginBottom:6 }}>How Readlearc Works</h2>
-          <p style={{ fontSize:13,color:"var(--text-4)",textAlign:"center",marginBottom:28,lineHeight:1.6 }}>A fair, transparent publishing economy built on Arc blockchain</p>
-          <div style={{ display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(200px,1fr))",gap:16 }}>
+        <section style={{ marginBottom:32,padding:"32px clamp(16px,4vw,40px)",background:"var(--bg-card)",borderRadius:"var(--r-xl)",border:"1px solid var(--border)" }}>
+          <h2 style={{ fontFamily:"Outfit,sans-serif",fontSize:20,fontWeight:900,color:"var(--text)",textAlign:"center",letterSpacing:"-.02em",marginBottom:4 }}>How It Works</h2>
+          <p style={{ fontSize:12,color:"var(--text-4)",textAlign:"center",marginBottom:24 }}>Fair publishing economics on Arc blockchain</p>
+          <div style={{ display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(180px,1fr))",gap:16 }}>
             {[
-              { n:1, icon:PenLine,    color:"var(--brand)",  title:"Write & Submit",   desc:"Write articles or research papers using our rich editor. Submit for admin review."    },
-              { n:2, icon:Shield,     color:"#d97706",       title:"AI Quality Check", desc:"Our AI analyzes content quality, originality, and plagiarism before approval."        },
-              { n:3, icon:BookOpen,   color:"var(--accent)", title:"Readers Pay",      desc:"Approved articles go live. Readers pay in USDC to unlock the full content."          },
-              { n:4, icon:BarChart3,  color:"#0284c7",       title:"Writers Earn",     desc:"85% of every payment goes to you. Earnings paid out monthly by admin in USDC."       },
+              { n:"01",icon:PenLine,   color:"var(--brand)",  title:"Write",       desc:"Use our rich editor. Submit for admin review."           },
+              { n:"02",icon:Shield,    color:"#d97706",       title:"AI Review",   desc:"AI checks quality, originality, and plagiarism."         },
+              { n:"03",icon:BookOpen,  color:"var(--accent)", title:"Readers Pay", desc:"Readers pay USDC to unlock — directly to your earnings." },
+              { n:"04",icon:Zap,       color:"#0284c7",       title:"You Earn",    desc:"85% paid to you monthly in USDC by admin."              },
             ].map(s=>(
-              <div key={s.n} style={{ textAlign:"center",padding:"20px 12px" }}>
-                <div style={{ width:52,height:52,borderRadius:16,background:`${s.color}14`,border:`1.5px solid ${s.color}30`,display:"flex",alignItems:"center",justifyContent:"center",margin:"0 auto 12px" }}>
-                  <s.icon size={22} style={{ color:s.color }}/>
+              <div key={s.n} style={{ textAlign:"center",padding:"16px 8px" }}>
+                <div style={{ width:44,height:44,borderRadius:14,background:`${s.color}14`,border:`1.5px solid ${s.color}28`,display:"flex",alignItems:"center",justifyContent:"center",margin:"0 auto 10px" }}>
+                  <s.icon size={20} style={{ color:s.color }}/>
                 </div>
-                <div style={{ display:"flex",alignItems:"center",justifyContent:"center",gap:5,marginBottom:7 }}>
-                  <span style={{ fontFamily:"Outfit,sans-serif",fontSize:10,fontWeight:800,color:s.color,background:`${s.color}14`,width:20,height:20,borderRadius:"50%",display:"flex",alignItems:"center",justifyContent:"center" }}>{s.n}</span>
-                  <h4 style={{ fontFamily:"Outfit,sans-serif",fontSize:14,fontWeight:800,color:"var(--text)" }}>{s.title}</h4>
-                </div>
-                <p style={{ fontSize:12,color:"var(--text-3)",lineHeight:1.6 }}>{s.desc}</p>
+                <div style={{ fontFamily:"Outfit,sans-serif",fontSize:10,fontWeight:800,color:s.color,marginBottom:3,letterSpacing:".05em" }}>{s.n}</div>
+                <h4 style={{ fontFamily:"Outfit,sans-serif",fontSize:13,fontWeight:800,color:"var(--text)",marginBottom:5 }}>{s.title}</h4>
+                <p style={{ fontSize:11,color:"var(--text-3)",lineHeight:1.55 }}>{s.desc}</p>
               </div>
             ))}
           </div>
@@ -374,30 +249,25 @@ export default function HomePage() {
 
         {/* ── Recent ── */}
         {recent.length>0&&(
-          <section style={{ marginBottom:20 }}>
-            <div style={{ display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:16 }}>
-              <div style={{ display:"flex",alignItems:"center",gap:8 }}>
-                <Clock size={15} style={{ color:"var(--text-3)" }}/>
+          <section>
+            <div style={{ display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:12 }}>
+              <div style={{ display:"flex",alignItems:"center",gap:7 }}>
+                <Clock size={14} style={{ color:"var(--text-3)" }}/>
                 <h2 style={{ fontFamily:"Outfit,sans-serif",fontSize:18,fontWeight:900,color:"var(--text)",letterSpacing:"-.02em" }}>Latest</h2>
               </div>
-              <Link href="/explore" style={{ fontSize:12,color:"var(--brand)",textDecoration:"none",fontWeight:600,display:"flex",alignItems:"center",gap:4 }}>All articles<ArrowRight size={12}/></Link>
+              <Link href="/explore" style={{ fontSize:11,color:"var(--brand)",textDecoration:"none",fontWeight:600,display:"flex",alignItems:"center",gap:3 }}>All<ArrowRight size={11}/></Link>
             </div>
-            <div style={{ display:"flex",flexDirection:"column",gap:8 }}>
+            <div style={{ display:"flex",flexDirection:"column",gap:7 }}>
               {recent.map(a=>(
                 <Link key={a.id} href={`/article/${a.id}`} style={{ textDecoration:"none" }}>
-                  <div className="card card-hover" style={{ padding:"12px 14px",display:"flex",gap:12,alignItems:"center" }}>
-                    <div style={{ width:44,height:44,borderRadius:"var(--r)",background:`linear-gradient(135deg,hsl(${parseInt((a.authorAddress||'').slice(2,4)||'0',16)*1.4}deg,50%,25%),hsl(${parseInt((a.authorAddress||'').slice(4,6)||'0',16)*1.4}deg,50%,15%))`,flexShrink:0 }}/>
+                  <div className="card card-hover" style={{ padding:"11px 14px",display:"flex",gap:10,alignItems:"center" }}>
                     <div style={{ flex:1,minWidth:0 }}>
                       <div style={{ display:"flex",gap:5,marginBottom:4,flexWrap:"wrap" }}>
                         <span style={{ fontSize:9,fontWeight:700,padding:"1px 6px",borderRadius:99,background:"var(--brand-muted)",color:"var(--brand)",border:"1px solid var(--brand-border)" }}>{a.category}</span>
                         {a.isResearch&&<span style={{ fontSize:9,fontWeight:700,padding:"1px 6px",borderRadius:99,background:"rgba(2,132,199,.1)",color:"#0284c7",border:"1px solid rgba(2,132,199,.2)" }}>Research</span>}
                       </div>
                       <h4 style={{ fontFamily:"Outfit,sans-serif",fontSize:13,fontWeight:700,color:"var(--text)",lineHeight:1.25,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap" }}>{a.title}</h4>
-                      <div style={{ fontSize:10,color:"var(--text-4)",marginTop:3,display:"flex",gap:8 }}>
-                        <span>{a.authorShort}</span>
-                        <span>${parseFloat(a.price).toFixed(3)}</span>
-                        <span>{a.reads} reads</span>
-                      </div>
+                      <div style={{ fontSize:10,color:"var(--text-4)",marginTop:3 }}>{a.authorShort} · {a.reads} reads</div>
                     </div>
                     <div style={{ fontFamily:"Outfit,sans-serif",fontSize:13,fontWeight:800,color:"var(--accent)",flexShrink:0 }}>${parseFloat(a.price).toFixed(3)}</div>
                   </div>
@@ -407,6 +277,40 @@ export default function HomePage() {
           </section>
         )}
       </div>
+
+      {/* ── Footer ── */}
+      <footer style={{ background:"var(--bg-card)",borderTop:"1px solid var(--border)",padding:"32px 16px 20px" }}>
+        <div className="container">
+          <div style={{ display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(160px,1fr))",gap:24,marginBottom:28 }}>
+            <div>
+              <div style={{ display:"flex",alignItems:"center",gap:8,marginBottom:10 }}>
+                <div style={{ width:28,height:28,borderRadius:8,background:"linear-gradient(135deg,var(--brand),var(--accent))",display:"flex",alignItems:"center",justifyContent:"center" }}>
+                  <Zap size={13} color="white"/>
+                </div>
+                <span style={{ fontFamily:"Outfit,sans-serif",fontWeight:900,fontSize:15,color:"var(--text)" }}>{cfg.brand_name||"Readlearc"}</span>
+              </div>
+              <p style={{ fontSize:11,color:"var(--text-4)",lineHeight:1.65 }}>{cfg.brand_tagline||"Pay per word. Own every read."}</p>
+            </div>
+            {[
+              { label:"Platform", links:[{l:"Explore",h:"/explore"},{l:"Write Article",h:"/write"},{l:"Research Studio",h:"/write/research"},{l:"Creator Studio",h:"/creator"}] },
+              { label:"Account",  links:[{l:"My Wallet",h:"/wallet-app"},{l:"Reading History",h:"/reading-history"},{l:"My Profile",h:"/profile"}] },
+              { label:"Network",  links:[{l:"Arc Testnet",h:"https://testnet.arcscan.app"},{l:"Circle USDC",h:"https://faucet.circle.com"},{l:"OpenRouter AI",h:"https://openrouter.ai"}] },
+            ].map(col=>(
+              <div key={col.label}>
+                <div style={{ fontFamily:"Outfit,sans-serif",fontSize:11,fontWeight:800,color:"var(--text-3)",textTransform:"uppercase",letterSpacing:".08em",marginBottom:10 }}>{col.label}</div>
+                {col.links.map(l=>(
+                  <Link key={l.l} href={l.h} style={{ display:"block",fontSize:12,color:"var(--text-4)",textDecoration:"none",marginBottom:6,transition:"color .12s" }}
+                    onMouseEnter={e=>(e.currentTarget.style.color="var(--brand)")} onMouseLeave={e=>(e.currentTarget.style.color="var(--text-4)")}>{l.l}</Link>
+                ))}
+              </div>
+            ))}
+          </div>
+          <div style={{ paddingTop:16,borderTop:"1px solid var(--border)",display:"flex",justifyContent:"space-between",alignItems:"center",flexWrap:"wrap",gap:10 }}>
+            <p style={{ fontSize:11,color:"var(--text-4)" }}>© {new Date().getFullYear()} {cfg.brand_name||"Readlearc"} · Built on Arc Testnet</p>
+            <p style={{ fontSize:11,color:"var(--text-4)",display:"flex",alignItems:"center",gap:5 }}><Shield size={10}/>All payments verified on-chain</p>
+          </div>
+        </div>
+      </footer>
     </div>
   );
 }
