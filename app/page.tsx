@@ -91,24 +91,23 @@ export default function HomePage() {
           : <div style={{ width:"100%",height:"100%",background:`linear-gradient(135deg,#0f0a1e 0%,${cfg.brand_color||"#1a0938"} 60%,#0c1a2e 100%)` }}/>
         }
         <div style={{ position:"absolute",inset:0,background:"rgba(0,0,0,.45)" }}/>
-        <div className="container" style={{ position:"absolute",inset:0,display:"flex",flexDirection:"column",justifyContent:"center",padding:"0 clamp(16px,4vw,40px)" }}>
-          <div style={{ maxWidth:600 }}>
-            <div style={{ display:"inline-flex",alignItems:"center",gap:5,background:"rgba(255,255,255,.12)",border:"1px solid rgba(255,255,255,.2)",borderRadius:99,padding:"4px 12px",marginBottom:14,backdropFilter:"blur(8px)" }}>
-              <div style={{ width:6,height:6,borderRadius:"50%",background:"var(--accent)" }}/>
-              <span style={{ fontSize:11,fontWeight:700,color:"rgba(255,255,255,.9)",letterSpacing:".06em",textTransform:"uppercase",fontFamily:"Outfit,sans-serif" }}>Readlearc · Arc Testnet</span>
-            </div>
-            <h1 style={{ fontFamily:"Outfit,sans-serif",fontSize:"clamp(24px,5vw,48px)",fontWeight:900,color:"white",lineHeight:1.06,letterSpacing:"-.03em",marginBottom:12 }}>{heroTitle}</h1>
-            <p style={{ fontSize:"clamp(13px,2vw,16px)",color:"rgba(255,255,255,.75)",lineHeight:1.6,marginBottom:20,maxWidth:500 }}>{heroSub}</p>
-            <div style={{ display:"flex",gap:10,flexWrap:"wrap" }}>
-              <Link href="/explore" style={{ display:"inline-flex",alignItems:"center",gap:7,padding:"11px 22px",background:"var(--accent)",borderRadius:99,fontFamily:"Outfit,sans-serif",fontWeight:800,fontSize:14,color:"white",textDecoration:"none",boxShadow:"0 6px 20px rgba(5,150,105,.4)" }}>
-                {heroCta} <ArrowRight size={14}/>
-              </Link>
-              <Link href="/write" style={{ display:"inline-flex",alignItems:"center",gap:7,padding:"11px 22px",background:"rgba(255,255,255,.12)",border:"1.5px solid rgba(255,255,255,.25)",borderRadius:99,fontFamily:"Outfit,sans-serif",fontWeight:700,fontSize:14,color:"white",textDecoration:"none",backdropFilter:"blur(8px)" }}>
-                <PenLine size={13}/>Start Writing
-              </Link>
+        {/* Only show text overlay if title/sub configured */}
+        {(heroTitle||heroSub) && (
+          <div className="container" style={{ position:"absolute",inset:0,display:"flex",flexDirection:"column",justifyContent:"flex-end",padding:"0 clamp(16px,4vw,40px) clamp(20px,4vw,40px)" }}>
+            <div style={{ maxWidth:560 }}>
+              {heroTitle&&<h1 style={{ fontFamily:"Outfit,sans-serif",fontSize:"clamp(22px,4vw,42px)",fontWeight:900,color:"white",lineHeight:1.08,letterSpacing:"-.03em",marginBottom:8 }}>{heroTitle}</h1>}
+              {heroSub&&<p style={{ fontSize:"clamp(12px,1.8vw,15px)",color:"rgba(255,255,255,.8)",lineHeight:1.6,marginBottom:16,maxWidth:480 }}>{heroSub}</p>}
+              <div style={{ display:"flex",gap:10,flexWrap:"wrap" }}>
+                <Link href="/explore" style={{ display:"inline-flex",alignItems:"center",gap:7,padding:"10px 20px",background:"var(--accent)",borderRadius:99,fontFamily:"Outfit,sans-serif",fontWeight:800,fontSize:13,color:"white",textDecoration:"none" }}>
+                  {heroCta||"Explore"} <ArrowRight size={13}/>
+                </Link>
+                <Link href="/write" style={{ display:"inline-flex",alignItems:"center",gap:7,padding:"10px 20px",background:"rgba(255,255,255,.12)",border:"1.5px solid rgba(255,255,255,.25)",borderRadius:99,fontFamily:"Outfit,sans-serif",fontWeight:700,fontSize:13,color:"white",textDecoration:"none",backdropFilter:"blur(8px)" }}>
+                  <PenLine size={12}/>Write
+                </Link>
+              </div>
             </div>
           </div>
-        </div>
+        )}
       </div>
 
       {/* ── Site Banner (if set) ── */}
@@ -211,6 +210,7 @@ export default function HomePage() {
                     </div>
                     <div style={{ flex:1,minWidth:0 }}>
                       <h4 style={{ fontFamily:"Outfit,sans-serif",fontSize:13,fontWeight:700,color:"var(--text)",lineHeight:1.3,marginBottom:5,display:"-webkit-box",WebkitLineClamp:2,WebkitBoxOrient:"vertical" as any,overflow:"hidden" }}>{a.title}</h4>
+                      {a.blurb&&<p style={{ fontSize:10,color:"var(--text-4)",lineHeight:1.5,display:"-webkit-box",WebkitLineClamp:2,WebkitBoxOrient:"vertical" as any,overflow:"hidden",marginBottom:4 }}>{a.blurb}</p>}
                       <div style={{ display:"flex",gap:8,fontSize:10,color:"var(--text-4)" }}>
                         <span>{a.authorShort}</span>
                         <span>{a.reads} reads</span>

@@ -1,33 +1,29 @@
 "use client";
 import { useState, useEffect } from "react";
-import { Search, Shield, ShieldCheck, ShieldAlert, ShieldOff, UserX, RefreshCw, Plus, X } from "lucide-react";
+import { Search, Shield, ShieldCheck, ShieldAlert, ShieldOff, RefreshCw, Plus, X, CheckCircle2, AlertCircle, Copy, Check } from "lucide-react";
+import { useAuth } from "../../../../lib/auth";
 
 const ROLES = [
-  { value:3, label:"Super Admin", desc:"Full access including owner functions", icon:ShieldAlert, color:"#dc2626" },
-  { value:2, label:"Admin",       desc:"Manage content, users and settings",    icon:ShieldCheck, color:"var(--brand)" },
-  { value:1, label:"Moderator",   desc:"Approve/reject articles and comments",  icon:Shield,      color:"#d97706" },
-  { value:0, label:"User",        desc:"Regular user — no admin access",        icon:ShieldOff,   color:"var(--text-4)" },
+  { value:3, label:"Super Admin", desc:"Full access including owner functions", color:"#dc2626" },
+  { value:2, label:"Admin",       desc:"Manage content, users and settings",   color:"var(--brand)" },
+  { value:1, label:"Moderator",   desc:"Approve/reject articles and comments", color:"#d97706" },
 ];
 
-interface RoleEntry {
-  walletAddress: string;
-  role:          number;
-  roleName:      string;
-  username?:     string;
-  displayName?:  string;
-  grantedAt:     string;
-}
+interface Entry { walletAddress:string; role:number; roleName:string; username?:string; grantedAt:string; }
 
 export default function AdminRolesPage() {
-  const [roles,    setRoles]    = useState<RoleEntry[]>([]);
-  const [loading,  setLoading]  = useState(true);
-  const [search,   setSearch]   = useState("");
-  const [newAddr,  setNewAddr]  = useState("");
-  const [newRole,  setNewRole]  = useState(1);
-  const [adding,   setAdding]   = useState(false);
-  const [acting,   setActing]   = useState("");
-  const [error,    setError]    = useState("");
-  const [showAdd,  setShowAdd]  = useState(false);
+  const { address: myAddress } = useAuth();
+  const [roles,   setRoles]   = useState<Entry[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [search,  setSearch]  = useState("");
+  const [newAddr, setNewAddr] = useState("");
+  const [newRole, setNewRole] = useState(2);
+  const [adding,  setAdding]  = useState(false);
+  const [acting,  setActing]  = useState("");
+  const [error,   setError]   = useState("");
+  const [success, setSuccess] = useState("");
+  const [showAdd, setShowAdd] = useState(false);
+  const [copied,  setCopied]  = useState(false);
 
   async function load() {
     setLoading(true);
@@ -36,143 +32,148 @@ export default function AdminRolesPage() {
     setRoles(Array.isArray(d) ? d : []);
     setLoading(false);
   }
+  useEffect(() => { load(); }, []);
 
-  useEffect(()=>{ load(); },[]);
-
-  async function setRole(address: string, role: number) {
-    setActing(address); setError("");
+  async function grantRole() {
+    const addr = newAddr.trim().toLowerCase();
+    if (!addr.startsWith("0x") || addr.length < 10) { setError("Enter a valid wallet address (0x…)"); return; }
+    setAdding(true); setError(""); setSuccess("");
     const r = await fetch("/api/admin/roles", {
       method:"POST", headers:{"Content-Type":"application/json"},
-      body: JSON.stringify({ walletAddress:address, role }),
+      body: JSON.stringify({ walletAddress: addr, role: newRole }),
     });
     const d = await r.json();
-    if (!r.ok) { setError(d.error); setActing(""); return; }
-    await load();
-    setActing("");
-  }
-
-  async function addRole() {
-    if (!newAddr.startsWith("0x") || newAddr.length < 10) {
-      setError("Enter a valid wallet address"); return;
+    if (!r.ok) { setError(d.error || "Failed to assign role"); }
+    else {
+      setSuccess(`Role assigned! The user must lock and unlock their wallet to see admin access.`);
+      setNewAddr(""); setShowAdd(false);
+      await load();
     }
-    setAdding(true); setError("");
-    const r = await fetch("/api/admin/roles", {
-      method:"POST", headers:{"Content-Type":"application/json"},
-      body: JSON.stringify({ walletAddress:newAddr, role:newRole }),
-    });
-    const d = await r.json();
-    if (!r.ok) { setError(d.error); setAdding(false); return; }
-    setNewAddr(""); setShowAdd(false);
-    await load();
     setAdding(false);
   }
 
-  const filtered = roles.filter(r =>
-    !search ||
-    r.walletAddress.toLowerCase().includes(search.toLowerCase()) ||
-    r.username?.toLowerCase().includes(search.toLowerCase()) ||
-    r.displayName?.toLowerCase().includes(search.toLowerCase())
-  );
+  async function revokeRole(address: string) {
+    setActing(address); setError(""); setSuccess("");
+    const r = await fetch("/api/admin/roles", {
+      method:"POST", headers:{"Content-Type":"application/json"},
+      body: JSON.stringify({ walletAddress: address, role: 0 }),
+    });
+    const d = await r.json();
+    if (!r.ok) setError(d.error || "Failed to revoke");
+    else { setSuccess("Role revoked."); await load(); }
+    setActing("");
+  }
 
-  const getRoleConfig = (role: number) => ROLES.find(r=>r.value===role) || ROLES[3];
+  function copyAddr() {
+    if (!myAddress) return;
+    navigator.clipboard.writeText(myAddress);
+    setCopied(true); setTimeout(() => setCopied(false), 2000);
+  }
+
+  const filtered = roles.filter(r => !search ||
+    r.walletAddress.toLowerCase().includes(search.toLowerCase()) ||
+    r.username?.toLowerCase().includes(search.toLowerCase()));
 
   return (
-    <div style={{ display:"flex",flexDirection:"column",gap:14 }}>
-      <div style={{ display:"flex",alignItems:"flex-start",justifyContent:"space-between",flexWrap:"wrap",gap:10 }}>
+    <div style={{ display:"flex", flexDirection:"column", gap:14 }}>
+      <div style={{ display:"flex", alignItems:"flex-start", justifyContent:"space-between", flexWrap:"wrap", gap:10 }}>
         <div>
-          <h1 style={{ fontFamily:"Outfit,sans-serif",fontSize:22,fontWeight:900,color:"var(--text)",letterSpacing:"-.02em" }}>Admin Roles</h1>
-          <p style={{ fontSize:12,color:"var(--text-4)",marginTop:2 }}>{roles.length} users with elevated permissions</p>
+          <h1 style={{ fontFamily:"Outfit,sans-serif", fontSize:22, fontWeight:900, color:"var(--text)", letterSpacing:"-.02em" }}>Admin Roles</h1>
+          <p style={{ fontSize:12, color:"var(--text-4)", marginTop:2 }}>{roles.length} users with elevated permissions</p>
         </div>
-        <div style={{ display:"flex",gap:8 }}>
-          <button onClick={load} disabled={loading} style={{ display:"flex",alignItems:"center",gap:5,padding:"7px 13px",border:"1.5px solid var(--border)",background:"var(--bg-alt)",borderRadius:"var(--r-f)",cursor:"pointer",fontSize:12,fontWeight:600,color:"var(--text-3)" }}>
+        <div style={{ display:"flex", gap:8 }}>
+          <button onClick={load} disabled={loading} style={{ display:"flex",alignItems:"center",gap:5,padding:"7px 12px",border:"1.5px solid var(--border)",background:"var(--bg-alt)",borderRadius:"var(--r-f)",cursor:"pointer",fontSize:12,fontWeight:600,color:"var(--text-3)" }}>
             <RefreshCw size={12} className={loading?"spin":""}/>Refresh
           </button>
-          <button onClick={()=>setShowAdd(v=>!v)} className="btn btn-primary btn-sm" style={{ gap:5 }}>
-            {showAdd?<X size={13}/>:<Plus size={13}/>}{showAdd?"Cancel":"Grant Role"}
+          <button onClick={() => setShowAdd(v=>!v)} className="btn btn-primary" style={{ gap:6 }}>
+            <Plus size={12}/>Grant Role
           </button>
         </div>
       </div>
 
-      {/* Role legend */}
-      <div style={{ display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(160px,1fr))",gap:8 }}>
-        {ROLES.filter(r=>r.value>0).map(r=>(
-          <div key={r.value} className="card" style={{ padding:"11px 13px",borderLeft:`3px solid ${r.color}` }}>
-            <div style={{ display:"flex",alignItems:"center",gap:6,marginBottom:3 }}>
-              <r.icon size={13} style={{ color:r.color }}/>
-              <span style={{ fontFamily:"Outfit,sans-serif",fontSize:12,fontWeight:700,color:r.color }}>{r.label}</span>
-            </div>
-            <p style={{ fontSize:10,color:"var(--text-4)",lineHeight:1.5 }}>{r.desc}</p>
+      {/* My address helper */}
+      {myAddress && (
+        <div style={{ padding:"10px 14px", background:"var(--bg-alt)", border:"1px solid var(--border)", borderRadius:"var(--r-md)", display:"flex", alignItems:"center", gap:10, flexWrap:"wrap" }}>
+          <div style={{ flex:1, minWidth:0 }}>
+            <div style={{ fontSize:10, fontWeight:700, color:"var(--text-4)", textTransform:"uppercase", letterSpacing:".07em", marginBottom:2, fontFamily:"Outfit,sans-serif" }}>Your connected wallet</div>
+            <div style={{ fontFamily:"JetBrains Mono,monospace", fontSize:11, color:"var(--text)", overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{myAddress}</div>
           </div>
-        ))}
-      </div>
+          <button onClick={copyAddr} style={{ display:"flex",alignItems:"center",gap:4,padding:"5px 10px",border:"1.5px solid var(--border)",borderRadius:"var(--r)",background:"var(--bg-card)",cursor:"pointer",fontSize:11,fontWeight:600,color:"var(--brand)",flexShrink:0 }}>
+            {copied ? <><Check size={11}/>Copied!</> : <><Copy size={11}/>Copy</>}
+          </button>
+          <button onClick={() => { setNewAddr(myAddress.toLowerCase()); setShowAdd(true); }} style={{ display:"flex",alignItems:"center",gap:4,padding:"5px 10px",border:"1.5px solid var(--brand-border)",borderRadius:"var(--r)",background:"var(--brand-muted)",cursor:"pointer",fontSize:11,fontWeight:700,color:"var(--brand)",flexShrink:0 }}>
+            Grant to me
+          </button>
+        </div>
+      )}
 
       {/* Add role form */}
       {showAdd && (
-        <div className="card" style={{ padding:"16px" }}>
-          <h3 style={{ fontFamily:"Outfit,sans-serif",fontSize:13,fontWeight:700,color:"var(--text)",marginBottom:12 }}>Grant Role to Wallet</h3>
-          <div style={{ display:"grid",gap:10 }}>
-            <input value={newAddr} onChange={e=>setNewAddr(e.target.value)} className="admin-input" placeholder="0x wallet address"
-              style={{ fontFamily:"JetBrains Mono,monospace",fontSize:12 }}/>
-            <div style={{ display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:6 }}>
-              {ROLES.filter(r=>r.value>0).map(r=>(
-                <button key={r.value} onClick={()=>setNewRole(r.value)} style={{ padding:"9px",borderRadius:"var(--r)",border:`1.5px solid ${newRole===r.value?r.color:"var(--border)"}`,background:newRole===r.value?`${r.color}12`:"transparent",cursor:"pointer",textAlign:"center",transition:"all .15s" }}>
-                  <div style={{ fontFamily:"Outfit,sans-serif",fontSize:12,fontWeight:700,color:newRole===r.value?r.color:"var(--text-2)" }}>{r.label}</div>
-                </button>
-              ))}
+        <div className="card" style={{ padding:"16px", border:"1.5px solid var(--brand-border)", background:"var(--brand-muted)" }}>
+          <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:12 }}>
+            <h3 style={{ fontFamily:"Outfit,sans-serif", fontSize:14, fontWeight:700, color:"var(--text)" }}>Grant Role</h3>
+            <button onClick={() => setShowAdd(false)} style={{ background:"none",border:"none",cursor:"pointer",color:"var(--text-4)",display:"flex" }}><X size={14}/></button>
+          </div>
+          <div style={{ display:"flex", flexDirection:"column", gap:10 }}>
+            <div>
+              <label style={{ fontSize:11,fontWeight:700,color:"var(--text-3)",textTransform:"uppercase",letterSpacing:".07em",display:"block",marginBottom:5,fontFamily:"Outfit,sans-serif" }}>Wallet Address</label>
+              <input value={newAddr} onChange={e => setNewAddr(e.target.value)} placeholder="0x… paste wallet address" className="admin-input" style={{ fontFamily:"JetBrains Mono,monospace", fontSize:12 }}/>
             </div>
-            {error&&<p style={{ fontSize:12,color:"#dc2626" }}>{error}</p>}
-            <button onClick={addRole} disabled={adding||!newAddr} className="btn btn-primary btn-sm" style={{ justifyContent:"center" }}>
-              {adding?<><div style={{ width:11,height:11,border:"1.5px solid rgba(255,255,255,.3)",borderTopColor:"white",borderRadius:"50%"}} className="spin"/>Granting…</>:"Grant Role"}
+            <div>
+              <label style={{ fontSize:11,fontWeight:700,color:"var(--text-3)",textTransform:"uppercase",letterSpacing:".07em",display:"block",marginBottom:8,fontFamily:"Outfit,sans-serif" }}>Role Level</label>
+              <div style={{ display:"flex", gap:8, flexWrap:"wrap" }}>
+                {ROLES.map(r => (
+                  <button key={r.value} onClick={() => setNewRole(r.value)}
+                    style={{ padding:"8px 14px",borderRadius:"var(--r)",border:`1.5px solid ${newRole===r.value?r.color:"var(--border)"}`,background:newRole===r.value?`${r.color}12`:"transparent",cursor:"pointer",textAlign:"left",flex:1,minWidth:100 }}>
+                    <div style={{ fontSize:12,fontWeight:700,color:newRole===r.value?r.color:"var(--text-2)" }}>{r.label}</div>
+                    <div style={{ fontSize:10,color:"var(--text-4)",marginTop:2 }}>{r.desc}</div>
+                  </button>
+                ))}
+              </div>
+            </div>
+            <button onClick={grantRole} disabled={adding || !newAddr} className="btn btn-primary" style={{ width:"100%",justifyContent:"center" }}>
+              {adding ? "Assigning…" : `Grant ${ROLES.find(r=>r.value===newRole)?.label}`}
             </button>
           </div>
         </div>
       )}
 
-      {/* Search */}
+      {error   && <div style={{ padding:"10px 14px",background:"rgba(220,38,38,.06)",border:"1px solid rgba(220,38,38,.2)",borderRadius:"var(--r-md)",fontSize:13,color:"#dc2626",display:"flex",gap:7 }}><AlertCircle size={14} style={{ flexShrink:0,marginTop:1 }}/>{error}</div>}
+      {success && <div style={{ padding:"10px 14px",background:"rgba(5,150,105,.06)",border:"1px solid rgba(5,150,105,.2)",borderRadius:"var(--r-md)",fontSize:13,color:"var(--accent)",display:"flex",gap:7 }}><CheckCircle2 size={14} style={{ flexShrink:0,marginTop:1 }}/>{success}</div>}
+
       <div style={{ position:"relative" }}>
         <Search size={13} style={{ position:"absolute",left:12,top:"50%",transform:"translateY(-50%)",color:"var(--text-4)",pointerEvents:"none" }}/>
-        <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Search by address or username…" className="admin-input" style={{ paddingLeft:34 }}/>
+        <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search by address or username…" className="admin-input" style={{ paddingLeft:34 }}/>
       </div>
 
-      {/* Roles list */}
-      {loading ? [1,2,3].map(i=><div key={i} className="skeleton" style={{ height:70,borderRadius:"var(--r-lg)" }}/>) :
-       !filtered.length ? (
-        <div className="card" style={{ padding:"40px",textAlign:"center" }}>
-          <Shield size={28} style={{ color:"var(--text-4)",marginBottom:10 }}/>
-          <p style={{ fontSize:14,fontWeight:600,color:"var(--text-3)" }}>No admin roles assigned yet</p>
-          <p style={{ fontSize:12,color:"var(--text-4)",marginTop:4 }}>Click "Grant Role" to give admin access to a wallet address.</p>
-        </div>
-       ) : filtered.map(r=>{
-          const cfg = getRoleConfig(r.role);
-          return (
-            <div key={r.walletAddress} className="card" style={{ padding:"14px 16px",display:"flex",alignItems:"center",gap:14,flexWrap:"wrap",borderLeft:`3px solid ${cfg.color}` }}>
-              <div style={{ width:40,height:40,borderRadius:"50%",background:`linear-gradient(135deg,hsl(${parseInt(r.walletAddress.slice(2,4),16)*1.4}deg,65%,55%),hsl(${parseInt(r.walletAddress.slice(4,6),16)*1.4}deg,55%,45%))`,flexShrink:0 }}/>
-              <div style={{ flex:1,minWidth:180 }}>
-                <div style={{ display:"flex",alignItems:"center",gap:6,marginBottom:3 }}>
-                  <span style={{ fontFamily:"Outfit,sans-serif",fontSize:13,fontWeight:700,color:"var(--text)" }}>
-                    {r.displayName || r.username || "Unknown User"}
-                  </span>
-                  {r.username && <span style={{ fontSize:10,color:"var(--text-4)" }}>@{r.username}</span>}
-                </div>
-                <div style={{ fontFamily:"JetBrains Mono,monospace",fontSize:10,color:"var(--text-4)" }}>{r.walletAddress}</div>
-                <div style={{ display:"flex",alignItems:"center",gap:5,marginTop:4 }}>
-                  <cfg.icon size={11} style={{ color:cfg.color }}/>
-                  <span style={{ fontSize:11,fontWeight:700,color:cfg.color }}>{cfg.label}</span>
-                  <span style={{ fontSize:10,color:"var(--text-4)" }}>since {new Date(r.grantedAt).toLocaleDateString()}</span>
-                </div>
-              </div>
-              <div style={{ display:"flex",gap:5,flexShrink:0,flexWrap:"wrap" }}>
-                {ROLES.filter(rl=>rl.value!==r.role).map(rl=>(
-                  <button key={rl.value} onClick={()=>setRole(r.walletAddress,rl.value)} disabled={!!acting}
-                    style={{ display:"flex",alignItems:"center",gap:3,padding:"5px 9px",borderRadius:"var(--r)",border:`1px solid ${rl.color}30`,background:`${rl.color}09`,fontSize:10,fontWeight:700,color:rl.color,cursor:"pointer",opacity:acting===r.walletAddress?.5:1 }}>
-                    {rl.value===0?<UserX size={10}/>:<rl.icon size={10}/>}
-                    {rl.value===0?"Remove":rl.label}
-                  </button>
-                ))}
-              </div>
-            </div>
-          );
-       })}
+      <div className="card" style={{ overflow:"hidden", padding:0 }}>
+        {loading ? [1,2].map(i=><div key={i} className="skeleton" style={{ height:56,margin:"8px 16px",borderRadius:"var(--r)" }}/>) :
+         !filtered.length ? (
+           <div style={{ padding:"48px",textAlign:"center" }}>
+             <Shield size={32} style={{ color:"var(--text-4)",marginBottom:12 }}/>
+             <p style={{ fontSize:14,fontWeight:600,color:"var(--text-3)",marginBottom:4 }}>No admin roles assigned yet</p>
+             <p style={{ fontSize:11,color:"var(--text-4)" }}>Click "Grant Role" to give admin access to a wallet address.</p>
+           </div>
+         ) : filtered.map(entry => {
+           const R = ROLES.find(r=>r.value===entry.role) || ROLES[1];
+           return (
+             <div key={entry.walletAddress} style={{ padding:"12px 16px",borderBottom:"1px solid var(--border)",display:"flex",alignItems:"center",gap:12,flexWrap:"wrap" }}>
+               <div style={{ width:36,height:36,borderRadius:"50%",background:`linear-gradient(135deg,hsl(${parseInt(entry.walletAddress.slice(2,4)||"0",16)*1.4}deg,65%,55%),hsl(${parseInt(entry.walletAddress.slice(4,6)||"0",16)*1.4}deg,55%,45%))`,flexShrink:0 }}/>
+               <div style={{ flex:1,minWidth:100 }}>
+                 <div style={{ display:"flex",alignItems:"center",gap:6,marginBottom:2 }}>
+                   <span style={{ fontSize:11,fontWeight:700,color:R.color,background:`${R.color}12`,padding:"1px 8px",borderRadius:99,border:`1px solid ${R.color}30` }}>{R.label}</span>
+                 </div>
+                 <div style={{ fontFamily:"JetBrains Mono,monospace",fontSize:11,color:"var(--text)",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap" }}>{entry.walletAddress}</div>
+                 {entry.username && <div style={{ fontSize:10,color:"var(--text-4)" }}>@{entry.username}</div>}
+               </div>
+               <button onClick={() => revokeRole(entry.walletAddress)} disabled={acting===entry.walletAddress}
+                 style={{ display:"flex",alignItems:"center",gap:4,padding:"5px 10px",border:"1px solid rgba(220,38,38,.3)",background:"rgba(220,38,38,.06)",borderRadius:"var(--r)",cursor:"pointer",fontSize:11,fontWeight:600,color:"#dc2626",flexShrink:0 }}>
+                 {acting===entry.walletAddress?"Revoking…":<><ShieldOff size={11}/>Revoke</>}
+               </button>
+             </div>
+           );
+         })}
+      </div>
     </div>
   );
 }
