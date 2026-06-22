@@ -13,8 +13,9 @@ import { payForArticle, canAfford, formatUsdc, getBalance, PaymentError } from "
 import { toHtml } from "../../../lib/markdown";
 
 interface Article {
-  id:string;title:string;blurb:string;content:string|null;price:string;
-  category:string;readTime:number;isResearch:boolean;
+  id:string;title:string;blurb:string;content:string|null;
+  contentPreview:string;contentBlur:string;
+  price:string;category:string;readTime:number;isResearch:boolean;
   authorAddress:string;authorShort:string;status:string;
   reads:number;hasPaid:boolean;timestamp:number;
 }
@@ -112,7 +113,7 @@ export default function ArticlePage() {
       setTxHash(hash); setPayStep("Unlocking…");
       const r = await fetch(`/api/articles/${id}/pay`,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({readerAddress:address.toLowerCase(),txHash:hash,amountPaid:article.price})});
       const d = await r.json();
-      if (d.content) setArticle(prev=>prev?{...prev,content:d.content}:prev);
+      if (d.content) setArticle(prev=>prev?{...prev,content:d.content,contentPreview:d.content,contentBlur:""}:prev);
       setPaid(true); setPayStep(""); refresh();
     } catch(e:any) { setError(e instanceof PaymentError?e.message:"Unexpected error."); setPayStep(""); }
     setPaying(false);
@@ -126,11 +127,9 @@ export default function ArticlePage() {
   const unlocked  = paid||isAuthor;
   const isResearch= article.isResearch;
   const priceNum  = parseFloat(article.price);
-  const fullHtml  = toHtml(article.content||"");
-  // Show ~55% of content clearly, then blur rest
-  const splitAt   = Math.floor(fullHtml.length*0.55);
-  const clearHtml = fullHtml.slice(0, splitAt);
-  const blurHtml  = fullHtml.slice(splitAt, splitAt + 1200); // show some but blurred
+  const fullHtml   = toHtml(article.content || "");
+  const clearHtml  = toHtml(article.contentPreview || "");
+  const blurHtml   = toHtml(article.contentBlur   || "");
 
   const SocialSection = () => (
     <div style={{ marginTop:28 }}>
