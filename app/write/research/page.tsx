@@ -401,6 +401,56 @@ export default function ResearchPage() {
               />
             </div>
 
+            {/* Contributors */}
+            <div className="card" style={{ padding: "14px", marginTop: 8 }}>
+              <div style={{ fontSize: 10, fontWeight: 800, color: "var(--text-4)", textTransform: "uppercase", letterSpacing: ".08em", marginBottom: 8, fontFamily: "Outfit,sans-serif" }}>
+                Contributors
+              </div>
+              <p style={{ fontSize: 10, color: "var(--text-4)", marginBottom: 8, lineHeight: 1.5 }}>
+                Add wallet addresses of people who can co-author this paper.
+              </p>
+              <div style={{ display: "flex", gap: 6, marginBottom: 8 }}>
+                <input
+                  value={contribInput} onChange={e => setContribInput(e.target.value)}
+                  onKeyDown={e => {
+                    if (e.key === "Enter" && contribInput.trim().startsWith("0x")) {
+                      e.preventDefault();
+                      const addr = contribInput.trim().toLowerCase();
+                      if (!contributors.includes(addr)) setContributors(p => [...p, addr]);
+                      setContribInput("");
+                    }
+                  }}
+                  placeholder="0x… wallet address"
+                  style={{ flex: 1, padding: "6px 9px", background: "var(--bg)", border: "1.5px solid var(--border)", borderRadius: "var(--r)", fontSize: 11, color: "var(--text)", outline: "none" }}
+                />
+                <button
+                  onClick={() => {
+                    const addr = contribInput.trim().toLowerCase();
+                    if (addr.startsWith("0x") && !contributors.includes(addr)) {
+                      setContributors(p => [...p, addr]);
+                      setContribInput("");
+                    }
+                  }}
+                  className="btn btn-secondary btn-sm" style={{ gap: 4 }}>
+                  <Plus size={11} />
+                </button>
+              </div>
+              {contributors.length > 0 && (
+                <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+                  {contributors.map(addr => (
+                    <div key={addr} style={{ display: "flex", alignItems: "center", gap: 6, padding: "5px 8px", background: "var(--bg-alt)", borderRadius: "var(--r)", border: "1px solid var(--border)" }}>
+                      <div style={{ width: 18, height: 18, borderRadius: "50%", background: `hsl(${parseInt(addr.slice(2,4)||"0",16)*1.4}deg,40%,50%)`, flexShrink: 0 }} />
+                      <span style={{ fontFamily: "JetBrains Mono,monospace", fontSize: 9, color: "var(--text-3)", flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{addr.slice(0,10)}…{addr.slice(-6)}</span>
+                      <button onClick={() => setContributors(p => p.filter(a => a !== addr))} style={{ background: "none", border: "none", cursor: "pointer", color: "#dc2626", padding: 2, display: "flex" }}><Trash2 size={10} /></button>
+                    </div>
+                  ))}
+                </div>
+              )}
+              {contributors.length === 0 && (
+                <p style={{ fontSize: 10, color: "var(--text-4)", fontStyle: "italic" }}>No contributors added yet.</p>
+              )}
+            </div>
+
             {/* Completeness bar */}
             {sections.length > 0 && (
               <div className="card" style={{ padding: "12px 14px", marginTop: 8 }}>

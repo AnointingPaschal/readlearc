@@ -24,7 +24,7 @@ export default function AppNav() {
     return path.startsWith(href);
   }
 
-  const profileHref = isAuth && address ? `/profile/${address}` : "/profile";
+  const profileHref = (isAuth && address) ? `/profile/${address}` : "/wallet-app";
 
   const items = NAV.map(n => ({
     ...n,

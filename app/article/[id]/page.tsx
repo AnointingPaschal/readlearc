@@ -307,12 +307,10 @@ export default function ArticlePage() {
         .read-layout {
           max-width: 1100px;
           margin: 0 auto;
-          padding-left: 14px;
-          padding-right: 14px;
-          padding-bottom: calc(var(--bottom-nav-h, 0px) + 40px);
+          padding: 0 clamp(14px, 4vw, 24px) calc(var(--bottom-nav-h, 0px) + 56px);
           display: grid;
           grid-template-columns: 1fr;
-          gap: 20px;
+          gap: 24px;
           align-items: start;
         }
         .read-main { min-width: 0; }
@@ -322,6 +320,13 @@ export default function ArticlePage() {
           .read-layout { grid-template-columns: 1fr 260px; }
           .read-sidebar { display: block; position: sticky; top: calc(var(--header-h) + 16px); }
           .read-share-mobile { display: none; }
+        }
+        @media (min-width: 768px) {
+          .read-layout { margin-left: var(--side-nav-w, 0px); }
+        }
+        @media (min-width: 1100px) {
+          /* Center within remaining space after side nav */
+          .read-layout { margin-left: calc(var(--side-nav-w, 0px) + max(0px, calc((100vw - var(--side-nav-w, 0px) - 1100px) / 2))); }
         }
       `}</style>
     </div>

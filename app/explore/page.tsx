@@ -122,10 +122,20 @@ export default function ExplorePage() {
     return FACULTIES.find(f => f.id === facultyId)?.courses.map(c => c.label) || [];
   }, [facultyId]);
 
+  // Reset page when any filter changes
+  useEffect(() => { setPage(1); }, [search, cat, sort, onlyResearch, facultyId]);
+
   const filtered = useMemo(() => arts.filter(a => {
     if (onlyResearch && !a.isResearch) return false;
-    if (facultyId && facultyCourseLabels.length && !facultyCourseLabels.includes(a.category)) return false;
-    if (cat !== "All" && a.category !== cat) return false;
+    if (facultyId && facultyCourseLabels.length) {
+      const artCat = (a.category || "").toLowerCase();
+      if (!facultyCourseLabels.some(l => l.toLowerCase() === artCat || artCat.includes(l.toLowerCase()) || l.toLowerCase().includes(artCat))) return false;
+    }
+    if (cat !== "All") {
+      const catLower = cat.toLowerCase();
+      const artCat = (a.category || "").toLowerCase();
+      if (artCat !== catLower && !artCat.includes(catLower) && !catLower.includes(artCat)) return false;
+    }
     if (search) {
       const q = search.toLowerCase();
       return (

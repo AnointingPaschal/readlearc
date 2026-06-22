@@ -3,10 +3,11 @@ import { useState, useEffect, useRef, useLayoutEffect } from "react";
 import { ChevronLeft, ChevronRight, FileText, Printer } from "lucide-react";
 import { toHtml } from "../../lib/markdown";
 
-// A4 at 96dpi
-const A4_W  = 794;
-const A4_H  = 1123;
-const MG    = 72;        // page margin px
+// A4 at 96dpi: 210mm × 297mm
+// 1 inch = 96px at screen DPI; 1mm ≈ 3.7795px
+const A4_W  = 794;   // 210mm × 3.7795
+const A4_H  = 1123;  // 297mm × 3.7795
+const MG    = 96;    // 25.4mm (1 inch) — standard academic margin
 const PG_H  = A4_H - MG * 2;  // usable content height per page
 
 interface Props {

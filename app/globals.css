@@ -437,3 +437,34 @@ textarea.admin-input { height:auto; resize:vertical; line-height:1.55; padding:1
 /* Hide AppNav on /admin routes — admin has its own nav */
 body.admin-layout .app-bottom-nav,
 body.admin-layout .app-side-nav { display: none !important; }
+
+/* ── Page layout side-nav offsets ────────────────────────────────── */
+@media (min-width: 768px) {
+  body:not(.admin-layout) .read-layout,
+  body:not(.admin-layout) .write-layout,
+  body:not(.admin-layout) .research-layout,
+  body:not(.admin-layout) .explore-layout,
+  body:not(.admin-layout) .groups-layout {
+    margin-left: var(--side-nav-w, 0px);
+  }
+}
+
+/* ── Read page mobile padding ─────────────────────────────────────── */
+.read-layout {
+  padding-left:  clamp(14px, 4vw, 24px);
+  padding-right: clamp(14px, 4vw, 24px);
+}
+
+/* ── Homepage right sidebar ───────────────────────────────────────── */
+.home-layout {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 24px;
+  align-items: start;
+}
+.home-sidebar { display: none; }
+
+@media (min-width: 1060px) {
+  .home-layout { grid-template-columns: 1fr 300px; }
+  .home-sidebar { display: block; position: sticky; top: calc(var(--header-h) + 20px); }
+}
