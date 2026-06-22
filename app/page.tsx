@@ -167,7 +167,7 @@ function StatsBanner({ stats }: { stats: Stats }) {
 
 function ArticleCard({ a, size="normal" }: { a:Article; size?:"large"|"normal"|"compact" }) {
   const addr = a.authorAddress||"";
-  const gradH = parseInt(addr.slice(2,4)||"0",16)*1.4;
+  const gradH = parseInt((addr||'').slice(2,4)||'0',16)*1.4;
   return (
     <Link href={`/article/${a.id}`} style={{ textDecoration:"none",display:"flex",flexDirection:"column" }}>
       <div className="card card-hover" style={{ padding:0,overflow:"hidden",display:"flex",flexDirection:"column",height:"100%" }}>
@@ -386,7 +386,7 @@ export default function HomePage() {
               {recent.map(a=>(
                 <Link key={a.id} href={`/article/${a.id}`} style={{ textDecoration:"none" }}>
                   <div className="card card-hover" style={{ padding:"12px 14px",display:"flex",gap:12,alignItems:"center" }}>
-                    <div style={{ width:44,height:44,borderRadius:"var(--r)",background:`linear-gradient(135deg,hsl(${parseInt(a.authorAddress.slice(2,4)||"0",16)*1.4}deg,50%,25%),hsl(${parseInt(a.authorAddress.slice(4,6)||"0",16)*1.4}deg,50%,15%))`,flexShrink:0 }}/>
+                    <div style={{ width:44,height:44,borderRadius:"var(--r)",background:`linear-gradient(135deg,hsl(${parseInt((a.authorAddress||'').slice(2,4)||'0',16)*1.4}deg,50%,25%),hsl(${parseInt((a.authorAddress||'').slice(4,6)||'0',16)*1.4}deg,50%,15%))`,flexShrink:0 }}/>
                     <div style={{ flex:1,minWidth:0 }}>
                       <div style={{ display:"flex",gap:5,marginBottom:4,flexWrap:"wrap" }}>
                         <span style={{ fontSize:9,fontWeight:700,padding:"1px 6px",borderRadius:99,background:"var(--brand-muted)",color:"var(--brand)",border:"1px solid var(--brand-border)" }}>{a.category}</span>

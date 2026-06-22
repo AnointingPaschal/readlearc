@@ -18,7 +18,7 @@ const SORTS = [
 ];
 
 function Card({ a, view }: { a:A; view:"grid"|"list" }) {
-  const g = parseInt(a.authorAddress.slice(2,4)||"0",16)*1.4;
+  const g = parseInt((a.authorAddress||'').slice(2,4)||'0',16)*1.4;
   if (view==="list") return (
     <Link href={`/article/${a.id}`} style={{ textDecoration:"none" }}>
       <div className="card card-hover" style={{ padding:"13px 14px",display:"flex",gap:12,alignItems:"flex-start" }}>

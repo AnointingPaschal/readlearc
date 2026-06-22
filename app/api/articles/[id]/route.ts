@@ -5,63 +5,54 @@ type C = { params: Promise<{id:string}> };
 
 export async function GET(req: NextRequest, { params }: C) {
   const { id } = await params;
-  const reader  = new URL(req.url).searchParams.get("reader")||"";
-  const admin   = new URL(req.url).searchParams.get("admin")==="1";
+  const reader  = new URL(req.url).searchParams.get("reader");
 
-  const { data: a, error } = await supabase.from("articles").select("*").eq("id",id).single();
-  if (error||!a) return NextResponse.json({ error:"Not found" }, { status:404 });
+  const { data: a, error } = await supabase.from("articles")
+    .select("id,title,blurb,content,price,category,read_time,is_research,author_address,status,featured,reads,created_at")
+    .eq("id", id).single();
 
-  let paid = false;
+  if (error || !a) return NextResponse.json({ error:"Not found" }, { status:404 });
+
+  let hasPaid = false;
   if (reader) {
-    const { data } = await supabase.from("read_receipts")
-      .select("id").eq("article_id",id).ilike("reader_address",reader).maybeSingle();
-    paid = !!data;
+    const { data: rr } = await supabase.from("read_receipts")
+      .select("id").eq("article_id", id).ilike("reader_address", reader).maybeSingle();
+    hasPaid = !!rr;
   }
-  const isAuthor = reader && reader.toLowerCase()===a.author_address.toLowerCase();
-  const unlock   = paid||isAuthor||admin;
 
+  const addr = a.author_address || "";
   return NextResponse.json({
     id:            String(a.id),
-    title:         a.title,
-    blurb:         a.blurb,
-    content:       unlock ? a.content : null,
-    price:         Number(a.price).toFixed(6),
-    category:      a.category,
-    readTime:      a.read_time,
-    isResearch:    a.is_research,
-    authorAddress: a.author_address,
-    authorShort:   a.author_address.slice(0,6)+"…"+a.author_address.slice(-4),
-    status:        a.status,
-    featured:      a.featured,
-    reads:         a.reads,
-    hasPaid:       paid,
-    timestamp:     Math.floor(new Date(a.created_at).getTime()/1000),
+    title:         a.title       || "",
+    blurb:         a.blurb       || "",
+    content:       hasPaid || new URL(req.url).searchParams.get("admin")==="1" ? a.content : null,
+    price:         String(a.price|| "0.020"),
+    category:      a.category    || "General",
+    readTime:      a.read_time   || 5,
+    isResearch:    a.is_research || false,
+    authorAddress: addr,
+    authorShort:   addr ? `${addr.slice(0,6)}…${addr.slice(-4)}` : "Unknown",
+    status:        a.status      || "pending",
+    featured:      a.featured    || false,
+    reads:         a.reads       || 0,
+    hasPaid,
+    timestamp:     a.created_at ? Math.floor(new Date(a.created_at).getTime()/1000) : 0,
   });
 }
 
 export async function PUT(req: NextRequest, { params }: C) {
   const { id } = await params;
   const b = await req.json();
-  const { data: a } = await supabase.from("articles").select("author_address").eq("id",id).single();
-  if (!a) return NextResponse.json({ error:"Not found" }, { status:404 });
-  if (a.author_address.toLowerCase()!==b.authorAddress?.toLowerCase())
-    return NextResponse.json({ error:"Forbidden" }, { status:403 });
-  const { error } = await supabase.from("articles").update({
-    title:b.title,blurb:b.blurb,content:b.content,price:b.price,category:b.category,read_time:b.readTime
-  }).eq("id",id);
-  if (error) return NextResponse.json({ error:error.message }, { status:500 });
-  return NextResponse.json({ ok:true });
+  const { data, error } = await supabase.from("articles")
+    .update({ title:b.title, blurb:b.blurb, content:b.content, price:b.price, category:b.category })
+    .eq("id", id).select().single();
+  if (error) return NextResponse.json({ error: error.message }, { status:500 });
+  return NextResponse.json(data);
 }
 
-export async function DELETE(req: NextRequest, { params }: C) {
+export async function DELETE(_: NextRequest, { params }: C) {
   const { id } = await params;
-  const b = await req.json().catch(()=>({}));
-  if (b.authorAddress) {
-    const { data:a } = await supabase.from("articles").select("author_address").eq("id",id).single();
-    if (a && a.author_address.toLowerCase()!==b.authorAddress.toLowerCase())
-      return NextResponse.json({ error:"Forbidden" }, { status:403 });
-  }
-  const { error } = await supabase.from("articles").delete().eq("id",id);
-  if (error) return NextResponse.json({ error:error.message }, { status:500 });
-  return NextResponse.json({ ok:true });
+  const { error } = await supabase.from("articles").delete().eq("id", id);
+  if (error) return NextResponse.json({ error: error.message }, { status:500 });
+  return NextResponse.json({ ok: true });
 }
