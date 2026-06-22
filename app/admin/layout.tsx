@@ -7,7 +7,7 @@ import {
   Zap, LayoutDashboard, Settings, Palette, BookOpen, Flag, Bell,
   Users, PenTool, UserCheck, Percent, CreditCard, FileCode,
   Lock, Bot, Cpu, FileText, Globe, Search as SearchIcon,
-  DollarSign, Shield, Menu, X, Sun, Moon, ChevronRight, LogOut,
+  DollarSign, Shield, Menu, X, Sun, Moon, ChevronRight, LogOut, MessageSquare,
 } from "lucide-react";
 
 const NAV = [
@@ -20,8 +20,9 @@ const NAV = [
     { href:"/admin/notifications",      icon:Bell,            label:"Notifications"    },
   ]},
   { label:"Community", items:[
-    { href:"/contribute",               icon:Users,           label:"Contribute Spaces"},
-    { href:"/contribute/create",        icon:PenTool,         label:"Create Space"     },
+    { href:"/admin/community",          icon:Users,           label:"All Spaces"        },
+    { href:"/admin/community/posts",    icon:MessageSquare,   label:"All Posts"         },
+    { href:"/admin/community/members",  icon:UserCheck,       label:"Members"           },
   ]},
   { label:"Users",    items:[
     { href:"/admin/users/writers",      icon:PenTool,         label:"Writers"          },
