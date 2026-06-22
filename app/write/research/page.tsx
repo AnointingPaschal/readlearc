@@ -12,6 +12,7 @@ import {
   BookOpen, Clock, Send, AlertCircle, PenLine, List, FlaskConical,
   GraduationCap, Tag, Layers, ChevronRight,
 } from "lucide-react";
+import { FacultyIcon } from "../../../components/ui/FacultyIcon";
 
 interface Section {
   id: string; type: string; title: string;
@@ -287,7 +288,7 @@ export default function ResearchPage() {
               <div style={sw}>
                 <select value={facultyId} onChange={e => setFacultyId(e.target.value)} style={ss}>
                   <option value="">— Select faculty —</option>
-                  {FACULTIES.map(f => <option key={f.id} value={f.id}>{f.icon} {f.label}</option>)}
+                  {FACULTIES.map(f => <option key={f.id} value={f.id}>{f.label}</option>)}
                 </select>
                 <ChevronDown size={11} style={{ position: "absolute", right: 8, top: "50%", transform: "translateY(-50%)", color: "var(--text-4)", pointerEvents: "none" }} />
               </div>
@@ -320,7 +321,7 @@ export default function ResearchPage() {
 
               {courseId && (
                 <div style={{ marginTop: 8, padding: "6px 9px", background: "var(--brand-muted)", borderRadius: "var(--r)", border: "1px solid var(--brand-border)", display: "flex", alignItems: "center", gap: 5 }}>
-                  <span style={{ fontSize: 13 }}>{faculty?.icon}</span>
+                  {faculty && <FacultyIcon name={faculty.icon} size={13} style={{ color: faculty.color, flexShrink: 0 }} />}
                   <div>
                     <div style={{ fontSize: 11, fontWeight: 700, color: "var(--brand)" }}>{course?.label}</div>
                     {topic && <div style={{ fontSize: 10, color: "var(--text-4)" }}>{topic}</div>}

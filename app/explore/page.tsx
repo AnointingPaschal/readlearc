@@ -6,8 +6,9 @@ import { FACULTIES } from "../../lib/categories";
 import {
   Search, Star, Clock, TrendingUp, FlaskConical, BookOpen,
   Grid3X3, List, ArrowRight, ChevronDown, ChevronRight, X,
-  Flame, SlidersHorizontal,
+  Flame, SlidersHorizontal, FileText,
 } from "lucide-react";
+import { FacultyIcon } from "../../components/ui/FacultyIcon";
 
 interface A {
   id: string; title: string; blurb: string; price: string; category: string;
@@ -29,9 +30,10 @@ function GridCard({ a }: { a: A }) {
   return (
     <Link href={`/article/${a.id}`} style={{ textDecoration: "none", display: "flex", flexDirection: "column", height: "100%" }}>
       <div className="card card-hover" style={{ padding: 0, overflow: "hidden", height: "100%", display: "flex", flexDirection: "column" }}>
-        <div style={{ height: 80, background: `linear-gradient(135deg,hsl(${h}deg,45%,18%),hsl(${h + 60}deg,40%,12%))`, flexShrink: 0, position: "relative" }}>
-          {a.isResearch && <span style={{ position: "absolute", top: 7, left: 7, fontSize: 9, fontWeight: 700, padding: "2px 8px", borderRadius: 99, background: "rgba(2,132,199,.85)", color: "white", backdropFilter: "blur(4px)" }}>Research</span>}
-          {a.featured && <span style={{ position: "absolute", top: 7, right: 7, fontSize: 9, fontWeight: 700, padding: "2px 8px", borderRadius: 99, background: "rgba(202,138,4,.85)", color: "white", backdropFilter: "blur(4px)", display: "flex", alignItems: "center", gap: 3 }}><Star size={7} />Featured</span>}
+        <div style={{ height: 70, background: "var(--bg-alt)", borderBottom: "1px solid var(--border)", flexShrink: 0, position: "relative", display: "flex", alignItems: "center", justifyContent: "center" }}>
+          <FileText size={20} style={{ color: "var(--border)", opacity: .5 }} />
+          {a.isResearch && <span style={{ position: "absolute", top: 6, left: 6, fontSize: 9, fontWeight: 700, padding: "2px 8px", borderRadius: 99, background: "rgba(2,132,199,.1)", color: "#0284c7", border: "1px solid rgba(2,132,199,.25)" }}>Research</span>}
+          {a.featured && <span style={{ position: "absolute", top: 6, right: 6, fontSize: 9, fontWeight: 700, padding: "2px 8px", borderRadius: 99, background: "rgba(202,138,4,.1)", color: "#ca8a04", border: "1px solid rgba(202,138,4,.25)", display: "flex", alignItems: "center", gap: 3 }}><Star size={7} />Featured</span>}
         </div>
         <div style={{ padding: "12px 14px", flex: 1, display: "flex", flexDirection: "column", gap: 5 }}>
           <div style={{ display: "flex", gap: 5, flexWrap: "wrap" }}>
@@ -42,7 +44,7 @@ function GridCard({ a }: { a: A }) {
           {a.blurb && <p style={{ fontSize: 10, color: "var(--text-4)", lineHeight: 1.5, display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical" as any, overflow: "hidden" }}>{a.blurb}</p>}
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", paddingTop: 8, borderTop: "1px solid var(--border)", marginTop: "auto" }}>
             <div style={{ display: "flex", alignItems: "center", gap: 5 }}>
-              <div style={{ width: 16, height: 16, borderRadius: "50%", background: `linear-gradient(135deg,hsl(${h}deg,65%,55%),hsl(${h + 40}deg,55%,45%))` }} />
+              <div style={{ width: 16, height: 16, borderRadius: "50%", background: `hsl(${h}deg,40%,50%)` }} />
               <span style={{ fontFamily: "JetBrains Mono,monospace", fontSize: 9, color: "var(--text-4)" }}>{a.authorShort}</span>
             </div>
             <span style={{ fontSize: 9, color: "var(--text-4)", display: "flex", alignItems: "center", gap: 3 }}><TrendingUp size={8} />{a.reads}</span>
@@ -58,7 +60,9 @@ function ListCard({ a }: { a: A }) {
   return (
     <Link href={`/article/${a.id}`} style={{ textDecoration: "none" }}>
       <div className="card card-hover" style={{ padding: "12px 14px", display: "flex", gap: 12, alignItems: "flex-start" }}>
-        <div style={{ width: 54, height: 54, borderRadius: "var(--r)", background: `linear-gradient(135deg,hsl(${h}deg,45%,18%),hsl(${h + 60}deg,40%,12%))`, flexShrink: 0 }} />
+        <div style={{ width: 48, height: 48, borderRadius: "var(--r)", background: "var(--bg-alt)", border: "1px solid var(--border)", flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center" }}>
+          <FileText size={18} style={{ color: "var(--border)" }} />
+        </div>
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ display: "flex", gap: 5, marginBottom: 5, flexWrap: "wrap" }}>
             <span style={{ fontSize: 9, fontWeight: 700, padding: "2px 8px", borderRadius: 99, background: "var(--brand-muted)", color: "var(--brand)", border: "1px solid var(--brand-border)" }}>{a.category}</span>
@@ -261,7 +265,7 @@ export default function ExplorePage() {
                         transition: "background .12s",
                       }}
                     >
-                      <span style={{ fontSize: 14, flexShrink: 0 }}>{f.icon}</span>
+                      <FacultyIcon name={f.icon} size={13} style={{ color: isActive ? "var(--brand)" : "var(--text-4)", flexShrink: 0 }} />
                       <span style={{ flex: 1, fontSize: 11, fontWeight: 700, color: isActive ? "var(--brand)" : "var(--text-3)", textAlign: "left", lineHeight: 1.3 }}>{f.label}</span>
                       {coursesWithContent.length > 0 && <span style={{ fontSize: 9, color: "var(--text-4)", flexShrink: 0 }}>{coursesWithContent.length}</span>}
                       <ChevronDown size={11} style={{ color: "var(--text-4)", transition: "transform .2s", transform: isOpen ? "rotate(180deg)" : "rotate(0)", flexShrink: 0 }} />

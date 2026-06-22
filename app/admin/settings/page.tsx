@@ -308,7 +308,7 @@ export default function AdminSettingsPage() {
       {/* ── Hero Slides ── */}
       <div className="card" style={{ padding:"20px" }}>
         <div style={{ display:"flex",alignItems:"center",gap:7,marginBottom:14 }}>
-          <span style={{ fontSize:15 }}>🖼️</span>
+          <ImageIcon size={14} style={{ color:"var(--brand)" }}/>
           <h2 style={{ fontFamily:"Outfit,sans-serif",fontSize:15,fontWeight:800,color:"var(--text)" }}>Hero Slider</h2>
         </div>
         <p style={{ fontSize:12,color:"var(--text-4)",marginBottom:14,lineHeight:1.65 }}>Customize the homepage hero slides. Upload images for backgrounds.</p>
@@ -332,7 +332,7 @@ export default function AdminSettingsPage() {
       {/* ── Site Visuals ── */}
       <div className="card" style={{ padding:"20px" }}>
         <div style={{ display:"flex",alignItems:"center",gap:7,marginBottom:14 }}>
-          <span style={{ fontSize:16 }}>🖼️</span>
+          <ImageIcon size={14} style={{ color:"var(--brand)" }}/>
           <h2 style={{ fontFamily:"Outfit,sans-serif",fontSize:15,fontWeight:800,color:"var(--text)" }}>Site Images</h2>
         </div>
         <div style={{ display:"flex",flexDirection:"column",gap:12 }}>

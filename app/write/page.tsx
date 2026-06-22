@@ -8,6 +8,7 @@ import {
   Send, Save, CheckCircle2, PenLine, FlaskConical,
   AlertCircle, ChevronDown, BookOpen, Tag, DollarSign,
 } from "lucide-react";
+import { FacultyIcon } from "../../components/ui/FacultyIcon";
 import Link from "next/link";
 
 export default function WritePage() {
@@ -164,7 +165,7 @@ export default function WritePage() {
                 <select value={facultyId} onChange={e => setFacultyId(e.target.value)} style={selectStyle}>
                   <option value="">— Select faculty —</option>
                   {FACULTIES.map(f => (
-                    <option key={f.id} value={f.id}>{f.icon} {f.label}</option>
+                    <option key={f.id} value={f.id}>{f.label}</option>
                   ))}
                 </select>
                 <ChevronDown size={12} style={{ position: "absolute", right: 8, top: "50%", transform: "translateY(-50%)", color: "var(--text-4)", pointerEvents: "none" }} />
@@ -205,7 +206,7 @@ export default function WritePage() {
               {/* Selected pill */}
               {courseId && (
                 <div style={{ marginTop: 10, padding: "6px 10px", background: "var(--brand-muted)", border: "1px solid var(--brand-border)", borderRadius: "var(--r)", display: "flex", alignItems: "center", gap: 6 }}>
-                  <span style={{ fontSize: 14 }}>{faculty?.icon}</span>
+                  {faculty && <FacultyIcon name={faculty.icon} size={14} style={{ color: faculty.color, flexShrink: 0 }} />}
                   <div style={{ minWidth: 0 }}>
                     <div style={{ fontSize: 11, fontWeight: 700, color: "var(--brand)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{course?.label}</div>
                     {topic && <div style={{ fontSize: 10, color: "var(--text-4)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{topic}</div>}

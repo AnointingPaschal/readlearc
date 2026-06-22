@@ -15,7 +15,7 @@ export interface Faculty {
 
 export const FACULTIES: Faculty[] = [
   {
-    id: "sciences", label: "Natural Sciences", color: "#0284c7", icon: "🔬",
+    id: "sciences", label: "Natural Sciences", color: "#0284c7", icon: "Microscope",
     courses: [
       { id: "mathematics", label: "Mathematics", topics: ["Pure Mathematics","Applied Mathematics","Statistics & Probability","Number Theory","Algebra","Calculus & Real Analysis","Topology","Discrete Mathematics","Actuarial Science","Mathematical Modeling","Numerical Methods","Combinatorics","Differential Equations","Complex Analysis","Functional Analysis","Cryptography","Optimization"] },
       { id: "physics", label: "Physics", topics: ["Classical Mechanics","Quantum Mechanics","Thermodynamics","Electromagnetism","Astrophysics","Nuclear Physics","Particle Physics","Optics & Photonics","Condensed Matter Physics","Plasma Physics","General Relativity","Acoustics","Biophysics","Atmospheric Physics","Computational Physics","Medical Physics"] },
@@ -27,7 +27,7 @@ export const FACULTIES: Faculty[] = [
     ]
   },
   {
-    id: "engineering", label: "Engineering & Technology", color: "#d97706", icon: "⚙️",
+    id: "engineering", label: "Engineering & Technology", color: "#d97706", icon: "Cpu",
     courses: [
       { id: "computer_science", label: "Computer Science", topics: ["Algorithms & Data Structures","Artificial Intelligence","Machine Learning","Deep Learning","Computer Vision","Natural Language Processing","Cybersecurity","Cloud Computing","Distributed Systems","Database Systems","Software Engineering","Operating Systems","Computer Networks","Human-Computer Interaction","Quantum Computing","Blockchain & Web3","Robotics","Data Science","Web Development","Embedded Systems","Compiler Design","Formal Methods","Parallel Computing","Edge Computing","Computer Graphics"] },
       { id: "electrical", label: "Electrical Engineering", topics: ["Circuit Theory","Electronics","Power Systems","Control Systems","Signal Processing","Telecommunications","VLSI Design","Microelectronics","Wireless Communications","Power Electronics","Photovoltaics","Embedded Systems","Digital Signal Processing","RF Engineering","Electromagnetic Compatibility"] },
@@ -43,7 +43,7 @@ export const FACULTIES: Faculty[] = [
     ]
   },
   {
-    id: "medicine", label: "Medical & Health Sciences", color: "#dc2626", icon: "🏥",
+    id: "medicine", label: "Medical & Health Sciences", color: "#dc2626", icon: "Stethoscope",
     courses: [
       { id: "medicine_gen", label: "Medicine & Surgery", topics: ["Internal Medicine","Surgery","Cardiology","Oncology","Neurology","Pediatrics","Psychiatry","Dermatology","Orthopedics","Ophthalmology","Emergency Medicine","Infectious Diseases","Endocrinology","Gastroenterology","Nephrology","Pulmonology","Rheumatology","Pathology","Radiology","Anesthesiology","Urology","Gynecology & Obstetrics","Hepatology","Hematology","Immunology","Tropical Medicine","Palliative Care","Geriatrics"] },
       { id: "public_health", label: "Public Health & Epidemiology", topics: ["Epidemiology","Biostatistics","Health Policy","Global Health","Infectious Disease Control","Health Promotion","Environmental Health","Occupational Health","Maternal Health","Child Health","Nutrition Policy","Health Economics","One Health","Digital Health","Vaccinology","Non-Communicable Diseases"] },
@@ -56,7 +56,7 @@ export const FACULTIES: Faculty[] = [
     ]
   },
   {
-    id: "social_sciences", label: "Social Sciences", color: "#7c3aed", icon: "🌍",
+    id: "social_sciences", label: "Social Sciences", color: "#7c3aed", icon: "Globe",
     courses: [
       { id: "economics", label: "Economics", topics: ["Macroeconomics","Microeconomics","Development Economics","Behavioral Economics","International Economics","Labor Economics","Health Economics","Environmental Economics","Financial Economics","Econometrics","Public Finance","Urban Economics","Agricultural Economics","Economic History","Institutional Economics","Digital Economics","Game Theory"] },
       { id: "political_science", label: "Political Science", topics: ["Comparative Politics","International Relations","Political Theory","Public Administration","Electoral Studies","Constitutional Law","Geopolitics","Conflict Studies","Governance & Democracy","Foreign Policy","Political Economy","Security Studies","Human Rights","Federalism","Political Sociology"] },
@@ -69,7 +69,7 @@ export const FACULTIES: Faculty[] = [
     ]
   },
   {
-    id: "humanities", label: "Humanities & Arts", color: "#b45309", icon: "📚",
+    id: "humanities", label: "Humanities & Arts", color: "#b45309", icon: "BookOpen",
     courses: [
       { id: "history", label: "History", topics: ["Ancient History","Medieval History","Modern History","Contemporary History","World History","Colonial History","Military History","Economic History","Social History","African History","Asian History","American History","European History","History of Science","Oral History","Public History","Digital History"] },
       { id: "philosophy", label: "Philosophy", topics: ["Ethics & Moral Philosophy","Logic","Metaphysics","Epistemology","Philosophy of Mind","Political Philosophy","Philosophy of Science","Aesthetics","Existentialism","Analytic Philosophy","Eastern Philosophy","Applied Ethics","Bioethics","Environmental Ethics","Philosophy of Language","Phenomenology"] },
@@ -82,7 +82,7 @@ export const FACULTIES: Faculty[] = [
     ]
   },
   {
-    id: "business", label: "Business & Management", color: "#059669", icon: "💼",
+    id: "business", label: "Business & Management", color: "#059669", icon: "Briefcase",
     courses: [
       { id: "finance", label: "Finance & Accounting", topics: ["Corporate Finance","Investment Analysis","Financial Modeling","Accounting Principles","Auditing","Tax Accounting","Risk Management","Financial Markets","Derivatives","ESG Investing","Forensic Accounting","Managerial Accounting","International Finance","Banking","Insurance","Islamic Finance","Cryptocurrency & DeFi","Private Equity","Financial Regulation"] },
       { id: "marketing", label: "Marketing", topics: ["Digital Marketing","Consumer Behavior","Brand Management","Market Research","Social Media Marketing","Content Strategy","SEO & Analytics","Advertising","International Marketing","Sports Marketing","Healthcare Marketing","Retail Marketing","B2B Marketing","Influencer Marketing","E-commerce","Neuromarketing","Sustainability Marketing"] },
@@ -92,19 +92,19 @@ export const FACULTIES: Faculty[] = [
     ]
   },
   {
-    id: "law", label: "Law & Legal Studies", color: "#1d4ed8", icon: "⚖️",
+    id: "law", label: "Law & Legal Studies", color: "#1d4ed8", icon: "Gavel",
     courses: [
       { id: "law_gen", label: "Law", topics: ["Constitutional Law","Criminal Law & Procedure","Contract Law","Tort Law","Property Law","Administrative Law","Family Law","Corporate Law","International Law","Human Rights Law","Environmental Law","Intellectual Property","Tax Law","Cyber Law & Technology","Immigration Law","Labour Law","Medical Law & Ethics","Maritime Law","Conflict of Laws","EU Law","Competition Law","Insurance Law","Banking Law","Real Estate Law","Refugee Law"] },
     ]
   },
   {
-    id: "education", label: "Education & Teaching", color: "#0e7490", icon: "🎓",
+    id: "education", label: "Education & Teaching", color: "#0e7490", icon: "GraduationCap",
     courses: [
       { id: "education_gen", label: "Education", topics: ["Curriculum & Instruction","Educational Psychology","Special Education","Early Childhood Education","Higher Education Administration","STEM Education","Adult & Continuing Education","Distance & Online Learning","Educational Technology","Comparative Education","Teacher Training","Educational Leadership","Multicultural Education","Assessment & Evaluation","Literacy Education","Language Education","Art Education","Physical Education","Vocational Education","Education Policy"] },
     ]
   },
   {
-    id: "agriculture", label: "Agriculture, Food & Veterinary", color: "#16a34a", icon: "🌾",
+    id: "agriculture", label: "Agriculture, Food & Veterinary", color: "#16a34a", icon: "Wheat",
     courses: [
       { id: "agriculture_gen", label: "Agriculture & Agronomy", topics: ["Crop Science","Animal Science","Agricultural Economics","Soil Science","Horticulture","Agronomy","Plant Pathology","Irrigation & Water Management","Precision Agriculture","Agroforestry","Post-Harvest Technology","Agricultural Biotechnology","Aquaculture","Sustainable Agriculture","Farm Management","Plant Breeding","Agricultural Extension"] },
       { id: "food_science", label: "Food Science & Technology", topics: ["Food Chemistry","Food Microbiology","Food Safety & Quality","Food Processing","Food Packaging","Fermentation Technology","Sensory Science","Nutritional Science","Food Biotechnology","Quality Control","Food Policy","Functional Foods","Food Engineering","Dairy Technology","Beverage Technology"] },
@@ -112,13 +112,13 @@ export const FACULTIES: Faculty[] = [
     ]
   },
   {
-    id: "environment", label: "Environmental & Sustainability", color: "#15803d", icon: "🌿",
+    id: "environment", label: "Environmental & Sustainability", color: "#15803d", icon: "Leaf",
     courses: [
       { id: "env_gen", label: "Environmental Science & Policy", topics: ["Climate Change & Mitigation","Biodiversity & Conservation","Pollution & Remediation","Ecosystem Ecology","Sustainable Development","Environmental Policy","Renewable Energy","Carbon Footprint & Offsetting","Water Security","Environmental Economics","Environmental Law","Green Technology","Waste Management & Circular Economy","Ocean Science","Forest Science","Landscape Ecology","Urban Ecology","Environmental Justice","Nature-Based Solutions"] },
     ]
   },
   {
-    id: "information", label: "Information & Library Science", color: "#6d28d9", icon: "🗂️",
+    id: "information", label: "Information & Library Science", color: "#6d28d9", icon: "Database",
     courses: [
       { id: "info_science", label: "Information Science", topics: ["Knowledge Management","Data Curation","Digital Libraries","Information Architecture","Metadata Standards","Information Retrieval","Digital Preservation","Open Access","Scholarly Communication","Archival Science","Records Management","Research Data Management","Bibliometrics & Scientometrics"] },
     ]
@@ -166,3 +166,12 @@ export const RESEARCH_SECTION_TYPES = [
   "Conclusion","Ethical Considerations","Acknowledgements",
   "References","Appendix","Glossary","Custom",
 ];
+
+// ── Icon lookup — maps Faculty.icon name → Lucide component ────────────────
+// Import this wherever you render faculty icons.
+export const FACULTY_ICON_NAMES: Record<string, string> = {
+  Microscope: "Microscope", Cpu: "Cpu", Stethoscope: "Stethoscope",
+  Globe: "Globe", BookOpen: "BookOpen", Briefcase: "Briefcase",
+  Gavel: "Gavel", GraduationCap: "GraduationCap", Wheat: "Wheat",
+  Leaf: "Leaf", Database: "Database",
+};

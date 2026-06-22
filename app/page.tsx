@@ -5,8 +5,9 @@ import Navbar from "../components/ui/Navbar";
 import { FACULTIES } from "../lib/categories";
 import {
   ArrowRight, BookOpen, PenLine, Zap, Users, TrendingUp,
-  Star, Clock, Shield, FlaskConical, Search, Flame, ChevronRight,
+  Star, Clock, Shield, FlaskConical, Search, Flame, ChevronRight, FileText,
 } from "lucide-react";
+import { FacultyIcon } from "../components/ui/FacultyIcon";
 
 interface Article {
   id: string; title: string; blurb: string; price: string; category: string;
@@ -28,9 +29,10 @@ function FeaturedCard({ a, big }: { a: Article; big?: boolean }) {
   return (
     <Link href={`/article/${a.id}`} style={{ textDecoration: "none", display: "flex", flexDirection: "column", height: "100%" }}>
       <div className="card card-hover" style={{ padding: 0, overflow: "hidden", height: "100%", display: "flex", flexDirection: "column" }}>
-        <div style={{ height: big ? 160 : 100, background: `linear-gradient(135deg,hsl(${h}deg,45%,18%),hsl(${h + 60}deg,40%,12%))`, flexShrink: 0, position: "relative" }}>
-          {a.featured && <div style={{ position: "absolute", top: 8, right: 8, fontSize: 9, fontWeight: 700, padding: "2px 8px", borderRadius: 99, background: "rgba(202,138,4,.9)", color: "white", backdropFilter: "blur(4px)", display: "flex", alignItems: "center", gap: 3 }}><Star size={7} />Featured</div>}
-          {a.isResearch && <div style={{ position: "absolute", top: 8, left: 8, fontSize: 9, fontWeight: 700, padding: "2px 8px", borderRadius: 99, background: "rgba(2,132,199,.85)", color: "white" }}>Research</div>}
+        <div style={{ height: big ? 120 : 80, background: "var(--bg-alt)", borderBottom: "1px solid var(--border)", flexShrink: 0, position: "relative", display: "flex", alignItems: "center", justifyContent: "center" }}>
+          <FileText size={big ? 32 : 22} style={{ color: "var(--border)", opacity: .6 }} />
+          {a.featured && <div style={{ position: "absolute", top: 8, right: 8, fontSize: 9, fontWeight: 700, padding: "2px 8px", borderRadius: 99, background: "rgba(202,138,4,.12)", color: "#ca8a04", border: "1px solid rgba(202,138,4,.3)", display: "flex", alignItems: "center", gap: 3 }}><Star size={7} />Featured</div>}
+          {a.isResearch && <div style={{ position: "absolute", top: 8, left: 8, fontSize: 9, fontWeight: 700, padding: "2px 8px", borderRadius: 99, background: "rgba(2,132,199,.1)", color: "#0284c7", border: "1px solid rgba(2,132,199,.25)" }}>Research</div>}
         </div>
         <div style={{ padding: big ? "16px" : "12px", flex: 1, display: "flex", flexDirection: "column", gap: 6 }}>
           <span style={{ fontSize: 9, fontWeight: 700, padding: "2px 8px", borderRadius: 99, background: "var(--brand-muted)", color: "var(--brand)", border: "1px solid var(--brand-border)", alignSelf: "flex-start" }}>{a.category}</span>
@@ -38,7 +40,7 @@ function FeaturedCard({ a, big }: { a: Article; big?: boolean }) {
           {big && a.blurb && <p style={{ fontSize: 11, color: "var(--text-4)", lineHeight: 1.6, display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical" as any, overflow: "hidden" }}>{a.blurb}</p>}
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", paddingTop: 8, borderTop: "1px solid var(--border)" }}>
             <div style={{ display: "flex", alignItems: "center", gap: 5 }}>
-              <div style={{ width: 16, height: 16, borderRadius: "50%", background: `linear-gradient(135deg,hsl(${h}deg,65%,55%),hsl(${h + 40}deg,55%,45%))` }} />
+              <div style={{ width: 16, height: 16, borderRadius: "50%", background: `hsl(${h}deg,40%,50%)` }} />
               <span style={{ fontFamily: "JetBrains Mono,monospace", fontSize: 9, color: "var(--text-4)" }}>{a.authorShort}</span>
             </div>
             <span style={{ fontFamily: "Outfit,sans-serif", fontSize: 13, fontWeight: 800, color: "var(--accent)" }}>${parseFloat(a.price).toFixed(3)}</span>
@@ -54,7 +56,9 @@ function ArticleRow({ a }: { a: Article }) {
   return (
     <Link href={`/article/${a.id}`} style={{ textDecoration: "none" }}>
       <div className="card card-hover" style={{ padding: "10px 14px", display: "flex", gap: 12, alignItems: "center" }}>
-        <div style={{ width: 42, height: 42, borderRadius: "var(--r)", background: `linear-gradient(135deg,hsl(${h}deg,45%,20%),hsl(${h + 60}deg,40%,14%))`, flexShrink: 0 }} />
+        <div style={{ width: 42, height: 42, borderRadius: "var(--r)", background: "var(--bg-alt)", border: "1px solid var(--border)", flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center" }}>
+          <FileText size={16} style={{ color: "var(--border)" }} />
+        </div>
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ display: "flex", gap: 5, marginBottom: 3 }}>
             <span style={{ fontSize: 9, fontWeight: 700, padding: "1px 6px", borderRadius: 99, background: "var(--brand-muted)", color: "var(--brand)", border: "1px solid var(--brand-border)" }}>{a.category}</span>
@@ -339,7 +343,7 @@ export default function HomePage() {
             {FACULTIES.map(f => (
               <Link key={f.id} href={`/explore?faculty=${f.id}`} style={{ textDecoration: "none" }}>
                 <div className="card card-hover" style={{ padding: "14px 12px", textAlign: "center", border: `1px solid var(--border)`, transition: "border-color .15s" }}>
-                  <div style={{ fontSize: 24, marginBottom: 7 }}>{f.icon}</div>
+                  <FacultyIcon name={f.icon} size={22} style={{ color: f.color, marginBottom: 7 }} />
                   <div style={{ fontFamily: "Outfit,sans-serif", fontSize: 11, fontWeight: 700, color: "var(--text)", lineHeight: 1.3 }}>{f.label}</div>
                   <div style={{ fontSize: 9, color: "var(--text-4)", marginTop: 3 }}>{f.courses.length} courses</div>
                 </div>
