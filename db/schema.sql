@@ -225,3 +225,48 @@ SELECT 'read_receipts' AS tbl, COUNT(*) AS rows FROM read_receipts UNION ALL
 SELECT 'comments'      AS tbl, COUNT(*) AS rows FROM comments      UNION ALL
 SELECT 'reactions'     AS tbl, COUNT(*) AS rows FROM reactions     UNION ALL
 SELECT 'follows'       AS tbl, COUNT(*) AS rows FROM follows;
+
+-- ── Groups / Contribute Spaces ──────────────────────────────────────────────
+CREATE TABLE IF NOT EXISTS groups (
+  id               BIGSERIAL PRIMARY KEY,
+  name             TEXT        NOT NULL,
+  description      TEXT        DEFAULT '',
+  type             TEXT        NOT NULL DEFAULT 'public'   CHECK (type IN ('public','private')),
+  category         TEXT        NOT NULL DEFAULT 'General',
+  owner_address    TEXT        NOT NULL,
+  banner_image     TEXT,
+  member_addresses TEXT[]      NOT NULL DEFAULT '{}',
+  member_count     INTEGER     NOT NULL DEFAULT 1,
+  post_count       INTEGER     NOT NULL DEFAULT 0,
+  rules            TEXT        DEFAULT '',
+  tags             TEXT[]      DEFAULT '{}',
+  created_at       TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS groups_type_idx   ON groups(type);
+CREATE INDEX IF NOT EXISTS groups_owner_idx  ON groups(owner_address);
+
+-- ── Group Posts ─────────────────────────────────────────────────────────────
+CREATE TABLE IF NOT EXISTS group_posts (
+  id             BIGSERIAL PRIMARY KEY,
+  group_id       BIGINT      NOT NULL REFERENCES groups(id) ON DELETE CASCADE,
+  author_address TEXT        NOT NULL,
+  content        TEXT        NOT NULL,
+  article_id     BIGINT      REFERENCES articles(id) ON DELETE SET NULL,
+  type           TEXT        NOT NULL DEFAULT 'discussion' CHECK (type IN ('discussion','announcement','article')),
+  likes          INTEGER     NOT NULL DEFAULT 0,
+  created_at     TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS group_posts_group_idx ON group_posts(group_id);
+
+-- ── Profiles (optional extra fields) ───────────────────────────────────────
+CREATE TABLE IF NOT EXISTS profiles (
+  address        TEXT PRIMARY KEY,
+  display_name   TEXT,
+  bio            TEXT,
+  avatar         TEXT,
+  website        TEXT,
+  twitter        TEXT,
+  created_at     TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);

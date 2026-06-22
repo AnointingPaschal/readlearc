@@ -19,6 +19,10 @@ const NAV = [
     { href:"/admin/logs",               icon:Flag,            label:"Activity Logs"    },
     { href:"/admin/notifications",      icon:Bell,            label:"Notifications"    },
   ]},
+  { label:"Community", items:[
+    { href:"/contribute",               icon:Users,           label:"Contribute Spaces"},
+    { href:"/contribute/create",        icon:PenTool,         label:"Create Space"     },
+  ]},
   { label:"Users",    items:[
     { href:"/admin/users/writers",      icon:PenTool,         label:"Writers"          },
     { href:"/admin/users/readers",      icon:UserCheck,       label:"Readers"          },
@@ -29,9 +33,6 @@ const NAV = [
     { href:"/admin/finance/payouts",    icon:CreditCard,      label:"Payouts"          },
     { href:"/admin/finance/contracts",  icon:FileCode,        label:"Contracts"        },
     { href:"/admin/earnings",           icon:DollarSign,      label:"Earnings & Payout"},
-  ]},
-  { label:"System",   items:[
-    { href:"/admin/security",           icon:Lock,            label:"Security"         },
   ]},
   { label:"AI",       items:[
     { href:"/admin/ai/providers",       icon:Bot,             label:"OpenRouter AI"    },
@@ -44,6 +45,10 @@ const NAV = [
     { href:"/admin/site",               icon:Globe,           label:"Site Settings"    },
     { href:"/admin/site/branding",      icon:Palette,         label:"Branding"         },
     { href:"/admin/site/seo",           icon:SearchIcon,      label:"SEO"              },
+  ]},
+  { label:"System",   items:[
+    { href:"/admin/security",           icon:Lock,            label:"Security"         },
+    { href:"/admin/seed",               icon:FileText,        label:"Seed Data"        },
   ]},
 ];
 

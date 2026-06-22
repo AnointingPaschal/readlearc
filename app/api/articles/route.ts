@@ -71,3 +71,59 @@ export async function POST(req: NextRequest) {
   if (error) return NextResponse.json({ error: error.message }, { status:500 });
   return NextResponse.json(transform(data), { status:201 });
 }
+
+export async function PUT(req: NextRequest) {
+  const b = await req.json();
+
+  // ── Payment recording: readerAddress + txHash ──────────────────
+  if (b.readerAddress && b.txHash && b.id) {
+    const articleId = b.id;
+    const reader    = b.readerAddress.toLowerCase();
+
+    // Check not already recorded
+    const { data: existing } = await supabase
+      .from("read_receipts")
+      .select("id")
+      .eq("article_id", articleId)
+      .ilike("reader_address", reader)
+      .maybeSingle();
+
+    if (!existing) {
+      // Get article price for recording
+      const { data: art } = await supabase
+        .from("articles")
+        .select("price, reads")
+        .eq("id", articleId)
+        .single();
+
+      // Insert receipt
+      await supabase.from("read_receipts").insert({
+        article_id:     articleId,
+        reader_address: reader,
+        tx_hash:        b.txHash,
+        amount_paid:    art?.price || 0,
+      });
+
+      // Increment reads count
+      await supabase.from("articles")
+        .update({ reads: (art?.reads || 0) + 1 })
+        .eq("id", articleId);
+    }
+
+    return NextResponse.json({ ok: true, recorded: !existing });
+  }
+
+  // ── Admin article update ────────────────────────────────────────
+  if (!b.id) return NextResponse.json({ error: "id required" }, { status: 400 });
+  const updates: any = {};
+  if (b.status   !== undefined) updates.status   = b.status;
+  if (b.featured !== undefined) updates.featured  = b.featured;
+  if (b.price    !== undefined) updates.price     = b.price;
+  if (b.title    !== undefined) updates.title     = b.title;
+  if (b.blurb    !== undefined) updates.blurb     = b.blurb;
+  if (b.category !== undefined) updates.category  = b.category;
+
+  const { error } = await supabase.from("articles").update(updates).eq("id", b.id);
+  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  return NextResponse.json({ ok: true });
+}
