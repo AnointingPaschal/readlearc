@@ -2,7 +2,8 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
-import { ArrowLeft, Clock, Users, CheckCircle2, ExternalLink, Share2, BookOpen, RefreshCw, Printer, FileText, ChevronLeft, ChevronRight } from "lucide-react";
+import { ArrowLeft, Clock, Users, CheckCircle2, ExternalLink, Share2, BookOpen, RefreshCw } from "lucide-react";
+import ResearchViewer from "../../../components/ui/ResearchViewer";
 import Navbar from "../../../components/ui/Navbar";
 import ArticleAI from "../../../components/ui/ArticleAI";
 import Comments from "../../../components/social/Comments";
@@ -20,58 +21,7 @@ interface Article {
   reads:number;hasPaid:boolean;timestamp:number;
 }
 
-// ── A4 research page-by-section ───────────────────────────────────
-function ResearchView({ content, title }: { content:string; title:string }) {
-  const html = toHtml(content);
-  const rawSections = html.split(/(?=<h2[\s>])/i);
-  const sections: { heading:string; html:string }[] = [];
-  for (const part of rawSections) {
-    if (!part.trim()) continue;
-    const m = part.match(/^<h2[^>]*>([\s\S]*?)<\/h2>([\s\S]*)/i);
-    if (m) sections.push({ heading: m[1].replace(/<[^>]+>/g,"").trim(), html: part });
-    else if (!sections.length) sections.push({ heading:"", html:part });
-  }
-  const [page, setPage] = useState(0);
-  const cur = sections[page] || { heading:"", html:"" };
 
-  function print() {
-    const win = window.open("","_blank");
-    if (!win) return;
-    win.document.write(`<!DOCTYPE html><html><head><title>${title}</title><style>@page{size:A4 portrait;margin:2.54cm}body{font-family:"Times New Roman",Times,serif;font-size:12pt;line-height:1.6;color:#000}h1{font-size:18pt;font-weight:bold;text-align:center;margin:0 0 4pt}h2{font-size:14pt;font-weight:bold;margin:14pt 0 3pt;border-bottom:1px solid #555;padding-bottom:2pt;page-break-after:avoid}h3{font-size:12pt;font-weight:bold;font-style:italic;margin:10pt 0 3pt}p{margin:0 0 7pt;text-align:justify}strong{font-weight:bold}em{font-style:italic}table{border-collapse:collapse;width:100%;margin:8pt 0;font-size:10pt}td,th{border:1pt solid #999;padding:3pt 7pt}th{background:#f0f0f0;font-weight:bold}blockquote{border-left:3pt solid #666;padding-left:10pt;margin:7pt 0;font-style:italic}img{max-width:100%;display:block;margin:8pt auto}ul,ol{padding-left:18pt;margin:4pt 0}li{margin:2pt 0}</style></head><body><h1>${title}</h1><hr/>${html}</body></html>`);
-    win.document.close(); setTimeout(()=>win.print(),400);
-  }
-
-  return (
-    <div>
-      <div style={{ display:"flex",alignItems:"center",justifyContent:"space-between",padding:"8px 12px",background:"#f1f3f4",borderRadius:"var(--r-lg)",marginBottom:12,flexWrap:"wrap",gap:8 }}>
-        <div style={{ display:"flex",alignItems:"center",gap:7 }}>
-          <FileText size={12} style={{ color:"#5f6368" }}/>
-          <span style={{ fontSize:11,fontWeight:600,color:"#5f6368" }}>Research · Page {page+1}/{sections.length}</span>
-        </div>
-        <div style={{ display:"flex",gap:6 }}>
-          <button onClick={()=>setPage(p=>Math.max(0,p-1))} disabled={page===0} style={{ display:"flex",alignItems:"center",gap:3,padding:"4px 9px",border:"1px solid #dadce0",borderRadius:5,background:"white",cursor:page===0?"not-allowed":"pointer",fontSize:11,color:"#3c4043",opacity:page===0?.4:1 }}><ChevronLeft size={11}/>Prev</button>
-          <button onClick={()=>setPage(p=>Math.min(sections.length-1,p+1))} disabled={page===sections.length-1} style={{ display:"flex",alignItems:"center",gap:3,padding:"4px 9px",border:"1px solid #dadce0",borderRadius:5,background:"white",cursor:page===sections.length-1?"not-allowed":"pointer",fontSize:11,color:"#3c4043",opacity:page===sections.length-1?.4:1 }}>Next<ChevronRight size={11}/></button>
-          <button onClick={print} style={{ display:"flex",alignItems:"center",gap:4,padding:"4px 11px",border:"1px solid #dadce0",borderRadius:5,background:"white",cursor:"pointer",fontSize:11,fontWeight:600,color:"#3c4043" }}><Printer size={11}/>Print</button>
-        </div>
-      </div>
-      <div style={{ display:"flex",gap:5,flexWrap:"wrap",marginBottom:12 }}>
-        {sections.map((s,i)=>s.heading&&(<button key={i} onClick={()=>setPage(i)} style={{ padding:"3px 9px",borderRadius:"var(--r-f)",border:`1.5px solid ${i===page?"var(--brand)":"var(--border)"}`,background:i===page?"var(--brand-muted)":"transparent",fontSize:10,fontWeight:i===page?700:400,color:i===page?"var(--brand)":"var(--text-4)",cursor:"pointer" }}>{s.heading}</button>))}
-      </div>
-      <div style={{ background:"#d0d0d0",padding:"clamp(8px,2vw,16px) clamp(6px,1.5vw,10px)",borderRadius:"var(--r-lg)" }}>
-        <div style={{ background:"white",maxWidth:794,margin:"0 auto",padding:"clamp(18px,4vw,72px)",boxShadow:"0 2px 10px rgba(0,0,0,.25)",borderRadius:2,boxSizing:"border-box" as const }}>
-          {page===0&&(<><div style={{ fontFamily:'"Times New Roman",Times,serif',fontSize:"clamp(13px,2.5vw,16pt)",fontWeight:700,textAlign:"center",lineHeight:1.3,marginBottom:6,color:"#000" }}>{title}</div><div style={{ borderTop:"1px solid #666",margin:"8px 0 14px" }}/></>)}
-          <div className="research-body" dangerouslySetInnerHTML={{ __html:cur.html }}/>
-          <div style={{ marginTop:24,paddingTop:12,borderTop:"1px solid #e0e0e0",display:"flex",justifyContent:"space-between",alignItems:"center" }}>
-            <button onClick={()=>setPage(p=>Math.max(0,p-1))} disabled={page===0} style={{ padding:"4px 10px",border:"1px solid #e0e0e0",borderRadius:4,background:"transparent",cursor:page===0?"not-allowed":"pointer",fontSize:10,color:"#777",opacity:page===0?.3:1,fontFamily:'"Times New Roman",Times,serif' }}>← Previous</button>
-            <span style={{ fontFamily:'"Times New Roman",Times,serif',fontSize:9,color:"#aaa" }}>{page+1} / {sections.length}</span>
-            <button onClick={()=>setPage(p=>Math.min(sections.length-1,p+1))} disabled={page===sections.length-1} style={{ padding:"4px 10px",border:"1px solid #e0e0e0",borderRadius:4,background:"transparent",cursor:page===sections.length-1?"not-allowed":"pointer",fontSize:10,color:"#777",opacity:page===sections.length-1?.3:1,fontFamily:'"Times New Roman",Times,serif' }}>Next →</button>
-          </div>
-        </div>
-      </div>
-      <style>{`.research-body{font-family:"Times New Roman",Times,serif;font-size:clamp(10px,1.8vw,12pt);line-height:1.6;color:#000;word-break:break-word}.research-body h2{font-size:clamp(12px,2.2vw,14pt);font-weight:bold;margin:14px 0 5px;padding-bottom:3px;border-bottom:1.5px solid #444;page-break-after:avoid}.research-body h3{font-size:clamp(11px,2vw,12pt);font-weight:bold;font-style:italic;margin:11px 0 4px}.research-body p{margin:0 0 7px;text-align:justify;hyphens:auto}.research-body strong{font-weight:bold}.research-body em{font-style:italic}.research-body table{border-collapse:collapse;width:100%;margin:10px 0;font-size:clamp(9px,1.4vw,10pt)}.research-body td,.research-body th{border:1px solid #bbb;padding:4px 8px}.research-body th{background:#f0f0f0;font-weight:bold;text-align:center}.research-body blockquote{border-left:3px solid #777;padding-left:12px;margin:8px 0;font-style:italic;color:#444}.research-body ul,.research-body ol{padding-left:20px;margin:4px 0 7px}.research-body li{margin:2px 0}.research-body a{color:#1a0dab;text-decoration:underline}.research-body img{max-width:100%;display:block;margin:10px auto}.research-body hr{border:none;border-top:1px solid #ccc;margin:10px 0}`}</style>
-    </div>
-  );
-}
 
 export default function ArticlePage() {
   const { id }  = useParams<{ id:string }>();
@@ -184,7 +134,7 @@ export default function ArticlePage() {
         {unlocked ? (
           <>
             {isResearch
-              ? <ResearchView content={article.content||""} title={article.title}/>
+              ? <ResearchViewer content={article.content||""} title={article.title}/>
               : <div className="article-render"><div dangerouslySetInnerHTML={{__html:fullHtml}}/></div>
             }
             {txHash&&(
@@ -203,42 +153,45 @@ export default function ArticlePage() {
           <>
             {/* Clear content */}
             {isResearch ? (
-              <div style={{background:"#d0d0d0",padding:"12px 8px",borderRadius:"var(--r-lg)",marginBottom:0}}>
-                <div style={{background:"white",maxWidth:794,margin:"0 auto",padding:"clamp(18px,4vw,60px)",boxShadow:"0 2px 10px rgba(0,0,0,.2)",borderRadius:2}}>
-                  <div style={{fontFamily:'"Times New Roman",Times,serif',fontSize:"clamp(13px,2.5vw,16pt)",fontWeight:700,textAlign:"center",marginBottom:6,lineHeight:1.3}}>{article.title}</div>
-                  <div style={{borderTop:"1px solid #888",margin:"8px 0 14px"}}/>
-                  <div className="research-body" dangerouslySetInnerHTML={{__html:clearHtml}}/>
-                </div>
-              </div>
+              <ResearchViewer
+                content={clearHtml + blurHtml}
+                title={article.title}
+                locked={true}
+                payButton={
+                  <div style={{ textAlign:"center", width:"100%", padding:"0 16px" }}>
+                    {error&&<div style={{padding:"8px 12px",background:"rgba(220,38,38,.06)",border:"1px solid rgba(220,38,38,.18)",borderRadius:"var(--r)",marginBottom:10,fontSize:11,color:"#dc2626"}}>{error}</div>}
+                    <button onClick={handlePay} disabled={paying} className="btn btn-primary btn-lg"
+                      style={{width:"100%",maxWidth:280,justifyContent:"center",fontWeight:800,fontSize:15,height:48,borderRadius:99,boxShadow:"0 4px 20px rgba(109,40,217,.35)"}}>
+                      {paying?<><RefreshCw size={13} className="spin"/>{payStep}</>:`Continue Reading · $${priceNum.toFixed(3)}`}
+                    </button>
+                    {!isAuth&&<p style={{fontSize:10,color:"rgba(0,0,0,.4)",marginTop:6}}>Create a free wallet to unlock</p>}
+                  </div>
+                }
+              />
             ) : (
-              <div className="article-render"><div dangerouslySetInnerHTML={{__html:clearHtml}}/></div>
+              <>
+                <div className="article-render"><div dangerouslySetInnerHTML={{__html:clearHtml}}/></div>
+                {/* Gradual blur zone */}
+                <div style={{ position:"relative", overflow:"hidden" }}>
+                  <div style={{ filter:"blur(3px)", userSelect:"none", pointerEvents:"none", fontFamily:"Georgia,serif", fontSize:"clamp(14px,2vw,15px)", lineHeight:1.7, color:"var(--text-2)" }}>
+                    <div className="article-render"><div dangerouslySetInnerHTML={{__html:blurHtml}}/></div>
+                  </div>
+                  <div style={{ position:"absolute", inset:0, background:"linear-gradient(to bottom, transparent 0%, transparent 15%, rgba(249,248,247,.6) 45%, rgba(249,248,247,.9) 70%, rgb(249,248,247) 100%)", pointerEvents:"none" }}/>
+                </div>
+                {/* CTA */}
+                <div style={{ textAlign:"center", padding:"clamp(16px,3vw,28px) 16px 20px" }}>
+                  {isAuth&&balance!==null&&parseFloat(balance)<priceNum&&(
+                    <p style={{fontSize:11,color:"#dc2626",marginBottom:10}}>Balance: ${balance} — <a href="https://faucet.circle.com" target="_blank" rel="noopener noreferrer" style={{color:"var(--brand)",fontWeight:600}}>Get test USDC ↗</a></p>
+                  )}
+                  {error&&<div style={{padding:"9px 13px",background:"rgba(220,38,38,.06)",border:"1px solid rgba(220,38,38,.18)",borderRadius:"var(--r)",marginBottom:12,fontSize:12,color:"#dc2626",textAlign:"left"}}>{error}</div>}
+                  <button onClick={handlePay} disabled={paying} className="btn btn-primary btn-lg"
+                    style={{width:"100%",maxWidth:300,justifyContent:"center",fontWeight:800,fontSize:16,height:50,borderRadius:99}}>
+                    {paying?<><RefreshCw size={14} className="spin"/>{payStep||"Processing…"}</>:`Continue Reading · $${priceNum.toFixed(3)}`}
+                  </button>
+                  {!isAuth&&<p style={{fontSize:11,color:"var(--text-4)",marginTop:8}}>Create a free wallet to unlock — 30 seconds.</p>}
+                </div>
+              </>
             )}
-
-            {/* Gradual blur zone */}
-            <div style={{ position:"relative", overflow:"hidden", marginTop:0 }}>
-              {/* Blurred continuation */}
-              <div style={{ filter:"blur(3px)", userSelect:"none", pointerEvents:"none",
-                fontFamily:isResearch?'"Times New Roman",Times,serif':"Georgia,serif",
-                fontSize:isResearch?"12pt":"clamp(14px,2vw,15px)", lineHeight:1.7,
-                color:isResearch?"#000":"var(--text-2)", padding:isResearch?"0 clamp(18px,4vw,60px)":"0" }}>
-                <div dangerouslySetInnerHTML={{__html:blurHtml}}/>
-              </div>
-              {/* Progressive fade overlay */}
-              <div style={{ position:"absolute", inset:0, background:"linear-gradient(to bottom, transparent 0%, transparent 10%, rgba(var(--bg-num,249,248,247),.5) 40%, rgba(var(--bg-num,249,248,247),.85) 65%, var(--bg) 100%)", pointerEvents:"none" }}/>
-            </div>
-
-            {/* CTA — no pricing text, just the button */}
-            <div style={{ textAlign:"center", padding:"clamp(20px,4vw,36px) 16px 24px", marginTop:0 }}>
-              {isAuth&&balance!==null&&parseFloat(balance)<priceNum&&(
-                <p style={{fontSize:11,color:"#dc2626",marginBottom:10}}>Balance: ${balance} USDC — <a href="https://faucet.circle.com" target="_blank" rel="noopener noreferrer" style={{color:"var(--brand)",fontWeight:600}}>Get test USDC ↗</a></p>
-              )}
-              {error&&<div style={{padding:"9px 13px",background:"rgba(220,38,38,.06)",border:"1px solid rgba(220,38,38,.18)",borderRadius:"var(--r)",marginBottom:12,fontSize:12,color:"#dc2626",textAlign:"left"}}>{error}</div>}
-              <button onClick={handlePay} disabled={paying} className="btn btn-primary btn-lg"
-                style={{width:"100%",maxWidth:320,justifyContent:"center",fontWeight:800,fontSize:16,height:50,borderRadius:99}}>
-                {paying ? <><RefreshCw size={14} className="spin"/>{payStep||"Processing…"}</> : `Continue Reading · $${priceNum.toFixed(3)}`}
-              </button>
-              {!isAuth&&<p style={{fontSize:11,color:"var(--text-4)",marginTop:8}}>Create a free wallet to unlock — takes 30 seconds.</p>}
-            </div>
 
             {/* Reactions above fold */}
             <div style={{paddingTop:12,borderTop:"1px solid var(--border)"}}>

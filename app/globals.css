@@ -338,3 +338,22 @@ textarea.admin-input { height:auto; resize:vertical; line-height:1.55; padding:1
 
 /* When network guard bar is showing, push content down */
 .with-network-bar { padding-top:calc(var(--header-h) + 44px) !important; }
+
+/* Research paper body styles (used in ResearchViewer) */
+.rbd { font-family: "Times New Roman", Times, serif; font-size: clamp(10px,1.8vw,12pt); line-height: 1.6; color: #000; word-break: break-word; }
+.rbd h2 { font-size: clamp(12px,2.2vw,14pt); font-weight: bold; margin: 14px 0 5px; padding-bottom: 3px; border-bottom: 1.5px solid #444; page-break-after: avoid; }
+.rbd h3 { font-size: clamp(11px,2vw,12pt); font-weight: bold; font-style: italic; margin: 11px 0 4px; }
+.rbd h4 { font-size: clamp(10px,1.8vw,11pt); font-weight: bold; margin: 8px 0 3px; }
+.rbd p  { margin: 0 0 7px; text-align: justify; hyphens: auto; }
+.rbd strong { font-weight: bold; }
+.rbd em     { font-style: italic; }
+.rbd table  { border-collapse: collapse; width: 100%; margin: 10px 0; font-size: clamp(9px,1.4vw,10pt); }
+.rbd td, .rbd th { border: 1px solid #bbb; padding: 4px 8px; }
+.rbd th { background: #f0f0f0; font-weight: bold; text-align: center; }
+.rbd blockquote { border-left: 3px solid #777; padding-left: 12px; margin: 8px 0; font-style: italic; color: #444; }
+.rbd ul, .rbd ol { padding-left: 20px; margin: 4px 0 7px; }
+.rbd li  { margin: 2px 0; }
+.rbd a   { color: #1a0dab; text-decoration: underline; }
+.rbd img { max-width: 100%; display: block; margin: 10px auto; }
+.rbd hr  { border: none; border-top: 1px solid #ccc; margin: 10px 0; }
+.rbd pre { font-family: "Courier New", monospace; font-size: 10pt; background: #f8f8f8; border: 1px solid #ddd; padding: 8px; overflow-x: auto; border-radius: 3px; }
