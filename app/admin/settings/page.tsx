@@ -1,6 +1,53 @@
 "use client";
 import { useState, useEffect } from "react";
-import { Save, RefreshCw, CheckCircle2, Eye, EyeOff, Brain, DollarSign, Percent, Info, AlertCircle, ExternalLink } from "lucide-react";
+import { Save, RefreshCw, CheckCircle2, Eye, EyeOff, Brain, DollarSign, Percent, Info, AlertCircle, ExternalLink, Upload, X, Image as ImageIcon } from "lucide-react";
+import { useRef } from "react";
+
+function ImgUpload({ label, desc, value, onChange }: { label:string; desc:string; value:string; onChange:(v:string)=>void }) {
+  const ref = useRef<HTMLInputElement>(null);
+  function handleFile(file: File|undefined) {
+    if (!file || !file.type.startsWith("image/")) return;
+    const canvas = document.createElement("canvas");
+    const img = new window.Image();
+    const reader = new FileReader();
+    reader.onload = ev => {
+      img.onload = () => {
+        const MAX = 1600; let {width:w,height:h} = img;
+        if (w>MAX){h=Math.round(h*MAX/w);w=MAX;}
+        canvas.width=w; canvas.height=h;
+        canvas.getContext("2d")!.drawImage(img,0,0,w,h);
+        onChange(canvas.toDataURL("image/jpeg",0.84));
+      };
+      img.src = ev.target?.result as string;
+    };
+    reader.readAsDataURL(file);
+  }
+  return (
+    <div>
+      <label style={{fontSize:11,fontWeight:700,color:"var(--text-3)",textTransform:"uppercase",letterSpacing:".07em",display:"block",marginBottom:4,fontFamily:"Outfit,sans-serif"}}>{label}</label>
+      {desc&&<p style={{fontSize:11,color:"var(--text-4)",marginBottom:8,lineHeight:1.5}}>{desc}</p>}
+      {value ? (
+        <div style={{position:"relative",marginBottom:6}}>
+          <img src={value} alt="preview" style={{width:"100%",height:90,objectFit:"cover",borderRadius:"var(--r)",border:"1.5px solid var(--border)",display:"block"}}/>
+          <button onClick={()=>onChange("")} style={{position:"absolute",top:5,right:5,width:22,height:22,borderRadius:"50%",background:"rgba(0,0,0,.65)",border:"none",cursor:"pointer",color:"white",display:"flex",alignItems:"center",justifyContent:"center"}}>
+            <X size={11}/>
+          </button>
+        </div>
+      ) : (
+        <div
+          onDragOver={e=>{e.preventDefault();}}
+          onDrop={e=>{e.preventDefault();handleFile(e.dataTransfer.files[0]);}}
+          onClick={()=>ref.current?.click()}
+          style={{border:"2px dashed var(--border)",borderRadius:"var(--r)",padding:"18px 12px",textAlign:"center",cursor:"pointer",background:"var(--bg-alt)",transition:"all .15s"}}>
+          <Upload size={18} style={{color:"var(--text-4)",marginBottom:5}}/>
+          <p style={{fontSize:11,fontWeight:600,color:"var(--text-3)",margin:0}}>Drop or click to upload</p>
+          <p style={{fontSize:9,color:"var(--text-4)",marginTop:3}}>JPG, PNG, WebP — compressed to 1600px</p>
+        </div>
+      )}
+      <input ref={ref} type="file" accept="image/*" style={{display:"none"}} onChange={e=>handleFile(e.target.files?.[0])}/>
+    </div>
+  );
+}
 
 const AI_PROVIDERS = [
   { id:"openrouter", label:"OpenRouter", docsUrl:"https://openrouter.ai/keys", note:"300+ models · one key", models:[
@@ -264,7 +311,7 @@ export default function AdminSettingsPage() {
           <span style={{ fontSize:15 }}>🖼️</span>
           <h2 style={{ fontFamily:"Outfit,sans-serif",fontSize:15,fontWeight:800,color:"var(--text)" }}>Hero Slider</h2>
         </div>
-        <p style={{ fontSize:12,color:"var(--text-4)",marginBottom:14,lineHeight:1.65 }}>Customize the homepage hero slides. Paste image URLs for backgrounds.</p>
+        <p style={{ fontSize:12,color:"var(--text-4)",marginBottom:14,lineHeight:1.65 }}>Customize the homepage hero slides. Upload images for backgrounds.</p>
         {[1,2,3].map(n=>(
           <div key={n} style={{ marginBottom:14,padding:"12px 14px",background:"var(--bg-alt)",border:"1.5px solid var(--border)",borderRadius:"var(--r-lg)" }}>
             <div style={{ fontSize:10,fontWeight:700,color:"var(--brand)",marginBottom:8,fontFamily:"Outfit,sans-serif",textTransform:"uppercase",letterSpacing:".08em" }}>Slide {n}</div>
@@ -276,8 +323,7 @@ export default function AdminSettingsPage() {
                 <input value={get(`hero_slide_${n}_color`)} onChange={e=>set(`hero_slide_${n}_color`,e.target.value)} placeholder="Accent color #6d28d9" className="admin-input" style={{ fontFamily:"JetBrains Mono,monospace" }}/>
                 <input type="color" value={get(`hero_slide_${n}_color`)||"#6d28d9"} onChange={e=>set(`hero_slide_${n}_color`,e.target.value)} style={{ width:36,height:36,border:"1.5px solid var(--border)",borderRadius:"var(--r)",padding:3,cursor:"pointer" }}/>
               </div>
-              <input value={get(`hero_slide_${n}_image`)} onChange={e=>set(`hero_slide_${n}_image`,e.target.value)} placeholder="Background image URL (optional, e.g. https://...)" className="admin-input"/>
-              {get(`hero_slide_${n}_image`)&&<img src={get(`hero_slide_${n}_image`)} alt="preview" style={{ width:"100%",height:60,objectFit:"cover",borderRadius:"var(--r)",border:"1px solid var(--border)" }}/>}
+              <ImgUpload label="Slide Background Image" desc="" value={get(`hero_slide_${n}_image`)} onChange={v=>set(`hero_slide_${n}_image`,v)}/>
             </div>
           </div>
         ))}
@@ -290,11 +336,7 @@ export default function AdminSettingsPage() {
           <h2 style={{ fontFamily:"Outfit,sans-serif",fontSize:15,fontWeight:800,color:"var(--text)" }}>Site Images</h2>
         </div>
         <div style={{ display:"flex",flexDirection:"column",gap:12 }}>
-          <div>
-            <label style={{ fontSize:11,fontWeight:700,color:"var(--text-3)",textTransform:"uppercase",letterSpacing:".07em",display:"block",marginBottom:5,fontFamily:"Outfit,sans-serif" }}>Hero Background Image URL</label>
-            <input value={get("hero_image")} onChange={e=>set("hero_image",e.target.value)} placeholder="https://... (full-width hero banner)" className="admin-input"/>
-            {get("hero_image")&&<img src={get("hero_image")} alt="" style={{ marginTop:6,width:"100%",height:80,objectFit:"cover",borderRadius:"var(--r)",border:"1px solid var(--border)" }}/>}
-          </div>
+          <ImgUpload label="Hero Background Image" desc="Full-width image behind the homepage hero. Leave empty for gradient background." value={get("hero_image")} onChange={v=>set("hero_image",v)}/>
           <div>
             <label style={{ fontSize:11,fontWeight:700,color:"var(--text-3)",textTransform:"uppercase",letterSpacing:".07em",display:"block",marginBottom:5,fontFamily:"Outfit,sans-serif" }}>Hero Title</label>
             <input value={get("hero_title")} onChange={e=>set("hero_title",e.target.value)} placeholder="Your headline text" className="admin-input"/>
@@ -307,11 +349,7 @@ export default function AdminSettingsPage() {
             <label style={{ fontSize:11,fontWeight:700,color:"var(--text-3)",textTransform:"uppercase",letterSpacing:".07em",display:"block",marginBottom:5,fontFamily:"Outfit,sans-serif" }}>CTA Button Label</label>
             <input value={get("hero_cta")} onChange={e=>set("hero_cta",e.target.value)} placeholder="Explore Articles" className="admin-input"/>
           </div>
-          <div>
-            <label style={{ fontSize:11,fontWeight:700,color:"var(--text-3)",textTransform:"uppercase",letterSpacing:".07em",display:"block",marginBottom:5,fontFamily:"Outfit,sans-serif" }}>Site Banner Image URL</label>
-            <input value={get("site_banner")} onChange={e=>set("site_banner",e.target.value)} placeholder="https://... (banner shown below hero)" className="admin-input"/>
-            {get("site_banner")&&<img src={get("site_banner")} alt="" style={{ marginTop:6,width:"100%",height:60,objectFit:"cover",borderRadius:"var(--r)",border:"1px solid var(--border)" }}/>}
-          </div>
+          <ImgUpload label="Site Banner Image" desc="Optional banner shown below the hero — great for announcements or promotions." value={get("site_banner")} onChange={v=>set("site_banner",v)}/>
         </div>
       </div>
     </div>
