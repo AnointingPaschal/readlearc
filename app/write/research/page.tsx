@@ -32,6 +32,12 @@ export default function ResearchPage() {
   const [researchType,  setResearchType]  = useState("");
   const [academicLevel, setAcademicLevel] = useState("");
   const [authorNote,    setAuthorNote]    = useState("");
+  // Custom override fields
+  const [customFaculty,  setCustomFaculty]  = useState("");
+  const [customCourse,   setCustomCourse]   = useState("");
+  const [customTopic,    setCustomTopic]    = useState("");
+  const [customResType,  setCustomResType]  = useState("");
+  const [customAcadLevel,setCustomAcadLevel]= useState("");
 
   // Editor
   const [sections,    setSections]    = useState<Section[]>([]);
@@ -102,7 +108,11 @@ export default function ResearchPage() {
       title: paperTitle, sections,
       refs: [],
       keywords: keywords.split(",").map(k => k.trim()).filter(Boolean),
-      facultyId, courseId, topic, researchType, academicLevel,
+      facultyId: facultyId === "__custom__" ? "__custom__" : facultyId,
+      courseId:  courseId  === "__custom__" ? "__custom__" : courseId,
+      topic:     topic     === "__custom__" ? customTopic  : topic,
+      researchType:  researchType  === "__custom__" ? customResType   : researchType,
+      academicLevel: academicLevel === "__custom__" ? customAcadLevel : academicLevel,
       status: "draft",
     };
     const url    = draftId ? `/api/drafts/${draftId}` : "/api/drafts";
@@ -286,20 +296,27 @@ export default function ResearchPage() {
 
               <label style={lbl}>Faculty / Discipline</label>
               <div style={sw}>
-                <select value={facultyId} onChange={e => setFacultyId(e.target.value)} style={ss}>
+                <select value={facultyId} onChange={e => { setFacultyId(e.target.value); setCustomFaculty(""); }} style={ss}>
                   <option value="">— Select faculty —</option>
                   {FACULTIES.map(f => <option key={f.id} value={f.id}>{f.label}</option>)}
+                  <option value="__custom__">Other / Custom…</option>
                 </select>
                 <ChevronDown size={11} style={{ position: "absolute", right: 8, top: "50%", transform: "translateY(-50%)", color: "var(--text-4)", pointerEvents: "none" }} />
               </div>
+              {facultyId === "__custom__" && (
+                <input value={customFaculty} onChange={e => setCustomFaculty(e.target.value)}
+                  placeholder="Type faculty name…" autoFocus
+                  style={{ marginTop: 5, width: "100%", padding: "7px 9px", background: "var(--bg-alt)", border: "1.5px solid var(--brand)", borderRadius: "var(--r)", fontSize: 12, color: "var(--text)", outline: "none", boxSizing: "border-box" as const }} />
+              )}
 
               {facultyId && (
                 <>
                   <label style={{ ...lbl, marginTop: 8 }}>Course / Subject</label>
                   <div style={sw}>
-                    <select value={courseId} onChange={e => setCourseId(e.target.value)} style={ss}>
+                    <select value={courseId} onChange={e => { setCourseId(e.target.value); setCustomCourse(""); }} style={ss}>
                       <option value="">— Select course —</option>
                       {courses.map(c => <option key={c.id} value={c.id}>{c.label}</option>)}
+                      <option value="__custom__">Other / Custom…</option>
                     </select>
                     <ChevronDown size={11} style={{ position: "absolute", right: 8, top: "50%", transform: "translateY(-50%)", color: "var(--text-4)", pointerEvents: "none" }} />
                   </div>
@@ -310,9 +327,10 @@ export default function ResearchPage() {
                 <>
                   <label style={{ ...lbl, marginTop: 8 }}>Specific Topic</label>
                   <div style={sw}>
-                    <select value={topic} onChange={e => setTopic(e.target.value)} style={ss}>
+                    <select value={topic} onChange={e => { setTopic(e.target.value); setCustomTopic(""); }} style={ss}>
                       <option value="">— Select topic —</option>
                       {topics.map(t => <option key={t} value={t}>{t}</option>)}
+                      <option value="__custom__">Other / Custom…</option>
                     </select>
                     <ChevronDown size={11} style={{ position: "absolute", right: 8, top: "50%", transform: "translateY(-50%)", color: "var(--text-4)", pointerEvents: "none" }} />
                   </div>
@@ -339,21 +357,33 @@ export default function ResearchPage() {
 
               <label style={lbl}>Research Type</label>
               <div style={sw}>
-                <select value={researchType} onChange={e => setResearchType(e.target.value)} style={ss}>
+                <select value={researchType} onChange={e => { setResearchType(e.target.value); setCustomResType(""); }} style={ss}>
                   <option value="">— Select type —</option>
                   {RESEARCH_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
+                  <option value="__custom__">Other / Custom…</option>
                 </select>
                 <ChevronDown size={11} style={{ position: "absolute", right: 8, top: "50%", transform: "translateY(-50%)", color: "var(--text-4)", pointerEvents: "none" }} />
               </div>
+              {researchType === "__custom__" && (
+                <input value={customResType} onChange={e => setCustomResType(e.target.value)}
+                  placeholder="Describe your research type…" autoFocus
+                  style={{ marginTop: 5, width: "100%", padding: "7px 9px", background: "var(--bg-alt)", border: "1.5px solid var(--brand)", borderRadius: "var(--r)", fontSize: 12, color: "var(--text)", outline: "none", boxSizing: "border-box" as const }} />
+              )}
 
               <label style={{ ...lbl, marginTop: 8 }}>Academic Level</label>
               <div style={sw}>
-                <select value={academicLevel} onChange={e => setAcademicLevel(e.target.value)} style={ss}>
+                <select value={academicLevel} onChange={e => { setAcademicLevel(e.target.value); setCustomAcadLevel(""); }} style={ss}>
                   <option value="">— Select level —</option>
                   {ACADEMIC_LEVELS.map(l => <option key={l} value={l}>{l}</option>)}
+                  <option value="__custom__">Other / Custom…</option>
                 </select>
                 <ChevronDown size={11} style={{ position: "absolute", right: 8, top: "50%", transform: "translateY(-50%)", color: "var(--text-4)", pointerEvents: "none" }} />
               </div>
+              {academicLevel === "__custom__" && (
+                <input value={customAcadLevel} onChange={e => setCustomAcadLevel(e.target.value)}
+                  placeholder="Describe your academic level…" autoFocus
+                  style={{ marginTop: 5, width: "100%", padding: "7px 9px", background: "var(--bg-alt)", border: "1.5px solid var(--brand)", borderRadius: "var(--r)", fontSize: 12, color: "var(--text)", outline: "none", boxSizing: "border-box" as const }} />
+              )}
             </div>
 
             {/* Author note */}
