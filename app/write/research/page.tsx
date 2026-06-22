@@ -13,6 +13,7 @@ import {
   GraduationCap, Tag, Layers, ChevronRight,
 } from "lucide-react";
 import { FacultyIcon } from "../../../components/ui/FacultyIcon";
+import ResearchAI from "../../../components/ui/ResearchAI";
 
 interface Section {
   id: string; type: string; title: string;
@@ -549,6 +550,13 @@ export default function ResearchPage() {
           </div>
         </div>
       </div>
+
+      {/* AI Assistant — floats over the studio */}
+      <ResearchAI
+        paperTitle={paperTitle}
+        sectionTitle={activeType === "Custom" ? (customTitle || "Custom Section") : activeType}
+        sectionContent={editorHtml}
+      />
 
       <style>{`
         .research-layout {

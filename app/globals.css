@@ -357,3 +357,83 @@ textarea.admin-input { height:auto; resize:vertical; line-height:1.55; padding:1
 .rbd img { max-width: 100%; display: block; margin: 10px auto; }
 .rbd hr  { border: none; border-top: 1px solid #ccc; margin: 10px 0; }
 .rbd pre { font-family: "Courier New", monospace; font-size: 10pt; background: #f8f8f8; border: 1px solid #ddd; padding: 8px; overflow-x: auto; border-radius: 3px; }
+
+/* ══════════════════════════════════════════════════════
+   AppNav — bottom bar (mobile) + side nav (desktop)
+   ══════════════════════════════════════════════════════ */
+
+:root {
+  --bottom-nav-h: 0px;
+  --side-nav-w:   0px;
+}
+
+/* ── Mobile bottom bar ────────────────────────────────── */
+.app-bottom-nav {
+  display: none;
+  position: fixed;
+  bottom: 0; left: 0; right: 0;
+  height: 62px;
+  z-index: 49;
+  background: var(--nav-bg);
+  backdrop-filter: blur(20px);
+  border-top: 1px solid var(--border);
+  flex-direction: row;
+  align-items: stretch;
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+/* ── Desktop side nav ─────────────────────────────────── */
+.app-side-nav {
+  display: none;
+  position: fixed;
+  top: var(--header-h); left: 0; bottom: 0;
+  width: 200px;
+  z-index: 40;
+  background: var(--bg-card);
+  border-right: 1px solid var(--border);
+  flex-direction: column;
+  padding: 16px 8px 16px;
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+
+.sidenav-label { transition: opacity .2s; }
+
+@media (max-width: 767px) {
+  :root { --bottom-nav-h: 62px; }
+  .app-bottom-nav { display: flex; }
+  /* push page content above bottom bar */
+  body > div,
+  main {
+    padding-bottom: var(--bottom-nav-h);
+  }
+}
+
+@media (min-width: 768px) and (max-width: 1099px) {
+  /* Collapsed icon-only sidebar */
+  :root { --side-nav-w: 58px; }
+  .app-side-nav {
+    display: flex;
+    width: 58px;
+    padding: 14px 8px;
+    overflow: visible;
+  }
+  .sidenav-label { opacity: 0; width: 0; overflow: hidden; pointer-events: none; }
+  .app-side-nav:hover {
+    width: 200px;
+    box-shadow: 2px 0 20px rgba(0,0,0,.12);
+  }
+  .app-side-nav:hover .sidenav-label { opacity: 1; width: auto; pointer-events: auto; }
+  /* offset main content — admin has its own sidebar, exclude it */
+  body:not(.admin-layout) .container { margin-left: var(--side-nav-w); }
+}
+
+@media (min-width: 1100px) {
+  :root { --side-nav-w: 200px; }
+  .app-side-nav { display: flex; }
+  body:not(.admin-layout) .container { margin-left: var(--side-nav-w); }
+}
+
+/* Hide AppNav on /admin routes — admin has its own nav */
+body.admin-layout .app-bottom-nav,
+body.admin-layout .app-side-nav { display: none !important; }

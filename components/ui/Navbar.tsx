@@ -137,8 +137,8 @@ export default function Navbar() {
         </div>
       </nav>
 
-      {/* Mobile sheet */}
-      {mob && (
+      {/* Mobile sheet — hidden; AppNav bottom bar handles mobile navigation */}
+      {false && mob && (
         <div style={{ position:"fixed", top:"var(--header-h)", left:0, right:0, bottom:0, background:"var(--bg-card)", zIndex:49, padding:16, overflowY:"auto" }}>
           {[
             { href:"/",          label:"Home",            icon:Zap         },
