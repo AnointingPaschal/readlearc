@@ -5,7 +5,7 @@ import Navbar from "../components/ui/Navbar";
 import { FACULTIES } from "../lib/categories";
 import {
   ArrowRight, BookOpen, PenLine, Zap, Users, TrendingUp,
-  Star, Clock, Shield, FlaskConical, Search, Flame, ChevronRight, FileText,
+  Star, Clock, Shield, FlaskConical, Search, Flame, ChevronRight,
 } from "lucide-react";
 import { FacultyIcon } from "../components/ui/FacultyIcon";
 
@@ -28,23 +28,24 @@ function FeaturedCard({ a, big }: { a: Article; big?: boolean }) {
   const h = hue(a.authorAddress);
   return (
     <Link href={`/article/${a.id}`} style={{ textDecoration: "none", display: "flex", flexDirection: "column", height: "100%" }}>
-      <div className="card card-hover" style={{ padding: 0, overflow: "hidden", height: "100%", display: "flex", flexDirection: "column" }}>
-        <div style={{ height: big ? 120 : 80, background: "var(--bg-alt)", borderBottom: "1px solid var(--border)", flexShrink: 0, position: "relative", display: "flex", alignItems: "center", justifyContent: "center" }}>
-          <FileText size={big ? 32 : 22} style={{ color: "var(--border)", opacity: .6 }} />
-          {a.featured && <div style={{ position: "absolute", top: 8, right: 8, fontSize: 9, fontWeight: 700, padding: "2px 8px", borderRadius: 99, background: "rgba(202,138,4,.12)", color: "#ca8a04", border: "1px solid rgba(202,138,4,.3)", display: "flex", alignItems: "center", gap: 3 }}><Star size={7} />Featured</div>}
-          {a.isResearch && <div style={{ position: "absolute", top: 8, left: 8, fontSize: 9, fontWeight: 700, padding: "2px 8px", borderRadius: 99, background: "rgba(2,132,199,.1)", color: "#0284c7", border: "1px solid rgba(2,132,199,.25)" }}>Research</div>}
+      <div className="card card-hover" style={{ padding: big ? "18px" : "14px", height: "100%", display: "flex", flexDirection: "column", gap: 8, boxSizing: "border-box" as const }}>
+        {/* Badges row */}
+        <div style={{ display: "flex", gap: 5, flexWrap: "wrap", alignItems: "center" }}>
+          <span style={{ fontSize: 9, fontWeight: 700, padding: "2px 8px", borderRadius: 99, background: "var(--brand-muted)", color: "var(--brand)", border: "1px solid var(--brand-border)" }}>{a.category}</span>
+          {a.isResearch && <span style={{ fontSize: 9, fontWeight: 700, padding: "2px 8px", borderRadius: 99, background: "rgba(2,132,199,.1)", color: "#0284c7", border: "1px solid rgba(2,132,199,.25)" }}>Research</span>}
+          {a.featured && <span style={{ fontSize: 9, fontWeight: 700, padding: "2px 8px", borderRadius: 99, background: "rgba(202,138,4,.1)", color: "#ca8a04", border: "1px solid rgba(202,138,4,.3)", display: "flex", alignItems: "center", gap: 3 }}><Star size={7} />Featured</span>}
         </div>
-        <div style={{ padding: big ? "16px" : "12px", flex: 1, display: "flex", flexDirection: "column", gap: 6 }}>
-          <span style={{ fontSize: 9, fontWeight: 700, padding: "2px 8px", borderRadius: 99, background: "var(--brand-muted)", color: "var(--brand)", border: "1px solid var(--brand-border)", alignSelf: "flex-start" }}>{a.category}</span>
-          <h3 style={{ fontFamily: "Outfit,sans-serif", fontSize: big ? 16 : 13, fontWeight: 800, color: "var(--text)", lineHeight: 1.25, display: "-webkit-box", WebkitLineClamp: big ? 3 : 2, WebkitBoxOrient: "vertical" as any, overflow: "hidden", flex: 1 }}>{a.title}</h3>
-          {big && a.blurb && <p style={{ fontSize: 11, color: "var(--text-4)", lineHeight: 1.6, display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical" as any, overflow: "hidden" }}>{a.blurb}</p>}
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", paddingTop: 8, borderTop: "1px solid var(--border)" }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 5 }}>
-              <div style={{ width: 16, height: 16, borderRadius: "50%", background: `hsl(${h}deg,40%,50%)` }} />
-              <span style={{ fontFamily: "JetBrains Mono,monospace", fontSize: 9, color: "var(--text-4)" }}>{a.authorShort}</span>
-            </div>
-            <span style={{ fontFamily: "Outfit,sans-serif", fontSize: 13, fontWeight: 800, color: "var(--accent)" }}>${parseFloat(a.price).toFixed(3)}</span>
+        {/* Title */}
+        <h3 style={{ fontFamily: "Outfit,sans-serif", fontSize: big ? 16 : 13, fontWeight: 800, color: "var(--text)", lineHeight: 1.3, display: "-webkit-box", WebkitLineClamp: big ? 3 : 2, WebkitBoxOrient: "vertical" as any, overflow: "hidden", flex: 1 }}>{a.title}</h3>
+        {/* Excerpt — always shown */}
+        {a.blurb && <p style={{ fontSize: big ? 12 : 11, color: "var(--text-3)", lineHeight: 1.6, display: "-webkit-box", WebkitLineClamp: big ? 3 : 2, WebkitBoxOrient: "vertical" as any, overflow: "hidden", margin: 0 }}>{a.blurb}</p>}
+        {/* Footer */}
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", paddingTop: 8, borderTop: "1px solid var(--border)", marginTop: "auto" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 5 }}>
+            <div style={{ width: 16, height: 16, borderRadius: "50%", background: `hsl(${h}deg,40%,50%)`, flexShrink: 0 }} />
+            <span style={{ fontFamily: "JetBrains Mono,monospace", fontSize: 9, color: "var(--text-4)" }}>{a.authorShort}</span>
           </div>
+          <span style={{ fontFamily: "Outfit,sans-serif", fontSize: 13, fontWeight: 800, color: "var(--accent)" }}>${parseFloat(a.price).toFixed(3)}</span>
         </div>
       </div>
     </Link>
@@ -55,19 +56,26 @@ function ArticleRow({ a }: { a: Article }) {
   const h = hue(a.authorAddress);
   return (
     <Link href={`/article/${a.id}`} style={{ textDecoration: "none" }}>
-      <div className="card card-hover" style={{ padding: "10px 14px", display: "flex", gap: 12, alignItems: "center" }}>
-        <div style={{ width: 42, height: 42, borderRadius: "var(--r)", background: "var(--bg-alt)", border: "1px solid var(--border)", flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center" }}>
-          <FileText size={16} style={{ color: "var(--border)" }} />
+      <div className="card card-hover" style={{ padding: "12px 16px" }}>
+        {/* Badges + price on one line */}
+        <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 5 }}>
+          <span style={{ fontSize: 9, fontWeight: 700, padding: "1px 7px", borderRadius: 99, background: "var(--brand-muted)", color: "var(--brand)", border: "1px solid var(--brand-border)" }}>{a.category}</span>
+          {a.isResearch && <span style={{ fontSize: 9, fontWeight: 700, padding: "1px 7px", borderRadius: 99, background: "rgba(2,132,199,.1)", color: "#0284c7", border: "1px solid rgba(2,132,199,.2)" }}>Research</span>}
+          <span style={{ marginLeft: "auto", fontFamily: "Outfit,sans-serif", fontSize: 12, fontWeight: 800, color: "var(--accent)" }}>${parseFloat(a.price).toFixed(3)}</span>
         </div>
-        <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ display: "flex", gap: 5, marginBottom: 3 }}>
-            <span style={{ fontSize: 9, fontWeight: 700, padding: "1px 6px", borderRadius: 99, background: "var(--brand-muted)", color: "var(--brand)", border: "1px solid var(--brand-border)" }}>{a.category}</span>
-            {a.isResearch && <span style={{ fontSize: 9, fontWeight: 700, padding: "1px 6px", borderRadius: 99, background: "rgba(2,132,199,.1)", color: "#0284c7", border: "1px solid rgba(2,132,199,.2)" }}>Research</span>}
-          </div>
-          <h4 style={{ fontFamily: "Outfit,sans-serif", fontSize: 13, fontWeight: 700, color: "var(--text)", lineHeight: 1.25, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{a.title}</h4>
-          <div style={{ fontSize: 10, color: "var(--text-4)", marginTop: 2 }}>{a.authorShort} · <Clock size={8} style={{ display: "inline", verticalAlign: "middle" }} /> {a.readTime}m · {a.reads} reads</div>
+        {/* Title */}
+        <h4 style={{ fontFamily: "Outfit,sans-serif", fontSize: 13, fontWeight: 700, color: "var(--text)", lineHeight: 1.3, marginBottom: 4, display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical" as any, overflow: "hidden" }}>{a.title}</h4>
+        {/* Excerpt */}
+        {a.blurb && <p style={{ fontSize: 11, color: "var(--text-3)", lineHeight: 1.55, marginBottom: 6, display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical" as any, overflow: "hidden" }}>{a.blurb}</p>}
+        {/* Meta */}
+        <div style={{ fontSize: 10, color: "var(--text-4)", display: "flex", alignItems: "center", gap: 8 }}>
+          <div style={{ width: 13, height: 13, borderRadius: "50%", background: `hsl(${h}deg,40%,50%)`, flexShrink: 0 }} />
+          <span>{a.authorShort}</span>
+          <Clock size={8} />
+          <span>{a.readTime}m</span>
+          <span>·</span>
+          <span>{a.reads} reads</span>
         </div>
-        <div style={{ fontFamily: "Outfit,sans-serif", fontSize: 13, fontWeight: 800, color: "var(--accent)", flexShrink: 0 }}>${parseFloat(a.price).toFixed(3)}</div>
       </div>
     </Link>
   );
