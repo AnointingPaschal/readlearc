@@ -3,6 +3,7 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import Navbar from "../../components/ui/Navbar";
 import { Search, Filter, Star, Clock, Users, TrendingUp, FlaskConical, BookOpen, Flame, Grid3X3, List, ArrowRight } from "lucide-react";
+import { FACULTIES, ALL_COURSES } from "../../lib/categories";
 
 interface A {
   id:string;title:string;blurb:string;price:string;category:string;
@@ -77,6 +78,7 @@ export default function ExplorePage() {
   const [research, setResearch] = useState(false);
   const [cats,     setCats]     = useState<string[]>([]);
   const [page,     setPage]     = useState(1);
+  const [facultyFilter, setFacultyFilter] = useState("");
   const PER_PAGE = 18;
 
   useEffect(() => {
@@ -98,8 +100,14 @@ export default function ExplorePage() {
     }
   },[]);
 
+  // Get courses for selected faculty
+  const facultyCourses = facultyFilter
+    ? (FACULTIES.find(f => f.id === facultyFilter)?.courses.map(c => c.label) || [])
+    : [];
+
   const filtered = arts.filter(a=>{
     if (research && !a.isResearch) return false;
+    if (facultyFilter && facultyCourses.length && !facultyCourses.includes(a.category)) return false;
     if (cat!=="All" && a.category!==cat) return false;
     if (sort==="featured" && !a.featured) return false;
     if (search) {
@@ -138,12 +146,28 @@ export default function ExplorePage() {
         </div>
 
         {/* Filters row */}
-        <div style={{ display:"flex",gap:8,flexWrap:"wrap",alignItems:"center",marginBottom:20 }}>
-          {/* Category pills */}
+        <div style={{ display:"flex",gap:8,flexWrap:"wrap",alignItems:"center",marginBottom:12 }}>
+          {/* Faculty filter */}
+          <div style={{ position:"relative" }}>
+            <select value={facultyFilter} onChange={e=>{setFacultyFilter(e.target.value);setCat("All");setPage(1);}}
+              style={{ padding:"7px 28px 7px 10px",background:"var(--bg-alt)",border:`1.5px solid ${facultyFilter?"var(--brand)":"var(--border)"}`,borderRadius:"var(--r)",fontSize:12,fontWeight:600,color:facultyFilter?"var(--brand)":"var(--text-3)",outline:"none",cursor:"pointer",appearance:"none",minWidth:160 }}>
+              <option value="">All Disciplines</option>
+              {FACULTIES.map(f=><option key={f.id} value={f.id}>{f.icon} {f.label}</option>)}
+            </select>
+            <span style={{ position:"absolute",right:8,top:"50%",transform:"translateY(-50%)",pointerEvents:"none",color:"var(--text-4)",fontSize:10 }}>▾</span>
+          </div>
+          {/* Category pills - show matching courses or all */}
           <div style={{ display:"flex",gap:5,flexWrap:"wrap",flex:1 }}>
-            {["All",...cats.slice(0,7)].map(c=>(
+            <button onClick={()=>{setCat("All");setPage(1);}}
+              style={{ padding:"5px 12px",borderRadius:99,border:`1.5px solid ${cat==="All"?"var(--brand)":"var(--border)"}`,background:cat==="All"?"var(--brand-muted)":"transparent",fontSize:11,fontWeight:700,color:cat==="All"?"var(--brand)":"var(--text-3)",cursor:"pointer",fontFamily:"Outfit,sans-serif",transition:"all .12s" }}>
+              All
+            </button>
+            {(facultyFilter
+              ? facultyCourses.filter(c => cats.includes(c))
+              : cats.slice(0, 8)
+            ).map(c=>(
               <button key={c} onClick={()=>{setCat(c);setPage(1);}}
-                style={{ padding:"5px 12px",borderRadius:99,border:`1.5px solid ${cat===c?"var(--brand)":"var(--border)"}`,background:cat===c?"var(--brand-muted)":"transparent",fontSize:11,fontWeight:700,color:cat===c?"var(--brand)":"var(--text-3)",cursor:"pointer",fontFamily:"Outfit,sans-serif",transition:"all .12s" }}>
+                style={{ padding:"5px 12px",borderRadius:99,border:`1.5px solid ${cat===c?"var(--brand)":"var(--border)"}`,background:cat===c?"var(--brand-muted)":"transparent",fontSize:11,fontWeight:700,color:cat===c?"var(--brand)":"var(--text-3)",cursor:"pointer",fontFamily:"Outfit,sans-serif",transition:"all .12s",whiteSpace:"nowrap" }}>
                 {c}
               </button>
             ))}
@@ -187,7 +211,7 @@ export default function ExplorePage() {
             <BookOpen size={36} style={{ color:"var(--text-4)",marginBottom:12 }}/>
             <p style={{ fontSize:15,color:"var(--text-3)",marginBottom:6 }}>No articles found</p>
             <p style={{ fontSize:12,color:"var(--text-4)",marginBottom:16 }}>Try a different search or category</p>
-            <button onClick={()=>{setSearch("");setCat("All");setResearch(false);}} className="btn btn-secondary btn-sm">Clear filters</button>
+            <button onClick={()=>{setSearch("");setCat("All");setResearch(false);setFacultyFilter("");}} className="btn btn-secondary btn-sm">Clear filters</button>
           </div>
         ) : view==="grid" ? (
           <div style={{ display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(220px,1fr))",gap:12 }}>
