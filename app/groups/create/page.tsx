@@ -46,7 +46,7 @@ export default function CreateGroupPage() {
     <div style={{minHeight:"100vh",background:"var(--bg)"}}>
       <Navbar/>
       <div style={{maxWidth:640,margin:"0 auto",padding:"calc(var(--header-h) + 20px) 14px calc(var(--bottom-nav-h,0px) + 40px)"}}>
-        <Link href="/groups" style={{display:"inline-flex",alignItems:"center",gap:5,fontSize:12,color:"var(--text-4)",textDecoration:"none",marginBottom:20}}><ArrowLeft size={13}/>Back to Groups</Link>
+        <Link href="/contribute" style={{display:"inline-flex",alignItems:"center",gap:5,fontSize:12,color:"var(--text-4)",textDecoration:"none",marginBottom:20}}><ArrowLeft size={13}/>Back to Groups</Link>
         <h1 style={{fontFamily:"Outfit,sans-serif",fontSize:"clamp(20px,4vw,26px)",fontWeight:900,color:"var(--text)",letterSpacing:"-.02em",marginBottom:4}}>Create Group</h1>
         <p style={{fontSize:13,color:"var(--text-4)",marginBottom:24}}>Build a community around a topic or team.</p>
         {error&&<div style={{padding:"10px 14px",background:"rgba(220,38,38,.06)",border:"1px solid rgba(220,38,38,.2)",borderRadius:"var(--r-md)",marginBottom:16,fontSize:13,color:"#dc2626"}}>{error}</div>}

@@ -84,10 +84,10 @@ export default function GroupsPage() {
         {/* Header */}
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 20, flexWrap: "wrap", gap: 10 }}>
           <div>
-            <h1 style={{ fontFamily: "Outfit,sans-serif", fontSize: "clamp(22px,4vw,30px)", fontWeight: 900, color: "var(--text)", letterSpacing: "-.02em", marginBottom: 3 }}>Groups</h1>
+            <h1 style={{ fontFamily: "Outfit,sans-serif", fontSize: "clamp(22px,4vw,30px)", fontWeight: 900, color: "var(--text)", letterSpacing: "-.02em", marginBottom: 3 }}>Contribute</h1>
             <p style={{ fontSize: 12, color: "var(--text-4)" }}>Join public groups or create private spaces for your team</p>
           </div>
-          <Link href="/groups/create" className="btn btn-primary" style={{ gap: 6 }}>
+          <Link href="/contribute/create" className="btn btn-primary" style={{ gap: 6 }}>
             <Plus size={14} />Create Group
           </Link>
         </div>
@@ -139,7 +139,7 @@ export default function GroupsPage() {
             <p style={{ fontSize: 13, color: "var(--text-4)", marginBottom: 20 }}>
               {tab === "mine" ? "Discover and join groups below" : "Be the first to create one!"}
             </p>
-            <Link href="/groups/create" className="btn btn-primary" style={{ gap: 6 }}><Plus size={14} />Create Group</Link>
+            <Link href="/contribute/create" className="btn btn-primary" style={{ gap: 6 }}><Plus size={14} />Create Group</Link>
           </div>
         ) : (
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill,minmax(240px,1fr))", gap: 12 }}>

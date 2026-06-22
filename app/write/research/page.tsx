@@ -34,6 +34,9 @@ export default function ResearchPage() {
   const [academicLevel, setAcademicLevel] = useState("");
   const [authorNote,    setAuthorNote]    = useState("");
   // Custom override fields
+  // Contributors
+  const [contributors,   setContributors]  = useState<string[]>([]);
+  const [contribInput,   setContribInput]  = useState("");
   const [customFaculty,  setCustomFaculty]  = useState("");
   const [customCourse,   setCustomCourse]   = useState("");
   const [customTopic,    setCustomTopic]    = useState("");
@@ -109,6 +112,7 @@ export default function ResearchPage() {
       title: paperTitle, sections,
       refs: [],
       keywords: keywords.split(",").map(k => k.trim()).filter(Boolean),
+      contributors,
       facultyId: facultyId === "__custom__" ? "__custom__" : facultyId,
       courseId:  courseId  === "__custom__" ? "__custom__" : courseId,
       topic:     topic     === "__custom__" ? customTopic  : topic,

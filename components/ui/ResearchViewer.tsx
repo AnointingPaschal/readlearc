@@ -28,6 +28,21 @@ function usePageCount(ref: React.RefObject<HTMLDivElement | null>, deps: any[]) 
   return count;
 }
 
+// Mobile-responsive scale hook
+function useA4Scale() {
+  const [scale, setScale] = useState(1);
+  useEffect(() => {
+    function compute() {
+      const vw = typeof window !== "undefined" ? document.documentElement.clientWidth : A4_W;
+      setScale(Math.min(1, Math.max(0.3, (vw - 24) / A4_W)));
+    }
+    compute();
+    window.addEventListener("resize", compute);
+    return () => window.removeEventListener("resize", compute);
+  }, []);
+  return scale;
+}
+
 interface SectionProps {
   html:     string;
   isFirst:  boolean;
@@ -40,6 +55,7 @@ function SectionPages({ html, isFirst, title, pageOffset }: SectionProps) {
   const scrollRef  = useRef<HTMLDivElement>(null);
   const [subPage, setSubPage] = useState(0);
   const [pages,   setPages]   = useState(1);
+  const scale = useA4Scale();
 
   useLayoutEffect(() => {
     if (!measureRef.current) return;
@@ -58,16 +74,18 @@ function SectionPages({ html, isFirst, title, pageOffset }: SectionProps) {
 
   return (
     <div>
-      {/* A4 page — fixed height, overflow hidden, scrolls via scrollTop */}
+      {/* Outer container constrains layout space to scaled size */}
+      <div style={{ width: A4_W * scale, height: A4_H * scale, margin: "0 auto", overflow: "hidden" }}>
+      {/* A4 page — fixed A4 size, scaled to fit screen */}
       <div
         ref={scrollRef}
         style={{
           background: "white",
-          maxWidth: A4_W,
-          width: "100%",
+          width: A4_W,
           height: A4_H,
           overflow: "hidden",
-          margin: "0 auto",
+          transform: `scale(${scale})`,
+          transformOrigin: "top left",
           boxShadow: "0 3px 14px rgba(0,0,0,.28), 0 0 0 1px rgba(0,0,0,.08)",
           borderRadius: 2,
           boxSizing: "border-box" as const,
@@ -92,6 +110,7 @@ function SectionPages({ html, isFirst, title, pageOffset }: SectionProps) {
           </div>
         </div>
       </div>
+      </div>{/* end scale wrapper */}
 
       {/* Sub-page navigation (when section spans multiple A4 pages) */}
       {pages > 1 && (
