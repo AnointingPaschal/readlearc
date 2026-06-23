@@ -1,6 +1,64 @@
 "use client";
 import { useState, useEffect } from "react";
-import { Save, CheckCircle2, Globe, ToggleLeft, ToggleRight } from "lucide-react";
+import { Save, CheckCircle2, Globe, ToggleLeft, ToggleRight, Upload, X, Image as ImageIcon } from "lucide-react";
+import { useRef } from "react";
+
+function LogoUpload({ value, onChange }: { value: string; onChange: (v: string) => void }) {
+  const ref = useRef<HTMLInputElement>(null);
+  function handle(file?: File) {
+    if (!file || !file.type.startsWith("image/")) return;
+    const canvas = document.createElement("canvas");
+    const img = new window.Image();
+    const reader = new FileReader();
+    reader.onload = ev => {
+      img.onload = () => {
+        const MAX = 400; let { width: w, height: h } = img;
+        if (h > MAX) { w = Math.round(w * MAX / h); h = MAX; }
+        canvas.width = w; canvas.height = h;
+        canvas.getContext("2d")!.drawImage(img, 0, 0, w, h);
+        onChange(canvas.toDataURL("image/png"));
+      };
+      img.src = ev.target?.result as string;
+    };
+    reader.readAsDataURL(file);
+  }
+  return (
+    <div className="card" style={{ padding:"16px", marginBottom:12 }}>
+      <div style={{ display:"flex", alignItems:"center", gap:7, marginBottom:12 }}>
+        <ImageIcon size={14} style={{ color:"var(--brand)" }}/>
+        <h3 style={{ fontFamily:"Outfit,sans-serif", fontSize:14, fontWeight:800, color:"var(--text)" }}>Site Logo</h3>
+      </div>
+      <p style={{ fontSize:12, color:"var(--text-4)", marginBottom:12 }}>Displayed in the navbar sitewide. PNG, SVG or WebP with transparent background works best.</p>
+      {value ? (
+        <div style={{ display:"flex", alignItems:"center", gap:12 }}>
+          <div style={{ padding:10, background:"var(--bg-alt)", borderRadius:"var(--r)", border:"1px solid var(--border)" }}>
+            <img src={value} alt="logo preview" style={{ height:44, width:"auto", maxWidth:180, display:"block", objectFit:"contain" }}/>
+          </div>
+          <div style={{ display:"flex", flexDirection:"column", gap:8 }}>
+            <button onClick={() => onChange("")}
+              style={{ display:"flex", alignItems:"center", gap:5, padding:"7px 12px", background:"rgba(220,38,38,.08)", border:"1px solid rgba(220,38,38,.2)", borderRadius:"var(--r)", cursor:"pointer", fontSize:11, fontWeight:700, color:"#dc2626" }}>
+              <X size={12}/> Remove Logo
+            </button>
+            <label style={{ display:"flex", alignItems:"center", gap:5, padding:"7px 12px", background:"var(--brand-muted)", border:"1px solid var(--brand-border)", borderRadius:"var(--r)", cursor:"pointer", fontSize:11, fontWeight:700, color:"var(--brand)" }}>
+              <Upload size={12}/> Replace
+              <input type="file" accept="image/*,image/svg+xml" style={{ display:"none" }} onChange={e => handle(e.target.files?.[0])}/>
+            </label>
+          </div>
+        </div>
+      ) : (
+        <label
+          onDragOver={e => e.preventDefault()}
+          onDrop={e => { e.preventDefault(); handle(e.dataTransfer.files[0]); }}
+          style={{ display:"block", border:"2px dashed var(--border)", borderRadius:"var(--r-lg)", padding:"24px", textAlign:"center", cursor:"pointer", background:"var(--bg-alt)", transition:"border-color .15s" }}>
+          <Upload size={24} style={{ color:"var(--text-4)", marginBottom:8 }}/>
+          <div style={{ fontSize:13, fontWeight:600, color:"var(--text-3)", marginBottom:4 }}>Drop logo here or click to upload</div>
+          <div style={{ fontSize:11, color:"var(--text-4)" }}>PNG, SVG or WebP — max height 400px</div>
+          <input ref={ref} type="file" accept="image/*,image/svg+xml" style={{ display:"none" }} onChange={e => handle(e.target.files?.[0])}/>
+        </label>
+      )}
+    </div>
+  );
+}
 
 const FIELDS = [
   { key:"site_name",         label:"Site Name",         placeholder:"Readlearc",                        type:"text"   },
@@ -54,6 +112,10 @@ export default function SiteSettingsPage() {
       </div>
 
       {loading ? [1,2].map(i=><div key={i} className="skeleton" style={{ height:180,borderRadius:"var(--r-lg)" }}/>) : (<>
+      <LogoUpload
+        value={get("brand_logo")}
+        onChange={v => { set("brand_logo", v); fetch("/api/admin/settings",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({brand_logo:v})}).catch(()=>{}); }}
+      />
       {/* Text fields */}
       <div className="card" style={{ padding:"20px" }}>
         <div style={{ display:"flex",alignItems:"center",gap:7,marginBottom:16 }}>

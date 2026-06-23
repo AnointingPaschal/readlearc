@@ -43,8 +43,8 @@ export default function ContributeDetailPage() {
   async function load() {
     setLoading(true);
     const [g, p] = await Promise.all([
-      fetch(`/api/spaces/${id}`).then(r => r.json()).catch(() => null),
-      fetch(`/api/spaces/${id}/posts`).then(r => r.json()).catch(() => []),
+      fetch(`/api/groups/${id}`).then(r => r.json()).catch(() => null),
+      fetch(`/api/groups/${id}/posts`).then(r => r.json()).catch(() => []),
     ]);
     setGroup(g || null);
     setPosts(Array.isArray(p) ? p : []);
@@ -55,7 +55,7 @@ export default function ContributeDetailPage() {
   async function join() {
     if (!isAuth) { requireAuth(); return; }
     setJoining(true);
-    const r = await fetch(`/api/spaces/${id}/members`, {
+    const r = await fetch(`/api/groups/${id}/members`, {
       method: "POST", headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ memberAddress: address }),
     });
@@ -67,7 +67,7 @@ export default function ContributeDetailPage() {
   }
 
   async function leave() {
-    const r = await fetch(`/api/spaces/${id}/members`, {
+    const r = await fetch(`/api/groups/${id}/members`, {
       method: "PUT", headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ memberAddress: address, action: "leave" }),
     });
@@ -77,7 +77,7 @@ export default function ContributeDetailPage() {
   async function submitPost() {
     if (!draft.trim()) return;
     setPosting(true); setError("");
-    const r = await fetch(`/api/spaces/${id}/posts`, {
+    const r = await fetch(`/api/groups/${id}/posts`, {
       method: "POST", headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ authorAddress: address, content: draft, type: postType }),
     });

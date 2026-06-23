@@ -410,22 +410,11 @@ textarea.admin-input { height:auto; resize:vertical; line-height:1.55; padding:1
 }
 
 @media (min-width: 768px) and (max-width: 1099px) {
-  /* Collapsed icon-only sidebar */
-  :root { --side-nav-w: 58px; }
-  .app-side-nav {
-    display: flex;
-    width: 58px;
-    padding: 14px 8px;
-    overflow: visible;
-  }
-  .sidenav-label { opacity: 0; width: 0; overflow: hidden; pointer-events: none; }
-  .app-side-nav:hover {
-    width: 200px;
-    box-shadow: 2px 0 20px rgba(0,0,0,.12);
-  }
-  .app-side-nav:hover .sidenav-label { opacity: 1; width: auto; pointer-events: auto; }
-  /* offset main content — admin has its own sidebar, exclude it */
-  body:not(.admin-layout) .container { margin-left: var(--side-nav-w); }
+  /* Tablet: same as mobile — bottom nav only, NO side nav */
+  :root { --side-nav-w: 0px; --bottom-nav-h: 62px; }
+  .app-side-nav   { display: none !important; }
+  .app-bottom-nav { display: flex; }
+  body > div, main { padding-bottom: var(--bottom-nav-h); }
 }
 
 @media (min-width: 1100px) {

@@ -36,7 +36,7 @@ export default function CreateContributeDetailPage() {
     if (!isAuth){requireAuth();return;}
     if (!name.trim()){setError("Group name is required.");return;}
     setSaving(true); setError("");
-    const r=await fetch("/api/spaces",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({name,description:desc,type,category,rules,tags,bannerImage:banner||null,ownerAddress:address})});
+    const r=await fetch("/api/groups",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({name,description:desc,type,category,rules,tags,bannerImage:banner||null,ownerAddress:address})});
     const d=await r.json();
     if (r.ok) router.push(`/contribute/${d.id}`);
     else {setError(d.error||"Failed");setSaving(false);}
