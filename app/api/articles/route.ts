@@ -34,12 +34,16 @@ export async function GET(req: NextRequest) {
   let query = supabase.from("articles")
     .select("id,title,blurb,price,category,read_time,is_research,author_address,status,featured,reads,created_at");
 
-  if (!admin) {
+  if (!admin && !author) {
+    // Only restrict status for public browsing — not when fetching user's own articles
     if (status && ["approved","featured","pending"].includes(status)) {
       query = query.eq("status", status);
     } else {
       query = query.in("status", ["approved","featured"]);
     }
+  } else if (!admin && author && status) {
+    // Author viewing their own: allow filtering by status
+    query = query.eq("status", status);
   }
   if (cat && cat !== "All") query = query.eq("category", cat);
   if (author)               query = query.ilike("author_address", author);

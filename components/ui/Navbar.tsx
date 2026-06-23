@@ -87,6 +87,7 @@ export default function Navbar() {
                     {[
                       { href:"/explore",            icon:BookOpen,       label:"Browse Articles"    },
                       { href:"/write",              icon:PenLine,        label:"Write Article"      },
+                      { href:"/my-articles",        icon:BookOpen,       label:"My Articles"       },
                       { href:"/creator",            icon:LayoutDashboard,label:"Creator Studio"     },
                       { href:`/profile/${address}`, icon:User,           label:"My Profile"         },
                       { href:"/reading-history",    icon:History,        label:"Reading History"    },
