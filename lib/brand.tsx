@@ -10,6 +10,7 @@ interface Brand {
   border_color:  string;
   brand_name:    string;
   brand_tagline: string;
+  brand_logo:    string;
 }
 
 const defaults: Brand = {
@@ -21,6 +22,7 @@ const defaults: Brand = {
   border_color:  "#e5e3e1",
   brand_name:    "Readlearc",
   brand_tagline: "Pay per word. Own every read.",
+  brand_logo:    "",
 };
 
 const Ctx = createContext<{ brand: Brand; setBrand: (b: Partial<Brand>) => void }>(

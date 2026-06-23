@@ -11,6 +11,7 @@ export interface WordEditorHandle {
   applyFormat: (spec: FormatSpec) => void;
   getContent: () => string;
   setContent: (html: string) => void;
+  insertAtCursor: (text: string) => void;
 }
 
 export interface FormatSpec {
@@ -150,12 +151,19 @@ const WordEditor = forwardRef<WordEditorHandle, Props>(function WordEditor({ val
   useImperativeHandle(ref, ()=>({
     applyFormat(spec: FormatSpec) {
       if(spec.fontFamily) applyFont(spec.fontFamily);
-      if(spec.fontSize)   applySize(spec.fontSize);
-      if(spec.lineSpacing) applySpacingVal(spec.lineSpacing);
-      if(spec.margin)     setMargin(spec.margin);
+      if(spec.fontSize)   applySize(spec.fontSize as number);
+      if(spec.lineSpacing) applySpacingVal(spec.lineSpacing as string);
+      if(spec.margin)     setMargin(spec.margin as string);
     },
     getContent(){ return editorRef.current?.innerHTML || ""; },
     setContent(html:string){ if(editorRef.current){editorRef.current.innerHTML=html;emit();} },
+    insertAtCursor(text:string){
+      const el=editorRef.current; if(!el) return;
+      el.focus(); restoreRange();
+      // Insert as plain text at cursor, preserving existing content
+      document.execCommand("insertText",false,text);
+      emit();
+    },
   }));
 
   function insertLink(){restoreRange();if(linkUrl!=="https://")exec("createLink",linkUrl);setShowLink(false);setLinkUrl("https://");}

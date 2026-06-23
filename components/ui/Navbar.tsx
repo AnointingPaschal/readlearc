@@ -3,17 +3,13 @@ import { useState, useRef, useEffect } from "react";
 import Link from "next/link";
 import { Zap, Sun, Moon, ChevronDown, LogOut, Copy, Check, Wallet, BookOpen, PenLine, LayoutDashboard, User, Lock, Shield, History, X, Menu } from "lucide-react";
 import { useTheme } from "../../lib/theme";
+import { useBrand } from "../../lib/brand";
 import { useAuth } from "../../lib/auth";
 
 export default function Navbar() {
-  const [siteLogo, setSiteLogo] = useState<string>("");
-  const [siteName, setSiteName] = useState<string>("");
-  useEffect(()=>{
-    fetch("/api/admin/settings").then(r=>r.json()).then(d=>{
-      if(d.brand_logo) setSiteLogo(d.brand_logo);
-      if(d.brand_name) setSiteName(d.brand_name);
-    }).catch(()=>{});
-  },[]);
+  const { brand } = useBrand();
+  const siteLogo = brand.brand_logo || "";
+  const siteName = brand.brand_name || "Readlearc";
   const { theme, toggle } = useTheme();
   const { isAuth, short, address, balance, requireAuth, lock, disconnect, isAdmin } = useAuth();
   const [drop,   setDrop]   = useState(false);

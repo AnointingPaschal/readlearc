@@ -15,9 +15,9 @@ interface Group {
 const CATEGORIES = ["All","Science","Technology","Medicine","Business","Humanities","Law","Education","Arts","Engineering","Environment","Research"];
 
 function GroupCard({ g, isMember }: { g: Group; isMember: boolean }) {
-  const hue = parseInt(g.id.slice(0,2) || "6d", 16) * 2.5;
+  const hue = parseInt((String(g.id || "6d")).slice(0,2) || "6d", 16) * 2.5;
   return (
-    <Link href={`/contribute/${g.id}`} style={{ textDecoration: "none" }}>
+    <Link href={`/contribute/${String(g.id)}`} style={{ textDecoration: "none" }}>
       <div className="card card-hover" style={{ overflow: "hidden", height: "100%" }}>
         {/* Banner */}
         <div style={{ height: 64, background: g.banner_image ? undefined : `linear-gradient(135deg,hsl(${hue}deg,45%,30%),hsl(${hue+60}deg,40%,20%))`, position: "relative", flexShrink: 0 }}>

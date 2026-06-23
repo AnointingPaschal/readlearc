@@ -613,6 +613,7 @@ export default function ResearchPage() {
         sectionTitle={activeType === "Custom" ? (customTitle || "Custom Section") : activeType}
         sectionContent={editorHtml}
         onApplyFormat={spec => editorFormatRef.current?.applyFormat(spec)}
+        onInsertText={text => editorFormatRef.current?.insertAtCursor(text)}
       />
 
       <style>{`

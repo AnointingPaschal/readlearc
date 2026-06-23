@@ -75,12 +75,12 @@ const FIELDS = [
 
 export default function BrandingPage() {
   const { brand, setBrand } = useBrand();
-  const [local,    setLocal]    = useState({ ...brand, brand_name: brand.brand_name, brand_tagline: brand.brand_tagline });
+  const [local,    setLocal]    = useState({ ...brand, brand_name: brand.brand_name, brand_tagline: brand.brand_tagline, brand_logo: (brand as any).brand_logo || "" });
   const [saving,   setSaving]   = useState(false);
   const [saved,    setSaved]    = useState(false);
   const [error,    setError]    = useState("");
 
-  useEffect(() => { setLocal({ ...brand, brand_name:brand.brand_name, brand_tagline:brand.brand_tagline }); }, [brand]);
+  useEffect(() => { setLocal({ ...brand, brand_name:brand.brand_name, brand_tagline:brand.brand_tagline, brand_logo:(brand as any).brand_logo||"" }); }, [brand]);
 
   function update(key: string, value: string) {
     setLocal(prev => ({ ...prev, [key]:value }));
