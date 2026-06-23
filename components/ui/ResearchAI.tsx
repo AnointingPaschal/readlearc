@@ -10,17 +10,24 @@ interface Msg { role:"user"|"ai"; text:string; }
 
 function clean(text: string): string {
   return text
-    .replace(/#{1,6}\s*/gm, "")
+    // Strip markdown heading markers but keep the heading text on its own line
+    .replace(/^#{1,6}\s+(.+)$/gm, (_, t) => t.toUpperCase())
+    // Strip bold/italic markers but keep text
     .replace(/\*\*([^*]+)\*\*/g, "$1")
     .replace(/\*([^*]+)\*/g, "$1")
     .replace(/_{2}([^_]+)_{2}/g, "$1")
     .replace(/_([^_]+)_/g, "$1")
+    // Strip code blocks but keep content
     .replace(/```[\s\S]*?```/g, m => m.replace(/```\w*\n?/g,"").trim())
     .replace(/`([^`]+)`/g, "$1")
+    // Strip markdown links but keep label
     .replace(/\[([^\]]+)\]\([^)]+\)/g, "$1")
+    // Convert bullet points to bullet char
     .replace(/^\s*[-*+]\s+/gm, "• ")
+    // Remove blockquote markers
     .replace(/^\s*>\s*/gm, "")
-    .replace(/\n{3,}/g, "\n\n")
+    // Collapse 3+ blank lines to 2 (preserve paragraph structure)
+    .replace(/\n{4,}/g, "\n\n\n")
     .trim();
 }
 

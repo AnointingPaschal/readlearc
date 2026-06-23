@@ -1,6 +1,6 @@
 "use client";
 import { useState, useEffect } from "react";
-import { Save, CheckCircle2, RotateCcw } from "lucide-react";
+import { Save, CheckCircle2, RotateCcw, FlaskConical, Bot, ChevronDown, ChevronUp, Info } from "lucide-react";
 
 const DEFAULT_QUALITY = `You are an expert content quality analyst for Readlearc, a pay-per-read publishing platform on Arc blockchain.
 
@@ -24,112 +24,218 @@ ORIGINALITY (score 0-100):
 AI-GENERATED (score 0-100):
 - 0 = clearly human-written with personality and imperfections
 - 100 = robotic, overly structured, no genuine human voice
-- Look for: excessive bullet points, repetitive phrases, no personal voice
 
 PLAGIARISM (score 0-100):
 - 0 = completely original content
-- 100 = directly copied from known sources
-- Look for: unnatural formal language shifts, inconsistent writing style`;
+- 100 = directly copied from known sources`;
 
-const DEFAULT_RISK = `You are a content risk assessor for Readlearc.
+const DEFAULT_RESEARCH = `You are an expert academic research writer embedded in the Readlearc Research Writing Studio. Your role is to write high-quality, academically rigorous content for university-level research projects and dissertations — particularly Nigerian university BSc/MSc project format.
 
-Analyze the article for policy violations:
+OUTPUT FORMAT RULES (CRITICAL):
+1. Write ALL headings in UPPERCASE on their own line, followed by a blank line.
+2. Number sections: CHAPTER ONE, 1.1 BACKGROUND OF THE STUDY, 1.1.1 Sub-Section
+3. Never use any markdown: no **, no *, no #, no ##, no >, no backticks
+4. Write body text as clean prose paragraphs separated by blank lines
+5. APA 7th Edition in-text citations: (Author, Year) or (Author et al., Year)
+6. Formal third-person passive voice: "It was found that..." not "I found..."
+7. End each section with: [Apply: Times New Roman 12pt, double-spaced, 1-inch margins]
 
-POLICIES:
-- No spam or get-rich-quick schemes
-- No misleading financial advice  
-- No hate speech, harassment, or discrimination
-- No plagiarized content
-- No excessive self-promotion or referral link abuse
-- No adult/explicit content
-- No misinformation or fake news
+DOCUMENT FORMAT STANDARD (Nigerian University BSc/MSc):
+- Font: Times New Roman, 12pt
+- Line spacing: Double-spaced (2.0)
+- Margins: 1 inch (2.54 cm) all sides
+- Alignment: Left-aligned
+- Paragraph indent: 0.5 inches first line
+- Page numbers: Roman numerals (prelims), Arabic from Chapter One, top-right
 
-Respond with JSON only:
-{
-  "risk": "HIGH" | "MEDIUM" | "LOW",
-  "violations": ["list of specific violations found"],
-  "approved": true | false,
-  "notes": "brief summary"
-}`;
+CHAPTER STRUCTURE:
+ABSTRACT: 150-300 words, one paragraph covering: problem, methodology, findings, conclusion. End with Keywords.
 
-const TABS = [
-  { key:"ai_prompt_quality",  label:"Content Moderation",  default:DEFAULT_QUALITY },
-  { key:"ai_prompt_risk",     label:"Risk Scoring",        default:DEFAULT_RISK    },
-];
+CHAPTER ONE - INTRODUCTION:
+1.1 Background of the Study
+1.2 Statement of the Problem
+1.3 Objectives (1.3.1 General, 1.3.2 Specific — each starting "To...")
+1.4 Research Questions
+1.5 Research Hypotheses (H0 and H1)
+1.6 Significance of the Study
+1.7 Scope of the Study
+
+CHAPTER TWO - LITERATURE REVIEW:
+2.1 Conceptual Framework
+2.2 Theoretical Framework (min 2 theories)
+2.3 Empirical Review (grouped by theme: author/year/method/findings/gap)
+2.4 Gap in Literature
+
+CHAPTER THREE - MATERIALS AND METHODS:
+3.1 Study Design
+3.2 Population of Study
+3.3 Sample Size and Sampling Technique (Taro Yamane formula)
+3.4 Data Collection Instrument
+3.5 Validity and Reliability (Cronbach Alpha >0.7)
+3.6 Method of Data Analysis (SPSS, ANOVA, Duncan MRT, p<0.05)
+
+CHAPTER FOUR - RESULTS AND DISCUSSION:
+4.1 Present data with [Insert Table X Here] placeholders
+4.2 Answer each research question
+4.3 Test hypotheses (H0 rejected/accepted, state p-value)
+4.4 Discuss findings vs empirical review
+
+CHAPTER FIVE - CONCLUSION AND RECOMMENDATIONS:
+5.1 Summary of Findings (bulleted)
+5.2 Conclusion (no new information)
+5.3 Recommendations (addressed to specific stakeholders)
+5.4 Suggestions for Further Studies
+
+REFERENCES: APA 7th Edition, alphabetical by surname.`;
 
 export default function PromptsPage() {
-  const [values,  setValues]  = useState<Record<string,string>>({});
-  const [active,  setActive]  = useState("ai_prompt_quality");
-  const [saving,  setSaving]  = useState(false);
-  const [saved,   setSaved]   = useState(false);
-  const [loading, setLoading] = useState(true);
+  const [quality,   setQuality]   = useState("");
+  const [research,  setResearch]  = useState("");
+  const [loading,   setLoading]   = useState(true);
+  const [saving,    setSaving]    = useState<string|null>(null);
+  const [saved,     setSaved]     = useState<string|null>(null);
+  const [showQ,     setShowQ]     = useState(false);
+  const [showR,     setShowR]     = useState(true);
 
-  async function load() {
-    const r = await fetch("/api/admin/settings");
-    const d = await r.json();
-    const vals: Record<string,string> = {};
-    for (const t of TABS) vals[t.key] = d[t.key] || t.default;
-    setValues(vals);
-    setLoading(false);
+  useEffect(() => {
+    fetch("/api/admin/settings").then(r=>r.json()).then(d => {
+      setQuality(d.quality_prompt || DEFAULT_QUALITY);
+      setResearch(d.research_system_prompt || DEFAULT_RESEARCH);
+      setLoading(false);
+    }).catch(() => {
+      setQuality(DEFAULT_QUALITY);
+      setResearch(DEFAULT_RESEARCH);
+      setLoading(false);
+    });
+  }, []);
+
+  async function save(key: string, value: string, label: string) {
+    setSaving(key);
+    await fetch("/api/admin/settings", {
+      method:"POST", headers:{"Content-Type":"application/json"},
+      body: JSON.stringify({ [key]: value }),
+    });
+    setSaving(null); setSaved(label);
+    setTimeout(() => setSaved(null), 3000);
   }
-  useEffect(()=>{ load(); },[]);
 
-  async function save() {
-    setSaving(true); setSaved(false);
-    await fetch("/api/admin/settings",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(values)});
-    setSaved(true); setSaving(false); setTimeout(()=>setSaved(false),3000);
-  }
+  const card = (children: React.ReactNode) => (
+    <div className="card" style={{ padding:"20px", display:"flex", flexDirection:"column", gap:14 }}>
+      {children}
+    </div>
+  );
 
-  function reset() {
-    const t = TABS.find(t=>t.key===active);
-    if (t) setValues(v=>({...v,[t.key]:t.default}));
-  }
+  const labelStyle: React.CSSProperties = {
+    fontSize:10, fontWeight:800, color:"var(--text-4)",
+    textTransform:"uppercase", letterSpacing:".08em",
+    display:"block", fontFamily:"Outfit,sans-serif",
+  };
 
-  const tab = TABS.find(t=>t.key===active)!;
+  if (loading) return (
+    <div style={{ display:"flex", flexDirection:"column", gap:16, maxWidth:860 }}>
+      {[...Array(2)].map((_,i) => <div key={i} className="skeleton" style={{ height:200, borderRadius:"var(--r-lg)" }}/>)}
+    </div>
+  );
 
   return (
-    <div style={{ display:"flex",flexDirection:"column",gap:16,maxWidth:700 }}>
-      <div style={{ display:"flex",alignItems:"flex-start",justifyContent:"space-between",gap:10 }}>
-        <div>
-          <h1 style={{ fontFamily:"Outfit,sans-serif",fontSize:22,fontWeight:900,color:"var(--text)",letterSpacing:"-.02em" }}>AI Prompts</h1>
-          <p style={{ fontSize:12,color:"var(--text-4)",marginTop:2 }}>System prompts used for AI content analysis</p>
-        </div>
-        <div style={{ display:"flex",gap:8 }}>
-          <button onClick={reset} style={{ display:"flex",alignItems:"center",gap:5,padding:"7px 12px",border:"1.5px solid var(--border)",background:"var(--bg-alt)",borderRadius:"var(--r-f)",cursor:"pointer",fontSize:12,fontWeight:600,color:"var(--text-3)" }}>
-            <RotateCcw size={12}/>Reset to default
-          </button>
-          <button onClick={save} disabled={saving} className="btn btn-primary" style={{ gap:6 }}>
-            {saved?<><CheckCircle2 size={12}/>Saved!</>:saving?"Saving…":<><Save size={12}/>Save Prompts</>}
-          </button>
-        </div>
+    <div style={{ display:"flex", flexDirection:"column", gap:20, maxWidth:860 }}>
+      <div>
+        <h1 style={{ fontFamily:"Outfit,sans-serif", fontSize:22, fontWeight:900, color:"var(--text)", letterSpacing:"-.02em", marginBottom:4 }}>AI Prompts</h1>
+        <p style={{ fontSize:12, color:"var(--text-4)" }}>Edit the system instructions that control how the AI behaves. Changes take effect immediately.</p>
       </div>
 
-      {/* Tabs */}
-      <div style={{ display:"flex",borderBottom:"1px solid var(--border)",gap:0 }}>
-        {TABS.map(t=>(
-          <button key={t.key} onClick={()=>setActive(t.key)} style={{ padding:"10px 18px",border:"none",background:"transparent",cursor:"pointer",fontSize:13,fontWeight:active===t.key?700:400,color:active===t.key?"var(--text)":"var(--text-4)",borderBottom:`2px solid ${active===t.key?"var(--brand)":"transparent"}`,transition:"all .15s" }}>
-            {t.label}
-          </button>
-        ))}
-      </div>
-
-      {/* Prompt editor */}
-      <div className="card" style={{ padding:0,overflow:"hidden" }}>
-        <div style={{ padding:"10px 16px",background:"var(--bg-alt)",borderBottom:"1px solid var(--border)",display:"flex",alignItems:"center",justifyContent:"space-between" }}>
-          <span style={{ fontSize:10,fontWeight:700,color:"var(--text-4)",textTransform:"uppercase",letterSpacing:".1em",fontFamily:"Outfit,sans-serif" }}>System Prompt</span>
+      {saved && (
+        <div style={{ padding:"10px 14px", background:"rgba(5,150,105,.07)", border:"1px solid rgba(5,150,105,.2)", borderRadius:"var(--r-md)", fontSize:13, color:"var(--accent)", display:"flex", gap:7 }}>
+          <CheckCircle2 size={14}/>{saved} prompt saved.
         </div>
-        {loading
-          ? <div className="skeleton" style={{ height:360,borderRadius:0 }}/>
-          : <textarea
-              value={values[active]||""}
-              onChange={e=>setValues(v=>({...v,[active]:e.target.value}))}
-              style={{ width:"100%",minHeight:380,padding:"16px 18px",border:"none",outline:"none",background:"var(--bg-card)",fontFamily:"JetBrains Mono,monospace",fontSize:12,lineHeight:1.7,color:"var(--text)",resize:"vertical" }}
+      )}
+
+      {/* Research Writing Prompt */}
+      <div className="card" style={{ padding:0, overflow:"hidden", border:"2px solid rgba(79,70,229,.2)" }}>
+        <button onClick={() => setShowR(v=>!v)}
+          style={{ width:"100%", padding:"16px 20px", background:"none", border:"none", cursor:"pointer", display:"flex", alignItems:"center", gap:12, textAlign:"left" }}>
+          <div style={{ width:36, height:36, borderRadius:10, background:"rgba(79,70,229,.1)", border:"1.5px solid rgba(79,70,229,.2)", display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}>
+            <FlaskConical size={18} style={{ color:"#4f46e5" }}/>
+          </div>
+          <div style={{ flex:1 }}>
+            <div style={{ fontFamily:"Outfit,sans-serif", fontSize:15, fontWeight:800, color:"var(--text)" }}>Research Writing System Prompt</div>
+            <div style={{ fontSize:11, color:"var(--text-4)" }}>Controls the AI Research Assistant in the Research Studio — chapter structure, Nigerian university format, APA citations</div>
+          </div>
+          {showR ? <ChevronUp size={16} style={{ color:"var(--text-4)", flexShrink:0 }}/> : <ChevronDown size={16} style={{ color:"var(--text-4)", flexShrink:0 }}/>}
+        </button>
+        {showR && (
+          <div style={{ borderTop:"1px solid var(--border)", padding:"16px 20px", display:"flex", flexDirection:"column", gap:12 }}>
+            <div style={{ padding:"10px 13px", background:"rgba(79,70,229,.06)", border:"1px solid rgba(79,70,229,.15)", borderRadius:"var(--r-md)", display:"flex", gap:8, alignItems:"flex-start" }}>
+              <Info size={13} style={{ color:"#4f46e5", flexShrink:0, marginTop:1 }}/>
+              <p style={{ fontSize:11, color:"var(--text-3)", lineHeight:1.6 }}>
+                This prompt defines how the AI writes academic content. It includes output format rules, document formatting standards (Times New Roman 12pt, double-spaced, 1-inch margins), Nigerian BSc/MSc chapter structure, and APA 7th Edition citation rules. Edit to match your institution requirements.
+              </p>
+            </div>
+            <div style={{ display:"flex", gap:8, flexWrap:"wrap" }}>
+              <button onClick={() => setResearch(DEFAULT_RESEARCH)}
+                style={{ display:"flex", alignItems:"center", gap:5, padding:"6px 12px", background:"var(--bg-alt)", border:"1.5px solid var(--border)", borderRadius:"var(--r)", cursor:"pointer", fontSize:11, fontWeight:700, color:"var(--text-3)" }}>
+                <RotateCcw size={11}/>Reset to Default
+              </button>
+              <button onClick={() => save("research_system_prompt", research, "Research Writing")} disabled={saving==="research_system_prompt"}
+                style={{ display:"flex", alignItems:"center", gap:6, padding:"6px 14px", background:"#4f46e5", border:"none", borderRadius:"var(--r)", cursor:"pointer", fontSize:11, fontWeight:700, color:"white", opacity:saving?"0.6":"1" }}>
+                <Save size={11}/>{saving==="research_system_prompt" ? "Saving…" : "Save Prompt"}
+              </button>
+            </div>
+            <textarea
+              value={research}
+              onChange={e => setResearch(e.target.value)}
+              rows={28}
+              style={{ width:"100%", padding:"12px 14px", background:"var(--bg-alt)", border:"1.5px solid var(--border)", borderRadius:"var(--r-lg)", fontSize:11, fontFamily:"JetBrains Mono,monospace", color:"var(--text)", outline:"none", resize:"vertical", lineHeight:1.7, boxSizing:"border-box" as const }}
             />
-        }
+            <div style={{ display:"flex", justifyContent:"flex-end" }}>
+              <button onClick={() => save("research_system_prompt", research, "Research Writing")} disabled={saving==="research_system_prompt"}
+                style={{ display:"flex", alignItems:"center", gap:6, padding:"9px 20px", background:"#4f46e5", border:"none", borderRadius:"var(--r-lg)", cursor:"pointer", fontSize:13, fontWeight:700, color:"white", opacity:saving?"0.6":"1", fontFamily:"Outfit,sans-serif" }}>
+                <Save size={13}/>{saving==="research_system_prompt" ? "Saving…" : "Save Research Prompt"}
+              </button>
+            </div>
+          </div>
+        )}
       </div>
 
-      <div style={{ padding:"10px 14px",background:"var(--bg-alt)",border:"1px solid var(--border)",borderRadius:"var(--r-md)",fontSize:11,color:"var(--text-4)",lineHeight:1.65 }}>
-        <strong style={{ color:"var(--text-3)" }}>Tip:</strong> The Content Moderation prompt is used for quality, originality, AI detection, and plagiarism scoring. The Risk Scoring prompt checks for policy violations. Both are sent to your configured OpenRouter model.
+      {/* Content Quality Prompt */}
+      <div className="card" style={{ padding:0, overflow:"hidden" }}>
+        <button onClick={() => setShowQ(v=>!v)}
+          style={{ width:"100%", padding:"16px 20px", background:"none", border:"none", cursor:"pointer", display:"flex", alignItems:"center", gap:12, textAlign:"left" }}>
+          <div style={{ width:36, height:36, borderRadius:10, background:"var(--brand-muted)", border:"1.5px solid var(--brand-border)", display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}>
+            <Bot size={18} style={{ color:"var(--brand)" }}/>
+          </div>
+          <div style={{ flex:1 }}>
+            <div style={{ fontFamily:"Outfit,sans-serif", fontSize:15, fontWeight:800, color:"var(--text)" }}>Content Quality Analyser Prompt</div>
+            <div style={{ fontSize:11, color:"var(--text-4)" }}>System instructions for the AI that scores article quality, originality, AI detection and plagiarism</div>
+          </div>
+          {showQ ? <ChevronUp size={16} style={{ color:"var(--text-4)", flexShrink:0 }}/> : <ChevronDown size={16} style={{ color:"var(--text-4)", flexShrink:0 }}/>}
+        </button>
+        {showQ && (
+          <div style={{ borderTop:"1px solid var(--border)", padding:"16px 20px", display:"flex", flexDirection:"column", gap:12 }}>
+            <div style={{ display:"flex", gap:8, flexWrap:"wrap" }}>
+              <button onClick={() => setQuality(DEFAULT_QUALITY)}
+                style={{ display:"flex", alignItems:"center", gap:5, padding:"6px 12px", background:"var(--bg-alt)", border:"1.5px solid var(--border)", borderRadius:"var(--r)", cursor:"pointer", fontSize:11, fontWeight:700, color:"var(--text-3)" }}>
+                <RotateCcw size={11}/>Reset to Default
+              </button>
+              <button onClick={() => save("quality_prompt", quality, "Content Quality")} disabled={saving==="quality_prompt"}
+                style={{ display:"flex", alignItems:"center", gap:6, padding:"6px 14px", background:"var(--brand)", border:"none", borderRadius:"var(--r)", cursor:"pointer", fontSize:11, fontWeight:700, color:"white", opacity:saving?"0.6":"1" }}>
+                <Save size={11}/>{saving==="quality_prompt" ? "Saving…" : "Save Prompt"}
+              </button>
+            </div>
+            <textarea
+              value={quality}
+              onChange={e => setQuality(e.target.value)}
+              rows={20}
+              style={{ width:"100%", padding:"12px 14px", background:"var(--bg-alt)", border:"1.5px solid var(--border)", borderRadius:"var(--r-lg)", fontSize:11, fontFamily:"JetBrains Mono,monospace", color:"var(--text)", outline:"none", resize:"vertical", lineHeight:1.7, boxSizing:"border-box" as const }}
+            />
+            <div style={{ display:"flex", justifyContent:"flex-end" }}>
+              <button onClick={() => save("quality_prompt", quality, "Content Quality")} disabled={saving==="quality_prompt"}
+                style={{ display:"flex", alignItems:"center", gap:6, padding:"9px 20px", background:"var(--brand)", border:"none", borderRadius:"var(--r-lg)", cursor:"pointer", fontSize:13, fontWeight:700, color:"white", opacity:saving?"0.6":"1", fontFamily:"Outfit,sans-serif" }}>
+                <Save size={13}/>{saving==="quality_prompt" ? "Saving…" : "Save Quality Prompt"}
+              </button>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
