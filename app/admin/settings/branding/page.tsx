@@ -1,12 +1,58 @@
 "use client";
 import { useState, useEffect } from "react";
-import { Save, RefreshCw, CheckCircle2, RotateCcw } from "lucide-react";
+import { Save, RefreshCw, CheckCircle2, RotateCcw, Upload, X } from "lucide-react";
+import { useRef } from "react";
+
+function LogoUpload({ value, onChange }: { value: string; onChange: (v: string) => void }) {
+  const ref = useRef<HTMLInputElement>(null);
+  function handle(file?: File) {
+    if (!file || !file.type.startsWith("image/")) return;
+    const canvas = document.createElement("canvas");
+    const img = new window.Image();
+    const reader = new FileReader();
+    reader.onload = ev => {
+      img.onload = () => {
+        const MAX = 400; let { width: w, height: h } = img;
+        if (h > MAX) { w = Math.round(w * MAX / h); h = MAX; }
+        canvas.width = w; canvas.height = h;
+        canvas.getContext("2d")!.drawImage(img, 0, 0, w, h);
+        onChange(canvas.toDataURL("image/png"));
+      };
+      img.src = ev.target?.result as string;
+    };
+    reader.readAsDataURL(file);
+  }
+  return (
+    <div style={{ marginBottom: 20, padding: "14px 16px", background: "var(--bg-alt)", border: "1.5px solid var(--border)", borderRadius: "var(--r-lg)" }}>
+      <div style={{ fontFamily: "Outfit,sans-serif", fontSize: 13, fontWeight: 700, color: "var(--text)", marginBottom: 4 }}>Site Logo</div>
+      <div style={{ fontSize: 11, color: "var(--text-4)", marginBottom: 10 }}>PNG or SVG with transparent background recommended. Shown in the navbar.</div>
+      {value ? (
+        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+          <div style={{ padding: 10, background: "var(--bg-card)", borderRadius: "var(--r)", border: "1px solid var(--border)" }}>
+            <img src={value} alt="logo" style={{ height: 40, width: "auto", maxWidth: 160, display: "block", objectFit: "contain" }} />
+          </div>
+          <button onClick={() => onChange("")} style={{ display: "flex", alignItems: "center", gap: 5, padding: "7px 12px", background: "rgba(220,38,38,.08)", border: "1px solid rgba(220,38,38,.2)", borderRadius: "var(--r)", cursor: "pointer", fontSize: 11, fontWeight: 600, color: "#dc2626" }}>
+            <X size={12} /> Remove Logo
+          </button>
+        </div>
+      ) : (
+        <label onDragOver={e => e.preventDefault()} onDrop={e => { e.preventDefault(); handle(e.dataTransfer.files[0]); }}
+          style={{ display: "block", border: "2px dashed var(--border)", borderRadius: "var(--r)", padding: "20px", textAlign: "center", cursor: "pointer", background: "var(--bg-card)", transition: "border-color .15s" }}>
+          <Upload size={22} style={{ color: "var(--text-4)", marginBottom: 6 }} />
+          <div style={{ fontSize: 12, fontWeight: 600, color: "var(--text-3)" }}>Drop logo or click to upload</div>
+          <div style={{ fontSize: 10, color: "var(--text-4)", marginTop: 3 }}>PNG, SVG, WebP — max height 400px</div>
+          <input ref={ref} type="file" accept="image/*,image/svg+xml" style={{ display: "none" }} onChange={e => handle(e.target.files?.[0])} />
+        </label>
+      )}
+    </div>
+  );
+}
 import { useBrand } from "../../../../lib/brand";
 
 const DEFAULTS = {
   brand_color:"#6d28d9", bg_color:"#f9f8f7", text_color:"#18181b",
   accent_color:"#059669", card_color:"#ffffff", border_color:"#e5e3e1",
-  brand_name:"Readlearc", brand_tagline:"Pay per word. Own every read.",
+  brand_name:"Readlearc", brand_tagline:"Pay per word. Own every read.", brand_logo:"",
 };
 
 const PRESETS = [

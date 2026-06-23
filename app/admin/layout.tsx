@@ -99,7 +99,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                 {group.label}
               </div>
               {group.items.map(item => {
-                const active = pathname === item.href || (item.href !== "/admin" && pathname.startsWith(item.href));
+                const active = pathname === item.href;
                 return (
                   <Link key={item.href} href={item.href}
                     style={{ display:"flex", alignItems:"center", gap:9, padding:"8px 10px", borderRadius:"var(--r)", marginBottom:2, fontSize:13, fontWeight:active?600:400, color:active?"var(--brand)":"var(--text-3)", background:active?"var(--brand-muted)":"transparent", textDecoration:"none", border:`1px solid ${active?"var(--brand-border)":"transparent"}`, transition:"all .12s" }}

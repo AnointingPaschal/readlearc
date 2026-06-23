@@ -48,19 +48,23 @@ function GroupCard({ g, isMember }: { g: Group; isMember: boolean }) {
 
 export default function ContributePage() {
   const { address } = useAuth();
-  const [spaces,  setGroups]  = useState<Group[]>([]);
+  const [groups,  setGroups]  = useState<Group[]>([]);
   const [mine,    setMine]    = useState<Group[]>([]);
   const [loading, setLoading] = useState(true);
   const [search,  setSearch]  = useState("");
   const [cat,     setCat]     = useState("All");
   const [tab,     setTab]     = useState<"discover" | "mine">("discover");
+  const [loadErr, setLoadErr] = useState(false);
 
   useEffect(() => {
-    setLoading(true);
-    fetch("/api/groups?type=public&limit=60").then(r => r.json()).then(d => {
-      setGroups(Array.isArray(d) ? d : []);
-      setLoading(false);
-    }).catch(() => setLoading(false));
+    setLoading(true); setLoadErr(false);
+    fetch("/api/groups?type=public&limit=60")
+      .then(r => r.json())
+      .then(d => {
+        if (Array.isArray(d)) { setGroups(d); }
+        else { setLoadErr(true); }
+        setLoading(false);
+      }).catch(() => { setLoadErr(true); setLoading(false); });
   }, []);
 
   useEffect(() => {
@@ -70,7 +74,7 @@ export default function ContributePage() {
     }).catch(() => {});
   }, [address]);
 
-  const list = (tab === "mine" ? mine : spaces).filter(g => {
+  const list = (tab === "mine" ? mine : groups).filter(g => {
     if (search && !g.name.toLowerCase().includes(search.toLowerCase()) && !g.description?.toLowerCase().includes(search.toLowerCase())) return false;
     if (cat !== "All" && g.category !== cat) return false;
     return true;
@@ -85,7 +89,7 @@ export default function ContributePage() {
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 20, flexWrap: "wrap", gap: 10 }}>
           <div>
             <h1 style={{ fontFamily: "Outfit,sans-serif", fontSize: "clamp(22px,4vw,30px)", fontWeight: 900, color: "var(--text)", letterSpacing: "-.02em", marginBottom: 3 }}>Contribute</h1>
-            <p style={{ fontSize: 12, color: "var(--text-4)" }}>Join public spaces or create private spaces for your team</p>
+            <p style={{ fontSize: 12, color: "var(--text-4)" }}>Join public groups or create private groups for your team</p>
           </div>
           <Link href="/contribute/create" className="btn btn-primary" style={{ gap: 6 }}>
             <Plus size={14} />Create Group
@@ -111,7 +115,7 @@ export default function ContributePage() {
         <div style={{ display: "flex", gap: 8, marginBottom: 16, flexWrap: "wrap" }}>
           <div style={{ position: "relative", flex: 1, minWidth: 200 }}>
             <Search size={14} style={{ position: "absolute", left: 12, top: "50%", transform: "translateY(-50%)", color: "var(--text-4)", pointerEvents: "none" }} />
-            <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search spaces…"
+            <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search groups…"
               style={{ width: "100%", padding: "9px 14px 9px 36px", background: "var(--bg-card)", border: "1.5px solid var(--border)", borderRadius: "var(--r-lg)", fontSize: 13, color: "var(--text)", outline: "none", boxSizing: "border-box" as const }} />
           </div>
           <div style={{ display: "flex", gap: 5, flexWrap: "wrap" }}>
@@ -134,10 +138,10 @@ export default function ContributePage() {
           <div style={{ textAlign: "center", padding: "60px 20px", background: "var(--bg-card)", borderRadius: "var(--r-xl)", border: "1.5px dashed var(--border)" }}>
             <Users size={40} style={{ color: "var(--text-4)", marginBottom: 14 }} />
             <p style={{ fontSize: 16, fontWeight: 700, color: "var(--text)", fontFamily: "Outfit,sans-serif", marginBottom: 6 }}>
-              {tab === "mine" ? "You haven't joined any spaces yet" : "No spaces found"}
+              {tab === "mine" ? "You haven't joined any groups yet" : "No groups found"}
             </p>
             <p style={{ fontSize: 13, color: "var(--text-4)", marginBottom: 20 }}>
-              {tab === "mine" ? "Discover and join spaces below" : "Be the first to create one!"}
+              {tab === "mine" ? "Discover and join groups below" : "Be the first to create one!"}
             </p>
             <Link href="/contribute/create" className="btn btn-primary" style={{ gap: 6 }}><Plus size={14} />Create Space</Link>
           </div>

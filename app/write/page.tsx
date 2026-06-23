@@ -21,6 +21,7 @@ export default function WritePage() {
   const [courseId,     setCourseId]     = useState("");
   const [topic,        setTopic]        = useState("");
   const [articleType,  setArticleType]  = useState("Analysis");
+  const [isFree,       setIsFree]       = useState(false);
   const [price,        setPrice]        = useState("0.020");
   const [saving,       setSaving]       = useState(false);
   const [saved,        setSaved]        = useState(false);
@@ -69,7 +70,7 @@ export default function WritePage() {
         category: categoryLabel,
         topic: topic || undefined,
         articleType,
-        price,
+        price: isFree ? "0" : price,
         authorAddress: address.toLowerCase(),
         status: "pending",
       }),
@@ -238,27 +239,42 @@ export default function WritePage() {
 
             {/* Pricing */}
             <div className="card" style={{ padding: "14px" }}>
-              <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 10 }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 12 }}>
                 <DollarSign size={13} style={{ color: "var(--accent)" }} />
                 <span style={{ fontFamily: "Outfit,sans-serif", fontSize: 12, fontWeight: 800, color: "var(--text)", textTransform: "uppercase", letterSpacing: ".06em" }}>Pricing</span>
               </div>
-              <label style={labelStyle}>Price per read (USDC)</label>
-              <div style={{ display: "flex", alignItems: "center", gap: 6, background: "var(--bg-alt)", border: "1.5px solid var(--border)", borderRadius: "var(--r)", padding: "7px 10px", marginBottom: 10 }}>
-                <span style={{ fontSize: 13, color: "var(--text-4)", fontWeight: 700 }}>$</span>
-                <input
-                  type="number" step="0.001" min="0.001" max="100"
-                  value={price} onChange={e => setPrice(e.target.value)}
-                  style={{ flex: 1, border: "none", outline: "none", background: "transparent", fontSize: 16, fontWeight: 800, color: "var(--accent)", fontFamily: "Outfit,sans-serif" }}
-                />
-                <span style={{ fontSize: 11, color: "var(--text-4)" }}>USDC</span>
+              {/* Free / Paid toggle */}
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 7, marginBottom: 12 }}>
+                <button onClick={() => setIsFree(true)} style={{ padding: "10px 8px", borderRadius: "var(--r)", border: `2px solid ${isFree ? "var(--accent)" : "var(--border)"}`, background: isFree ? "rgba(5,150,105,.1)" : "transparent", cursor: "pointer", textAlign: "center", transition: "all .15s" }}>
+                  <div style={{ fontFamily: "Outfit,sans-serif", fontSize: 13, fontWeight: 800, color: isFree ? "var(--accent)" : "var(--text)" }}>Free</div>
+                  <div style={{ fontSize: 9, color: "var(--text-4)", marginTop: 2 }}>Open to all readers</div>
+                </button>
+                <button onClick={() => setIsFree(false)} style={{ padding: "10px 8px", borderRadius: "var(--r)", border: `2px solid ${!isFree ? "var(--brand)" : "var(--border)"}`, background: !isFree ? "var(--brand-muted)" : "transparent", cursor: "pointer", textAlign: "center", transition: "all .15s" }}>
+                  <div style={{ fontFamily: "Outfit,sans-serif", fontSize: 13, fontWeight: 800, color: !isFree ? "var(--brand)" : "var(--text)" }}>Paid</div>
+                  <div style={{ fontSize: 9, color: "var(--text-4)", marginTop: 2 }}>Earn USDC per read</div>
+                </button>
               </div>
-              <div style={{ display: "flex", justifyContent: "space-between", padding: "8px 10px", background: "rgba(5,150,105,.06)", border: "1px solid rgba(5,150,105,.15)", borderRadius: "var(--r)" }}>
-                <span style={{ fontSize: 11, color: "var(--text-4)" }}>You earn (85%)</span>
-                <span style={{ fontFamily: "Outfit,sans-serif", fontSize: 15, fontWeight: 900, color: "var(--accent)" }}>${earn}</span>
-              </div>
-              <p style={{ fontSize: 10, color: "var(--text-4)", marginTop: 8, lineHeight: 1.5 }}>
-                Platform fee: 15% · Paid on-chain per read · No minimum payout.
-              </p>
+              {!isFree && (
+                <>
+                  <label style={labelStyle}>Price per read (USDC)</label>
+                  <div style={{ display: "flex", alignItems: "center", gap: 6, background: "var(--bg-alt)", border: "1.5px solid var(--border)", borderRadius: "var(--r)", padding: "7px 10px", marginBottom: 10 }}>
+                    <span style={{ fontSize: 13, color: "var(--text-4)", fontWeight: 700 }}>$</span>
+                    <input type="number" step="0.001" min="0.001" max="100" value={price} onChange={e => setPrice(e.target.value)}
+                      style={{ flex: 1, border: "none", outline: "none", background: "transparent", fontSize: 16, fontWeight: 800, color: "var(--accent)", fontFamily: "Outfit,sans-serif" }}/>
+                    <span style={{ fontSize: 11, color: "var(--text-4)" }}>USDC</span>
+                  </div>
+                  <div style={{ display: "flex", justifyContent: "space-between", padding: "8px 10px", background: "rgba(5,150,105,.06)", border: "1px solid rgba(5,150,105,.15)", borderRadius: "var(--r)" }}>
+                    <span style={{ fontSize: 11, color: "var(--text-4)" }}>You earn (85%)</span>
+                    <span style={{ fontFamily: "Outfit,sans-serif", fontSize: 15, fontWeight: 900, color: "var(--accent)" }}>${earn}</span>
+                  </div>
+                  <p style={{ fontSize: 10, color: "var(--text-4)", marginTop: 8, lineHeight: 1.5 }}>Platform fee: 15% · Paid on-chain per read · No minimum payout.</p>
+                </>
+              )}
+              {isFree && (
+                <div style={{ padding: "10px 12px", background: "rgba(5,150,105,.07)", border: "1px solid rgba(5,150,105,.2)", borderRadius: "var(--r)", fontSize: 12, color: "var(--accent)", lineHeight: 1.5 }}>
+                  ✓ Free articles are visible to all readers without payment — great for building audience and visibility.
+                </div>
+              )}
             </div>
           </div>
         </div>

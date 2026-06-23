@@ -25,9 +25,12 @@ export async function GET(req: NextRequest, { params }: C) {
 
   const addr    = a.author_address || "";
   const full    = a.content || "";
+  // Free articles (price=0) are always fully readable
+  const isFree = parseFloat(a.price || "0") === 0;
+  if (isFree) hasPaid = true; // Free articles count as "paid"
 
   // Always send a generous preview (~55% of chars) so the article body renders
-  // Full content only for paid readers, author, or admin
+  // Full content only for: free articles, paid readers, author, or admin
   const splitAt      = Math.floor(full.length * 0.55);
   const previewPart  = full.slice(0, splitAt);
   const blurPart     = full.slice(splitAt, splitAt + 1400); // extra blurred section
