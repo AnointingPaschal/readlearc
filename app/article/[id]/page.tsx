@@ -72,7 +72,7 @@ export default function ArticlePage() {
       const ok=await requestSign({title:"Pay to Read",description:article.title.slice(0,70),to:article.authorAddress,amount:`$${parseFloat(article.price).toFixed(3)}`,token:"USDC",type:"USDC Transfer"});
       if (!ok){setPaying(false);setPayStep("");return;}
       setPayStep("Signing payment…");
-      const {txHash:_txHash}=await payForArticle(signer,article.authorAddress,article.price,article.id);
+      const {txHash:_txHash}=await payForArticle(signer,String(article.id),article.authorAddress,article.price);
       setTxHash(_txHash);
       setPayStep("Confirming on-chain…");
       await fetch("/api/articles",{method:"PUT",headers:{"Content-Type":"application/json"},body:JSON.stringify({id:article.id,readerAddress:address?.toLowerCase(),txHash:_txHash})});

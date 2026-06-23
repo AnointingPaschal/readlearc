@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { supabaseAdmin } from "../../../lib/supabase";
 
-const BRAND_KEYS = ["brand_color","bg_color","text_color","accent_color","card_color","border_color","brand_name","brand_tagline"];
+const BRAND_KEYS = ["brand_color","bg_color","text_color","accent_color","card_color","border_color","brand_name","brand_tagline","brand_logo","site_name"];
 
 export async function GET() {
   const { data } = await supabaseAdmin.from("platform_settings")
@@ -15,7 +15,8 @@ export async function GET() {
   if (!brand.accent_color) brand.accent_color = "#059669";
   if (!brand.card_color)   brand.card_color   = "#ffffff";
   if (!brand.border_color) brand.border_color = "#e5e3e1";
-  if (!brand.brand_name)   brand.brand_name   = "Readlearc";
+  if (!brand.brand_name)   brand.brand_name   = brand.site_name || "Readlearc";
+  if (!brand.brand_logo)   brand.brand_logo   = "";
   return NextResponse.json(brand);
 }
 

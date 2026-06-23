@@ -95,7 +95,12 @@ export default function SiteSettingsPage() {
 
   async function save() {
     setSaving(true);
-    await fetch("/api/admin/settings",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(settings)});
+    // Save all settings AND sync site_name → brand_name so Navbar updates
+    const payload = { ...settings };
+    if (settings.site_name) payload.brand_name = settings.site_name;
+    await fetch("/api/admin/settings",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(payload)});
+    // Also update brand context so Navbar refreshes without page reload
+    await fetch("/api/brand",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({ brand_name: settings.site_name || "", brand_logo: settings.brand_logo || "" })}).catch(()=>{});
     setSaved(true); setSaving(false); setTimeout(()=>setSaved(false),3000);
   }
 
