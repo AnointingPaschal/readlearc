@@ -6,6 +6,14 @@ import { useTheme } from "../../lib/theme";
 import { useAuth } from "../../lib/auth";
 
 export default function Navbar() {
+  const [siteLogo, setSiteLogo] = useState<string>("");
+  const [siteName, setSiteName] = useState<string>("");
+  useEffect(()=>{
+    fetch("/api/admin/settings").then(r=>r.json()).then(d=>{
+      if(d.brand_logo) setSiteLogo(d.brand_logo);
+      if(d.brand_name) setSiteName(d.brand_name);
+    }).catch(()=>{});
+  },[]);
   const { theme, toggle } = useTheme();
   const { isAuth, short, address, balance, requireAuth, lock, disconnect, isAdmin } = useAuth();
   const [drop,   setDrop]   = useState(false);
@@ -35,10 +43,16 @@ export default function Navbar() {
 
           {/* Logo */}
           <Link href="/" style={{ display:"flex", alignItems:"center", gap:8, textDecoration:"none", flexShrink:0 }}>
-            <div style={{ width:32, height:32, borderRadius:9, background:"linear-gradient(135deg,var(--brand),var(--accent))", display:"flex", alignItems:"center", justifyContent:"center" }}>
-              <Zap size={16} color="white" strokeWidth={2.5}/>
-            </div>
-            <span style={{ fontFamily:"Outfit,sans-serif", fontWeight:800, fontSize:16, color:"var(--text)", letterSpacing:"-.02em" }}>Readlearc</span>
+            {siteLogo ? (
+              <img src={siteLogo} alt={siteName||"Readlearc"} style={{ height:32, width:"auto", maxWidth:140, objectFit:"contain", display:"block" }}/>
+            ) : (
+              <>
+                <div style={{ width:32, height:32, borderRadius:9, background:"linear-gradient(135deg,var(--brand),var(--accent))", display:"flex", alignItems:"center", justifyContent:"center" }}>
+                  <Zap size={16} color="white" strokeWidth={2.5}/>
+                </div>
+                <span style={{ fontFamily:"Outfit,sans-serif", fontWeight:800, fontSize:16, color:"var(--text)", letterSpacing:"-.02em" }}>{siteName||"Readlearc"}</span>
+              </>
+            )}
           </Link>
 
           <div style={{ flex:1 }}/>

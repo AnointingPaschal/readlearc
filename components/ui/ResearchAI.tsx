@@ -30,10 +30,53 @@ const RESEARCH_PROMPTS: Record<string, string> = {
   related:     "Based on this research content, suggest 5 related fields of study, theories, or research areas the author should explore and reference:",
 };
 
+// Parse formatting instructions from natural language
+function parseFormatting(text: string): { fontFamily?:string; fontSize?:number; lineSpacing?:string; margin?:string } | null {
+  const lower = text.toLowerCase();
+  const isFormatCmd = /font|typeface|serif|sans.serif|spacing|line.height|margin|size|pt|point|calibri|georgia|arial|times|helvetica|verdana|garamond|double.space|single.space/i.test(lower);
+  if (!isFormatCmd) return null;
+
+  const spec: any = {};
+
+  // Font family
+  const fontMap: Record<string,string> = {
+    "sans-serif":"Arial","sans serif":"Arial","arial":"Arial","helvetica":"Helvetica",
+    "times new roman":"Times New Roman","times":"Times New Roman","georgia":"Georgia",
+    "calibri":"Calibri","verdana":"Verdana","garamond":"Garamond","courier":"Courier New",
+    "serif":"Times New Roman",
+  };
+  for (const [k,v] of Object.entries(fontMap)) {
+    if (lower.includes(k)) { spec.fontFamily = v; break; }
+  }
+
+  // Font size
+  const sizeMatch = lower.match(/(\d+)\s*(?:pt|point|px|font)/);
+  const sizeNum = sizeMatch ? parseInt(sizeMatch[1]) : null;
+  if (sizeNum && sizeNum >= 6 && sizeNum <= 96) spec.fontSize = sizeNum;
+
+  // Line spacing
+  if (/double\s*spac/i.test(text)) spec.lineSpacing = "2";
+  else if (/single\s*spac/i.test(text)) spec.lineSpacing = "1";
+  else if (/triple\s*spac/i.test(text)) spec.lineSpacing = "3";
+  else {
+    const spaceMatch = lower.match(/(\d+(?:\.\d+)?)\s*(?:line\s*)?spac/);
+    if (spaceMatch) spec.lineSpacing = spaceMatch[1];
+  }
+
+  // Margin (mm or inch)
+  const mmMatch = lower.match(/(\d+(?:\.\d+)?)\s*mm\s*(?:margin|padding)/);
+  const inMatch = lower.match(/(\d+(?:\.\d+)?)\s*(?:inch|")\s*(?:margin|padding)/);
+  if (mmMatch) spec.margin = Math.round(parseFloat(mmMatch[1]) * 3.7795) + "px";
+  else if (inMatch) spec.margin = Math.round(parseFloat(inMatch[1]) * 96) + "px";
+
+  return Object.keys(spec).length > 0 ? spec : null;
+}
+
 export default function ResearchAI({
-  paperTitle, sectionTitle, sectionContent,
+  paperTitle, sectionTitle, sectionContent, onApplyFormat,
 }: {
   paperTitle: string; sectionTitle: string; sectionContent: string;
+  onApplyFormat?: (spec: any) => void;
 }) {
   const [open,    setOpen]    = useState(false);
   const [msgs,    setMsgs]    = useState<Msg[]>([]);
@@ -57,6 +100,27 @@ export default function ResearchAI({
     const label = action ? ACTIONS.find(a => a.key === action)?.label || action : (question || "");
     setMsgs(p => [...p, { role: "user", text: label }]);
     setLoading(true); setInput("");
+
+    // Detect formatting prompt and apply immediately
+    if (!action && question && onApplyFormat) {
+      const fmt = parseFormatting(question);
+      if (fmt) {
+        onApplyFormat(fmt);
+        const applied = Object.entries(fmt).map(([k,v]) => {
+          if (k==="fontFamily") return `Font: ${v}`;
+          if (k==="fontSize") return `Size: ${v}pt`;
+          if (k==="lineSpacing") return `Line spacing: ${v}`;
+          if (k==="margin") return `Margin: ${v}`;
+          return `${k}: ${v}`;
+        }).join(" · ");
+        setMsgs(p => [...p.slice(0,-1), {role:"user",text:question}, {role:"ai",text:`✅ Applied formatting:
+${applied}
+
+The document has been updated with your requested format settings.`}]);
+        setLoading(false);
+        return;
+      }
+    }
 
     const context = [
       paperTitle ? `Paper Title: "${paperTitle}"` : "",
@@ -93,9 +157,9 @@ export default function ResearchAI({
       <button
         onClick={() => setOpen(o => !o)}
         style={{
-          position: "fixed", bottom: "calc(var(--bottom-nav-h, 0px) + 16px)", right: 16, zIndex: 200,
+          position: "fixed", bottom: "calc(var(--bottom-nav-h, 0px) + 80px)", right: 16, zIndex: 200,
           width: 48, height: 48, borderRadius: "50%",
-          background: "var(--brand)", border: "none", cursor: "pointer",
+          background: "#4f46e5", border: "none", cursor: "pointer",
           display: "flex", alignItems: "center", justifyContent: "center",
           boxShadow: "0 4px 20px rgba(109,40,217,.4)",
           transition: "transform .2s, box-shadow .2s",
@@ -111,7 +175,7 @@ export default function ResearchAI({
       {open && (
         <div style={{
           position: "fixed",
-          bottom: "calc(var(--bottom-nav-h, 0px) + 72px)", right: 12, zIndex: 200,
+          bottom: "calc(var(--bottom-nav-h, 0px) + 136px)", right: 12, zIndex: 200,
           width: "min(380px, calc(100vw - 24px))",
           height: "min(560px, calc(100vh - 140px))",
           background: "var(--bg-card)", border: "1.5px solid var(--border)",

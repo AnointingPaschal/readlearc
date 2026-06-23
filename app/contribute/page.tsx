@@ -57,7 +57,7 @@ export default function ContributePage() {
 
   useEffect(() => {
     setLoading(true);
-    fetch("/api/spaces?type=public&limit=60").then(r => r.json()).then(d => {
+    fetch("/api/groups?type=public&limit=60").then(r => r.json()).then(d => {
       setGroups(Array.isArray(d) ? d : []);
       setLoading(false);
     }).catch(() => setLoading(false));
@@ -65,7 +65,7 @@ export default function ContributePage() {
 
   useEffect(() => {
     if (!address) return;
-    fetch(`/api/spaces?member=${address.toLowerCase()}`).then(r => r.json()).then(d => {
+    fetch(`/api/groups?member=${address.toLowerCase()}`).then(r => r.json()).then(d => {
       setMine(Array.isArray(d) ? d : []);
     }).catch(() => {});
   }, [address]);

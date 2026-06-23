@@ -1,7 +1,7 @@
 "use client";
 import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import Navbar from "../../../components/ui/Navbar";
-import WordEditor from "../../../components/ui/WordEditor";
+import WordEditor, { WordEditorHandle } from "../../../components/ui/WordEditor";
 import { useAuth } from "../../../lib/auth";
 import {
   FACULTIES, ALL_COURSES, RESEARCH_TYPES, ACADEMIC_LEVELS,
@@ -24,6 +24,7 @@ export default function ResearchPage() {
   const { address, isAuth, requireAuth } = useAuth();
 
   // Paper identity
+  const editorFormatRef = useRef<WordEditorHandle | null>(null);
   const [draftId,       setDraftId]       = useState<string | null>(null);
   const [paperTitle,    setPaperTitle]    = useState("");
   const [keywords,      setKeywords]      = useState("");
@@ -502,6 +503,7 @@ export default function ResearchPage() {
 
             {/* Word editor */}
             <WordEditor
+              ref={editorFormatRef}
               value={editorHtml}
               onChange={setEditorHtml}
               placeholder={`Write your ${activeType === "Custom" ? customTitle || "section" : activeType} here…`}
@@ -610,6 +612,7 @@ export default function ResearchPage() {
         paperTitle={paperTitle}
         sectionTitle={activeType === "Custom" ? (customTitle || "Custom Section") : activeType}
         sectionContent={editorHtml}
+        onApplyFormat={spec => editorFormatRef.current?.applyFormat(spec)}
       />
 
       <style>{`
