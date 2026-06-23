@@ -438,8 +438,8 @@ textarea.admin-input { height:auto; resize:vertical; line-height:1.55; padding:1
 body.admin-layout .app-bottom-nav,
 body.admin-layout .app-side-nav { display: none !important; }
 
-/* ── Page layout side-nav offsets ────────────────────────────────── */
-@media (min-width: 768px) {
+/* ── Page layout side-nav offsets — desktop only (1100px+) ──────── */
+@media (min-width: 1100px) {
   body:not(.admin-layout) .read-layout,
   body:not(.admin-layout) .write-layout,
   body:not(.admin-layout) .research-layout,

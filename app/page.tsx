@@ -67,6 +67,83 @@ function ArticleRow({a}:{a:Article}){
   );
 }
 
+
+// ── Auto-advancing featured slider ──────────────────────────────
+function FeaturedSlider({ items }: { items: Article[] }) {
+  const [idx,    setIdx]    = useState(0);
+  const [paused, setPaused] = useState(false);
+  const timer = useRef<ReturnType<typeof setInterval>|null>(null);
+
+  function startTimer() {
+    if (timer.current) clearInterval(timer.current);
+    timer.current = setInterval(() => {
+      setIdx(i => (i + 1) % items.length);
+    }, 4500);
+  }
+
+  useEffect(() => {
+    if (items.length > 1 && !paused) startTimer();
+    return () => { if (timer.current) clearInterval(timer.current); };
+  }, [items.length, paused]);
+
+  function goTo(i: number) {
+    setIdx(i); setPaused(true);
+    if (timer.current) clearInterval(timer.current);
+    setTimeout(() => { setPaused(false); }, 8000);
+  }
+
+  const a = items[idx];
+  if (!a) return null;
+  const h = parseInt((a.authorAddress||"000000").slice(2,4)||"0",16)*1.4;
+
+  return (
+    <section style={{marginBottom:36}}>
+      <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:12}}>
+        <div style={{display:"flex",alignItems:"center",gap:8}}>
+          <div style={{width:3,height:20,background:"#ca8a04",borderRadius:2}}/>
+          <Star size={14} style={{color:"#ca8a04"}}/>
+          <h2 style={{fontFamily:"Outfit,sans-serif",fontSize:18,fontWeight:900,color:"var(--text)",letterSpacing:"-.02em"}}>Featured</h2>
+        </div>
+        <Link href="/explore?filter=featured" style={{fontSize:11,color:"var(--brand)",textDecoration:"none",fontWeight:700,display:"flex",alignItems:"center",gap:3}}>
+          See all <ArrowRight size={11}/>
+        </Link>
+      </div>
+
+      {/* Single card per slide */}
+      <Link href={`/article/${a.id}`} style={{textDecoration:"none",display:"block"}}>
+        <div className="card card-hover" style={{padding:"18px 20px",position:"relative",overflow:"hidden",minHeight:150}}>
+          {/* subtle colour wash from author hue */}
+          <div style={{position:"absolute",top:0,right:0,width:"35%",height:"100%",background:`linear-gradient(to left,hsl(${h}deg,40%,${document.documentElement.classList.contains("dark")?"10%":"96%"}),transparent)`,pointerEvents:"none",opacity:.6}}/>
+          <div style={{display:"flex",gap:6,flexWrap:"wrap",marginBottom:10,alignItems:"center",position:"relative"}}>
+            <span style={{fontSize:9,fontWeight:700,padding:"2px 8px",borderRadius:99,background:"var(--brand-muted)",color:"var(--brand)",border:"1px solid var(--brand-border)"}}>{a.category}</span>
+            {a.isResearch&&<span style={{fontSize:9,fontWeight:700,padding:"2px 8px",borderRadius:99,background:"rgba(2,132,199,.1)",color:"#0284c7",border:"1px solid rgba(2,132,199,.2)"}}>Research</span>}
+            <span style={{fontSize:9,fontWeight:700,padding:"2px 8px",borderRadius:99,background:"rgba(202,138,4,.1)",color:"#ca8a04",border:"1px solid rgba(202,138,4,.3)",display:"flex",alignItems:"center",gap:3}}><Star size={7}/>Featured</span>
+            <span style={{marginLeft:"auto",fontFamily:"Outfit,sans-serif",fontSize:16,fontWeight:900,color:"var(--accent)"}}>${parseFloat(a.price).toFixed(3)}</span>
+          </div>
+          <h3 style={{fontFamily:"Outfit,sans-serif",fontSize:"clamp(16px,3.5vw,22px)",fontWeight:900,color:"var(--text)",lineHeight:1.2,letterSpacing:"-.02em",marginBottom:8,position:"relative"}}>{a.title}</h3>
+          {a.blurb&&<p style={{fontSize:"clamp(11px,1.5vw,13px)",color:"var(--text-3)",lineHeight:1.65,marginBottom:12,display:"-webkit-box",WebkitLineClamp:2,WebkitBoxOrient:"vertical" as any,overflow:"hidden",position:"relative"}}>{a.blurb}</p>}
+          <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",paddingTop:10,borderTop:"1px solid var(--border)",position:"relative"}}>
+            <div style={{display:"flex",alignItems:"center",gap:6}}>
+              <div style={{width:18,height:18,borderRadius:"50%",background:`hsl(${h}deg,40%,50%)`,flexShrink:0}}/>
+              <span style={{fontFamily:"JetBrains Mono,monospace",fontSize:10,color:"var(--text-4)"}}>{a.authorShort}</span>
+              <span style={{fontSize:10,color:"var(--text-4)",display:"flex",alignItems:"center",gap:3}}><Clock size={9}/>{a.readTime}m</span>
+            </div>
+            {/* Dots */}
+            {items.length>1&&(
+              <div style={{display:"flex",gap:5,alignItems:"center"}}>
+                {items.map((_,i)=>(
+                  <button key={i} onClick={e=>{e.preventDefault();goTo(i);}}
+                    style={{width:i===idx?16:5,height:5,borderRadius:99,background:i===idx?"var(--brand)":"var(--border)",border:"none",cursor:"pointer",padding:0,transition:"all .3s"}}/>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      </Link>
+    </section>
+  );
+}
+
 export default function HomePage(){
   const [featured, setFeatured] = useState<Article[]>([]);
   const [trending, setTrending] = useState<Article[]>([]);
@@ -230,23 +307,8 @@ export default function HomePage(){
         <div className="home-layout">
           <div className="home-main">
 
-            {/* Featured */}
-            {featured.length>0&&(
-              <section style={{marginBottom:40}}>
-                <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:14}}>
-                  <div style={{display:"flex",alignItems:"center",gap:8}}>
-                    <div style={{width:3,height:20,background:"#ca8a04",borderRadius:2}}/>
-                    <Star size={15} style={{color:"#ca8a04"}}/>
-                    <h2 style={{fontFamily:"Outfit,sans-serif",fontSize:18,fontWeight:900,color:"var(--text)",letterSpacing:"-.02em"}}>Featured</h2>
-                  </div>
-                  <Link href="/explore?filter=featured" style={{fontSize:11,color:"var(--brand)",textDecoration:"none",fontWeight:700,display:"flex",alignItems:"center",gap:3}}>See all<ArrowRight size={11}/></Link>
-                </div>
-                <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(200px,1fr))",gap:10}}>
-                  {featured.slice(0,1).map(a=><FeaturedCard key={a.id} a={a} big/>)}
-                  {featured.slice(1,4).map(a=><FeaturedCard key={a.id} a={a}/>)}
-                </div>
-              </section>
-            )}
+            {/* Featured Slider */}
+            {featured.length>0&&<FeaturedSlider items={featured}/>}
 
             {/* Trending */}
             <section style={{marginBottom:40}}>
@@ -313,7 +375,7 @@ export default function HomePage(){
               </section>
             )}
 
-            {/* Disciplines */}
+            {/* Browse by Discipline */}
             <section style={{marginBottom:40}}>
               <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:14}}>
                 <div style={{display:"flex",alignItems:"center",gap:8}}>
@@ -323,13 +385,15 @@ export default function HomePage(){
                 </div>
                 <Link href="/explore" style={{fontSize:11,color:"var(--brand)",textDecoration:"none",fontWeight:700,display:"flex",alignItems:"center",gap:3}}>Explore all<ArrowRight size={11}/></Link>
               </div>
-              <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(120px,1fr))",gap:8}}>
+              <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(130px,1fr))",gap:10}}>
                 {FACULTIES.map(f=>(
-                  <Link key={f.id} href={`/explore?faculty=${f.id}`} style={{textDecoration:"none"}}>
-                    <div className="card card-hover" style={{padding:"12px 10px",textAlign:"center"}}>
-                      <FacultyIcon name={f.icon} size={20} style={{color:f.color,marginBottom:6}}/>
-                      <div style={{fontFamily:"Outfit,sans-serif",fontSize:11,fontWeight:700,color:"var(--text)",lineHeight:1.3}}>{f.label}</div>
-                      <div style={{fontSize:9,color:"var(--text-4)",marginTop:2}}>{f.courses.length} courses</div>
+                  <Link key={f.id} href={`/explore?faculty=${f.id}`} style={{textDecoration:"none",display:"flex",height:"100%"}}>
+                    <div className="card card-hover" style={{padding:"16px 10px",textAlign:"center",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",width:"100%",minHeight:108,boxSizing:"border-box" as const}}>
+                      <div style={{width:42,height:42,borderRadius:12,background:`${f.color}18`,border:`1.5px solid ${f.color}28`,display:"flex",alignItems:"center",justifyContent:"center",marginBottom:8,flexShrink:0}}>
+                        <FacultyIcon name={f.icon} size={20} style={{color:f.color}}/>
+                      </div>
+                      <div style={{fontFamily:"Outfit,sans-serif",fontSize:11,fontWeight:700,color:"var(--text)",lineHeight:1.25,textAlign:"center"}}>{f.label}</div>
+                      <div style={{fontSize:9,color:"var(--text-4)",marginTop:4}}>{f.courses.length} courses</div>
                     </div>
                   </Link>
                 ))}
