@@ -12,7 +12,7 @@ import {
 import { saveSession, restoreSession, clearSession } from "./session";
 
 export const CONTRACT_ADDRESS = process.env.NEXT_PUBLIC_CONTRACT_ADDRESS || "";
-export const EXPLORER_URL     = "https://testnet.arcscan.app";
+export const EXPLORER_URL     = process.env.NEXT_PUBLIC_EXPLORER_URL || "https://explorer.arc.io";
 
 export const CONTRACT_ABI = [
   "function payToRead(uint256 articleId, address writer, uint256 price, address referrer) external",

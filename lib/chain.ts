@@ -3,8 +3,8 @@ import { ethers } from "ethers";
 // ─── Configuration ────────────────────────────────────────────────
 export const CONTRACT_ADDRESS = process.env.NEXT_PUBLIC_CONTRACT_ADDRESS || "";
 export const USDC_ADDRESS     = process.env.NEXT_PUBLIC_USDC_ADDRESS     || "";
-export const RPC_URL          = process.env.NEXT_PUBLIC_RPC_URL          || "https://rpc.arc.io/testnet";
-export const EXPLORER_URL     = process.env.NEXT_PUBLIC_EXPLORER_URL     || "https://explorer.arc.io/testnet";
+export const RPC_URL          = process.env.NEXT_PUBLIC_RPC_URL          || "https://rpc.mainnet.arc.io";
+export const EXPLORER_URL     = process.env.NEXT_PUBLIC_EXPLORER_URL     || "https://explorer.arc.io";
 export const IS_CONFIGURED    = !!(CONTRACT_ADDRESS && USDC_ADDRESS);
 
 // ─── ABIs ─────────────────────────────────────────────────────────

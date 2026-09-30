@@ -1,0 +1,51 @@
+{
+  "schema_version": "v1",
+  "name_for_human": "Readlearc",
+  "name_for_model": "readlearc",
+  "description_for_human": "Pay-per-read articles and pay-per-second video on Arc Mainnet. All payments in USDC.",
+  "description_for_model": "Access Readlearc content. Use GET /api/agent to discover the catalogue (articles and videos). Each call requires a USDC micropayment on Arc Mainnet (chain 5042). Articles are priced per-read; videos are priced per second via a payment channel. Send X-Payment-Response header with a valid on-chain transaction hash to receive content.",
+  "erc8004": {
+    "version": "1.0",
+    "chain_id": 5042,
+    "token": "0x3600000000000000000000000000000000000000",
+    "token_symbol": "USDC",
+    "payment_model": "x402"
+  },
+  "auth": {
+    "type": "x402",
+    "network": "arc-mainnet",
+    "chain_id": 5042,
+    "token": "0x3600000000000000000000000000000000000000"
+  },
+  "api": {
+    "type": "openapi",
+    "url": "/api/agent/openapi.json",
+    "is_user_authenticated": false
+  },
+  "endpoints": [
+    {
+      "path": "/api/agent",
+      "method": "GET",
+      "description": "Catalogue of articles and videos. Requires x402 USDC payment.",
+      "payment": {
+        "amount": "0.01",
+        "token": "0x3600000000000000000000000000000000000000",
+        "network": "arc-mainnet"
+      }
+    },
+    {
+      "path": "/api/agent",
+      "method": "GET",
+      "query_params": ["contentId", "type"],
+      "description": "Fetch a specific article (type=article) or video metadata (type=video) by contentId.",
+      "payment": {
+        "amount": "0.01",
+        "token": "0x3600000000000000000000000000000000000000",
+        "network": "arc-mainnet"
+      }
+    }
+  ],
+  "logo_url": "/logo.png",
+  "contact_email": "hello@readlearc.xyz",
+  "legal_info_url": "/terms"
+}

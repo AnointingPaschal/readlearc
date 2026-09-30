@@ -109,12 +109,13 @@ export default function CreatorPage() {
         <div style={{ display:"flex", alignItems:"flex-start", justifyContent:"space-between", marginBottom:22, flexWrap:"wrap", gap:12 }}>
           <div>
             <h1 style={{ fontFamily:"Outfit,sans-serif", fontSize:"clamp(20px,4vw,28px)", fontWeight:900, color:"var(--text)", letterSpacing:"-0.02em" }}>Creator Studio</h1>
-            <p style={{ color:"var(--text-4)", fontSize:12, marginTop:3 }}>{short} · Arc Testnet</p>
+            <p style={{ color:"var(--text-4)", fontSize:12, marginTop:3 }}>{short} · Arc Mainnet</p>
           </div>
           <div style={{ display:"flex", gap:8, flexWrap:"wrap" }}>
             <button onClick={load} disabled={refreshing} style={{ width:34,height:34,borderRadius:"50%",border:"1.5px solid var(--border)",background:"var(--bg-alt)",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",color:"var(--text-3)" }}>
               <RefreshCw size={14} className={refreshing?"spin":""}/>
             </button>
+            <Link href="/contribute/video" className="btn btn-ghost btn-sm" style={{ fontWeight:700 }}><PlusCircle size={13}/>Upload Video</Link>
             <Link href="/write" className="btn btn-primary btn-sm" style={{ fontWeight:700 }}><PlusCircle size={13}/>New Article</Link>
           </div>
         </div>

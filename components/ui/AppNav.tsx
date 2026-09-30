@@ -3,15 +3,15 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
   Home, Compass, PenLine, Users, User, Shield, Zap,
-  BookOpen, LayoutDashboard, Wallet,
+  BookOpen, LayoutDashboard, Wallet, Play,
 } from "lucide-react";
 import { useAuth } from "../../lib/auth";
 
 const NAV = [
   { href: "/",              icon: Home,       label: "Home"    },
-  { href: "/explore",       icon: Compass,    label: "Explore" },
+  { href: "/explore",       icon: Compass,    label: "Articles" },
+  { href: "/videos",        icon: Play,       label: "Videos"  },
   { href: "/write",         icon: PenLine,    label: "Write"   },
-  { href: "/contribute",    icon: Users,      label: "Contribute" },
   { href: "/profile",       icon: User,       label: "Profile" },
 ];
 

@@ -80,7 +80,13 @@ export default function FeesConfigPage() {
         ))}
 
         <div style={{ padding:"9px 12px",background:"var(--bg-alt)",border:"1px solid var(--border)",borderRadius:"var(--r)",display:"flex",gap:6,fontSize:11,color:"var(--text-4)" }}>
-          <Info size={11} style={{ flexShrink:0,marginTop:1 }}/>These settings apply to earnings tracking. Smart contract splits need redeployment.
+          <Info size={11} style={{ flexShrink:0,marginTop:1 }}/>
+          <span>
+            All fees can be set to <strong>0%</strong> (completely free for creators and viewers).
+            Platform fee controls are also available in StreamPay and CreatorTip contracts — set
+            <code style={{ fontSize:10, background:"rgba(0,0,0,.06)", padding:"0 3px", borderRadius:3 }}>platformFeeBps = 0</code> to waive all fees.
+            Smart contract splits require an owner transaction to take effect on-chain.
+          </span>
         </div>
       </div>
     </div>

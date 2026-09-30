@@ -5,8 +5,8 @@
  */
 import { ethers } from "ethers";
 
-export const ARC_RPC      = "https://rpc.testnet.arc.network";
-export const ARC_CHAIN_ID = 5042002;
+export const ARC_RPC      = process.env.NEXT_PUBLIC_RPC_URL || "https://rpc.mainnet.arc.io";
+export const ARC_CHAIN_ID = 5042; // Arc Mainnet
 export const USDC_ADDR    = process.env.NEXT_PUBLIC_USDC_ADDRESS || "0x3600000000000000000000000000000000000000";
 
 export const USDC_ABI = [
