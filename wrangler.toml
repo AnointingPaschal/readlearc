@@ -1,0 +1,18 @@
+name = "readlearc"
+compatibility_date = "2026-09-01"
+compatibility_flags = ["nodejs_compat"]
+pages_build_output_dir = "dist"
+
+# Workers KV — stores the admin-edited config (contract addresses, brand, settings, AI keys).
+# Bind it in the Cloudflare dashboard: Pages project → Settings → Functions → KV namespace bindings,
+# variable name  RL_KV  (create the namespace first: Workers & Pages → KV → Create).
+# (Local dev uses `wrangler pages dev --kv RL_KV`, see package.json "dev:cf".)
+#
+# To bind from this file instead, uncomment and fill in your namespace id:
+# [[kv_namespaces]]
+# binding = "RL_KV"
+# id = "<your-kv-namespace-id>"
+
+# Optional, set as secrets / dashboard variables instead of here:
+#   ADMIN_ADDRESSES         comma-separated wallets that may administer before on-chain roles exist
+#   CONTENT_MASTER_SECRET   secret for deriving content keys (else auto-generated in KV)

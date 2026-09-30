@@ -1,37 +1,44 @@
 {
   "name": "readlearc",
-  "version": "0.1.0",
+  "version": "2.0.0",
   "private": true,
+  "type": "module",
+  "description": "Readlearc — pay-per-read and pay-per-second publishing, fully on-chain. Vite + React SPA on Cloudflare Pages.",
   "scripts": {
-    "dev": "next dev",
-    "build": "next build",
-    "start": "next start",
-    "lint": "eslint"
+    "dev": "vite",
+    "dev:cf": "npm run build && wrangler pages dev dist --kv=RL_KV",
+    "build": "vite build",
+    "preview": "vite preview",
+    "typecheck": "tsc --noEmit -p tsconfig.json && tsc --noEmit -p functions/tsconfig.json",
+    "deploy": "npm run build && wrangler pages deploy dist --project-name=readlearc",
+    "contracts:test": "cd contracts && npm install && npm test",
+    "contracts:deploy": "cd contracts && npm install && npm run compile && npm run deploy"
   },
   "dependencies": {
-    "@supabase/supabase-js": "^2.108.2",
-    "@types/pg": "^8.20.0",
-    "@types/qrcode": "^1.5.6",
-    "@types/uuid": "^10.0.0",
-    "@vercel/kv": "^3.0.0",
+    "@ffmpeg/ffmpeg": "^0.12.15",
+    "@ffmpeg/util": "^0.12.2",
     "ethers": "^6.16.0",
     "framer-motion": "^12.40.0",
+    "hls.js": "^1.6.0",
     "lucide-react": "^1.20.0",
-    "next": "16.2.9",
-    "pg": "^8.22.0",
     "qrcode": "^1.5.4",
-    "react": "19.2.4",
-    "react-dom": "19.2.4",
-    "uuid": "^14.0.0"
+    "react": "^19.2.4",
+    "react-dom": "^19.2.4",
+    "react-router-dom": "^7.9.0"
   },
   "devDependencies": {
-    "@tailwindcss/postcss": "^4",
-    "@types/node": "^20",
+    "@cloudflare/workers-types": "^5.20260930.2",
+    "@tailwindcss/vite": "^4.1.0",
+    "@types/node": "^22",
+    "@types/qrcode": "^1.5.6",
     "@types/react": "^19",
     "@types/react-dom": "^19",
-    "eslint": "^9",
-    "eslint-config-next": "16.2.9",
-    "tailwindcss": "^4",
-    "typescript": "^5"
+    "@vitejs/plugin-react": "^5.0.0",
+    "typescript": "^5.9.0",
+    "vite": "^7.1.0",
+    "wrangler": "^4.40.0"
+  },
+  "engines": {
+    "node": ">=20.19"
   }
 }
