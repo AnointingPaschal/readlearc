@@ -25,7 +25,9 @@ Default revenue split 85 / 10 / 5 (writer / referrer / platform; no referrer →
 
 ## Deploy
 
-1. **Contracts** (once per chain)
+1. **Contracts** (once per chain) — easiest: sign in to the site with your wallet, open **Admin → Finance → Deploy Contracts** and press *Deploy everything*.
+   It compiles in your browser (solc 0.8.26, optimizer 200, viaIR, paris), deploys and wires all contracts with the site wallet and saves the addresses to KV.
+   The same page is a mini-Remix: edit/upload `.sol`, pick any solc version, optimizer + runs, viaIR, EVM version, deploy and call functions. Or from a terminal:
    ```bash
    cd contracts && npm i && npm run compile && npm test
    DEPLOYER_PRIVATE_KEY=0x… RPC_URL=https://rpc.mainnet.arc.io TREASURY_ADDRESS=0x… npm run deploy

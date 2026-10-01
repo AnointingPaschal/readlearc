@@ -1,5 +1,5 @@
 import { Link } from "@/lib/nav";
-import { ArrowUpRight, Percent, CreditCard, FileCode } from "lucide-react";
+import { ArrowUpRight, Percent, CreditCard, FileCode, Rocket } from "lucide-react";
 export default function FinancePage() {
   return (
     <div style={{ display:"flex", flexDirection:"column", gap:16 }}>
@@ -7,7 +7,8 @@ export default function FinancePage() {
       <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fill,minmax(200px,1fr))", gap:12 }}>
         {[{ href:"/admin/finance/fees",label:"Fee Splits",icon:Percent,desc:"Live on-chain fee config" },
           { href:"/admin/finance/payouts",label:"Payouts",icon:CreditCard,desc:"Treasury & USDC" },
-          { href:"/admin/finance/contracts",label:"Contracts",icon:FileCode,desc:"Deployed addresses" }].map(l => (
+          { href:"/admin/finance/contracts",label:"Contracts",icon:FileCode,desc:"Deployed addresses" },
+          { href:"/admin/finance/deploy",label:"Deploy Contracts",icon:Rocket,desc:"Compile & deploy in-browser" }].map(l => (
           <Link key={l.href} href={l.href} style={{ textDecoration:"none" }}>
             <div className="card card-hover" style={{ padding:"18px" }}>
               <div style={{ display:"flex", justifyContent:"space-between", marginBottom:10 }}><l.icon size={15} style={{ color:"var(--brand)" }}/><ArrowUpRight size={12} style={{ color:"var(--text-4)" }}/></div>
