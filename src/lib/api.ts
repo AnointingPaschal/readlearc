@@ -434,7 +434,7 @@ async function passthrough(path: string, method: string, body: string | undefine
 }
 
 // ── stale-while-revalidate for public read routes: instant on repeat views, refreshed behind the scenes ──
-const SWR = [/^\/api\/(?:articles|videos)$/, /^\/api\/articles\/\d+$/, /^\/api\/profiles\/0x[0-9a-fA-F]{40}$/, /^\/api\/social\/follow$/, /^\/api\/groups$/, /^\/api\/groups\/\d+$/, /^\/api\/groups\/\d+\/posts$/];
+const SWR = [/^\/api\/(?:admin\/)?(?:articles|videos)$/, /^\/api\/admin\/(?:earnings|readers)$/, /^\/api\/articles\/\d+$/, /^\/api\/profiles\/0x[0-9a-fA-F]{40}$/, /^\/api\/social\/follow$/, /^\/api\/groups$/, /^\/api\/groups\/\d+$/, /^\/api\/groups\/\d+\/posts$/];
 const API_PFX = "rl-api:";
 const API_FRESH = 10_000, API_STALE = 10 * 60_000;
 const apiMem = new Map<string, { at: number; data: unknown }>();

@@ -9,13 +9,7 @@ export default function WritersPage() {
   const [loading, setLoading] = useState(true);
   const [search,  setSearch]  = useState("");
 
-  async function load() {
-    setLoading(true);
-    const [artRes, earnRes] = await Promise.all([
-      apiFetch("/api/admin/articles?limit=200").then(r=>r.json()).catch(()=>[]),
-      apiFetch("/api/admin/earnings").then(r=>r.json()).catch(()=>({})),
-    ]);
-    const arts = Array.isArray(artRes) ? artRes : [];
+  const build = (arts: any[], earn: any[]) => {
     const byWriter: Record<string,any> = {};
     for (const a of arts) {
       const addr = a.authorAddress;
@@ -23,12 +17,21 @@ export default function WritersPage() {
       byWriter[addr].articles++;
       byWriter[addr].reads += a.reads||0;
     }
-    for (const e of (earnRes.byWriter||[])) {
+    for (const e of earn) {
       if (byWriter[e.address]) byWriter[e.address].pending = e.pending||0;
       else byWriter[e.address] = { address:e.address, short:e.address.slice(0,6)+"…"+e.address.slice(-4), articles:0, reads:0, pending:e.pending||0 };
     }
-    setWriters(Object.values(byWriter).sort((a:any,b:any)=>b.articles-a.articles));
+    return Object.values(byWriter).sort((a:any,b:any)=>b.articles-a.articles);
+  };
+
+  async function load() {
+    setLoading(true);
+    // Show writers as soon as the article list is in; earnings (a slower chain scan) fill in afterwards.
+    const artRes = await apiFetch("/api/admin/articles?limit=200").then(r=>r.json()).catch(()=>[]);
+    const arts = Array.isArray(artRes) ? artRes : [];
+    setWriters(build(arts, []));
     setLoading(false);
+    apiFetch("/api/admin/earnings").then(r=>r.json()).then(e=>setWriters(build(arts, e.writers || e.byWriter || []))).catch(()=>{});
   }
 
   useEffect(()=>{ load(); },[]);
