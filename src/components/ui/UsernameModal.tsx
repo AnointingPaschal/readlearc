@@ -27,13 +27,17 @@ export default function UsernameModal({ onComplete }: Props) {
 
   // Check username availability
   useEffect(() => {
-    if (!username || username.length < 3) { setAvailable(null); return; }
+    setAvailable(null);
+    if (!username || username.length < 3) return;
     const t = setTimeout(async () => {
-      setChecking(true);
-      const r = await apiFetch(`/api/profiles/check-username?username=${username}`);
-      const d = await r.json();
-      setAvailable(d.available);
-      setChecking(false);
+      setChecking(true); setError("");
+      try {
+        const r = await apiFetch(`/api/profiles/check-username?username=${username}`);
+        const d = await r.json().catch(() => ({}));
+        if (!r.ok || typeof d.available !== "boolean") throw new Error(d.error || "Couldn't check the username. Please try again.");
+        setAvailable(d.available);
+      } catch (e: any) { setAvailable(null); setError(e.message || "Couldn't check the username."); }
+      finally { setChecking(false); }
     }, 500);
     return () => clearTimeout(t);
   }, [username]);
@@ -47,8 +51,8 @@ export default function UsernameModal({ onComplete }: Props) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ walletAddress: address, username, displayName, bio }),
       });
-      const d = await r.json();
-      if (!r.ok) throw new Error(d.error);
+      const d = await r.json().catch(() => ({}));
+      if (!r.ok) throw new Error(d.error || "Couldn't save the profile.");
       setShow(false);
       onComplete?.();
     } catch (e: any) { setError(e.message); }
