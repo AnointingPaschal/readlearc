@@ -61,7 +61,7 @@ export default function AdminLayout() {
   const [open, setOpen] = useState(false);
   const sidebarRef = useRef<HTMLDivElement>(null);
   const crumbs = pathname.split("/").filter(Boolean);
-  const { isAuth, isAdmin } = useAuth();
+  const { isAuth, isAdmin, address } = useAuth();
 
   useEffect(() => {
     function onClickOutside(e: MouseEvent) {
@@ -87,6 +87,12 @@ export default function AdminLayout() {
             <p style={{ fontSize:13, color:"var(--text-3)", lineHeight:1.6 }}>
               This wallet has no admin role on the Roles contract. The first admin is the wallet that deployed the contracts
               (or a wallet listed in the <code>ADMIN_ADDRESSES</code> variable in Cloudflare Pages).
+            </p>
+            <p style={{ fontSize:12, color:"var(--text-4)", marginTop:14 }}>You are signed in as</p>
+            <code style={{ display:"block", wordBreak:"break-all", fontSize:12, padding:"8px 10px", marginTop:4, background:"var(--bg-alt)", border:"1px solid var(--border)", borderRadius:"var(--r)", color:"var(--text)" }}>{address}</code>
+            <button className="btn btn-ghost btn-sm" style={{ marginTop:8 }} onClick={() => navigator.clipboard?.writeText(address)}>Copy address</button>
+            <p style={{ fontSize:11, color:"var(--text-4)", marginTop:14, lineHeight:1.6 }}>
+              To get in, put exactly this address in <code>ADMIN_ADDRESSES</code>, then <b>redeploy</b> (Cloudflare only applies variable changes to new deployments) and reload this page.
             </p>
           </div>
         )}
