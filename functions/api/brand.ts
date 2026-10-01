@@ -24,6 +24,6 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
   const data = JSON.parse(body || "{}") as Record<string, unknown>;
   const patch = Object.fromEntries(Object.entries(data).filter(([k]) => BRAND_KEYS.includes(k)));
   if (!Object.keys(patch).length) return err("No valid keys");
-  await saveSettings(env, patch);
+  try { await saveSettings(env, patch); } catch (e) { return err((e as Error).message, 500); }
   return json({ ok: true });
 };

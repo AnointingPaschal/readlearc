@@ -16,7 +16,7 @@ export const onRequestPut: PagesFunction<Env> = async ({ request, env }) => {
   if (!who?.admin) return err("Admin wallet signature required. (First time? set the ADMIN_ADDRESSES env var in Cloudflare Pages.)", 401);
   let patch: Record<string, unknown>;
   try { patch = JSON.parse(body); } catch { return err("Invalid JSON"); }
-  await saveConfig(env, patch);
+  try { await saveConfig(env, patch); } catch (e) { return err((e as Error).message, 500); }
   return json({ ok: true, config: await getConfig(env) });
 };
 export const onRequestPost = onRequestPut;

@@ -9,6 +9,11 @@ export interface RuntimeConfig {
 
 const CONFIG_KEYS = ["chainId", "chainName", "rpcUrl", "explorerUrl", "faucetUrl", "usdc", "roles", "contentStore", "social", "monetization", "payments", "streamPay", "treasury", "startBlock", "chunkBytes", "txBytes"] as const;
 
+/** Clear error instead of "Cannot read properties of undefined" when the KV binding is missing. */
+export function needKV(env: Env) {
+  if (!env.RL_KV) throw new Error("KV namespace not bound. In Cloudflare Pages → Settings → Bindings add a KV namespace with the variable name RL_KV, then redeploy.");
+}
+
 /** Env defaults < KV (admin-saved). Only keys that have a value are returned. */
 export async function getConfig(env: Env): Promise<Partial<RuntimeConfig>> {
   const fromEnv: Partial<RuntimeConfig> = {};
@@ -18,13 +23,14 @@ export async function getConfig(env: Env): Promise<Partial<RuntimeConfig>> {
   set("social", env.SOCIAL_ADDRESS); set("monetization", env.MONETIZATION_ADDRESS); set("payments", env.PAYMENTS_ADDRESS);
   set("streamPay", env.STREAM_PAY_ADDRESS); set("treasury", env.TREASURY_ADDRESS); set("startBlock", env.START_BLOCK, true);
   set("chunkBytes", env.CHUNK_BYTES, true); set("txBytes", env.TX_BYTES, true);
-  const kv = ((await env.RL_KV.get("config", "json")) as Partial<RuntimeConfig> | null) ?? {};
+  const kv = ((env.RL_KV ? await env.RL_KV.get("config", "json") : null) as Partial<RuntimeConfig> | null) ?? {};
   const out: Partial<RuntimeConfig> = { ...fromEnv };
   for (const [k, v] of Object.entries(kv)) if (v !== undefined && v !== null && v !== "") (out as Record<string, unknown>)[k] = v;
   return out;
 }
 
 export async function saveConfig(env: Env, patch: Record<string, unknown>) {
+  needKV(env);
   const cur = ((await env.RL_KV.get("config", "json")) as Record<string, unknown> | null) ?? {};
   for (const k of CONFIG_KEYS) if (k in patch) cur[k] = patch[k];
   await env.RL_KV.put("config", JSON.stringify(cur));
@@ -35,9 +41,10 @@ export type Settings = Record<string, string>;
 export const SECRET_KEY = /(api_key|secret|private|token|password)/i;
 
 export async function getSettings(env: Env): Promise<Settings> {
-  return ((await env.RL_KV.get("settings", "json")) as Settings | null) ?? {};
+  return ((env.RL_KV ? await env.RL_KV.get("settings", "json") : null) as Settings | null) ?? {};
 }
 export async function saveSettings(env: Env, patch: Record<string, unknown>) {
+  needKV(env);
   const cur = await getSettings(env);
   for (const [k, v] of Object.entries(patch)) cur[k] = String(v ?? "");
   await env.RL_KV.put("settings", JSON.stringify(cur));
@@ -49,6 +56,7 @@ let masterCache: string | null = null;
 export async function masterSecret(env: Env): Promise<string> {
   if (env.CONTENT_MASTER_SECRET) return env.CONTENT_MASTER_SECRET;
   if (masterCache) return masterCache;
+  needKV(env);
   let s = await env.RL_KV.get("master");
   if (!s) {
     s = Array.from(crypto.getRandomValues(new Uint8Array(32))).map((b) => b.toString(16).padStart(2, "0")).join("");

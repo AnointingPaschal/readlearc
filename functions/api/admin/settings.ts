@@ -15,7 +15,7 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
   const body = await request.text();
   const who = await authenticate(request, env, body);
   if (!who?.admin) return err("Admin only", 401);
-  await saveSettings(env, JSON.parse(body || "{}"));
+  try { await saveSettings(env, JSON.parse(body || "{}")); } catch (e) { return err((e as Error).message, 500); }
   return json({ ok: true });
 };
 export const onRequestPut = onRequestPost;

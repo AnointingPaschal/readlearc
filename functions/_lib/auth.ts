@@ -24,7 +24,12 @@ export async function authenticate(request: Request, env: Env, bodyText: string,
     const path = new URL(request.url).pathname;
     const recovered = ethers.verifyMessage(authMessage(request.method, path, ts, await sha256Hex(bodyText)), sig);
     if (recovered.toLowerCase() !== addr.toLowerCase()) return null;
-    const c = chain ?? (await chainFor(env));
-    return { address: ethers.getAddress(addr), admin: await isAdmin(env, c, addr) };
+    const address = ethers.getAddress(addr);
+    // Bootstrap admins (ADMIN_ADDRESSES) must work even if KV / RPC / contracts aren't set up yet.
+    const boot = (env.ADMIN_ADDRESSES || "").split(",").map((x) => x.trim().toLowerCase()).filter(Boolean);
+    if (boot.includes(address.toLowerCase())) return { address, admin: true };
+    let admin = false;
+    try { admin = await isAdmin(env, chain ?? (await chainFor(env)), addr); } catch { /* not configured yet → not an admin */ }
+    return { address, admin };
   } catch { return null; }
 }
