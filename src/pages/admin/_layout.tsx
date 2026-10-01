@@ -7,7 +7,7 @@ import ConnectGate from "@/components/ui/ConnectGate";
 import Navbar from "@/components/ui/Navbar";
 import {
   Zap, LayoutDashboard, Settings, Palette, BookOpen, Flag, Bell,
-  Users, PenTool, UserCheck, Percent, CreditCard, FileCode, Rocket, Sparkles,
+  Users, PenTool, UserCheck, Percent, Landmark, CreditCard, FileCode, Rocket, Sparkles,
   Lock, Bot, Cpu, FileText, Globe, Search as SearchIcon,
   DollarSign, Shield, BadgeDollarSign, Menu, X, Sun, Moon, ChevronRight, LogOut, MessageSquare,
 } from "lucide-react";
@@ -37,6 +37,7 @@ const NAV = [
   { label:"Finance",  items:[
     { href:"/admin/monetization",       icon:BadgeDollarSign, label:"Monetization"     },
     { href:"/admin/finance/fees",       icon:Percent,         label:"Fee Splits"       },
+    { href:"/admin/finance/banking",    icon:Landmark,        label:"Banking"          },
     { href:"/admin/finance/payouts",    icon:CreditCard,      label:"Payouts"          },
     { href:"/admin/finance/contracts",  icon:FileCode,        label:"Contracts"        },
     { href:"/admin/finance/deploy",     icon:Rocket, Sparkles,          label:"Deploy Contracts" },
