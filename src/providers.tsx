@@ -5,6 +5,7 @@ import { BrandProvider } from "@/lib/brand";
 import AuthModal from "@/components/ui/AuthModal";
 import TxApproval from "@/components/ui/TxApproval";
 import ChainActivity from "@/components/ui/ChainActivity";
+import ErrorBoundary from "@/components/ErrorBoundary";
 import UsernameModal from "@/components/ui/UsernameModal";
 
 export default function Providers({ children }: { children: ReactNode }) {
@@ -16,7 +17,7 @@ export default function Providers({ children }: { children: ReactNode }) {
           <TxApproval />
           <UsernameModal />
           <ChainActivity />
-          {children}
+          <ErrorBoundary>{children}</ErrorBoundary>
         </AuthProvider>
       </ThemeProvider>
     </BrandProvider>

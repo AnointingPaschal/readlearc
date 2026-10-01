@@ -30,6 +30,7 @@ const KINDS: { id: Kind; label: string; hint: string }[] = [
   { id: "research", label: "Research works", hint: "Structured research articles (abstract → references)" },
   { id: "post", label: "Community posts", hint: "Short posts for a space" },
 ];
+interface MiniModel { id: string; name: string; free: boolean }
 let k = 0;
 
 export default function AIWriter() {
@@ -44,7 +45,11 @@ export default function AIWriter() {
   const [category, setCategory] = useState("");
   const [price, setPrice] = useState("0");
   const [extra, setExtra] = useState("");
+  const [withImages, setWithImages] = useState(true);
   const [imgCount, setImgCount] = useState("2");
+  const [freeText, setFreeText] = useState<MiniModel[]>([]);
+  const [imgModels, setImgModels] = useState<MiniModel[]>([]);
+  const [loadingModels, setLoadingModels] = useState(false);
   const [imgModel, setImgModel] = useState(() => { try { return localStorage.getItem("rl-img-model") || "google/gemini-2.5-flash-image"; } catch { return "google/gemini-2.5-flash-image"; } });
   const [models, setModels] = useState<{ id: string; name: string }[]>([]);
   const [model, setModel] = useState("");
@@ -59,6 +64,21 @@ export default function AIWriter() {
   useEffect(() => {
     apiFetch("/api/openrouter/models").then((r) => r.json()).then((d) => { setModels(d.models || []); setModel(d.activeModel || d.models?.[0]?.id || ""); setKeySet(!!d.keySet); }).catch(() => {});
   }, []);
+  async function loadModels() {
+    setLoadingModels(true);
+    try {
+      const r = await fetch("https://openrouter.ai/api/v1/models");
+      if (!r.ok) throw new Error(`OpenRouter returned ${r.status}`);
+      const d = await r.json();
+      const rows = (d.data || []) as any[];
+      const isFree = (m: any) => String(m.id).endsWith(":free") || (Number(m.pricing?.prompt) === 0 && Number(m.pricing?.completion) === 0);
+      const mini = (m: any): MiniModel => ({ id: m.id, name: String(m.name || m.id).replace(/\s*\(free\)\s*$/i, ""), free: isFree(m) });
+      setFreeText(rows.filter((m) => isFree(m) && (m.architecture?.output_modalities || ["text"]).includes("text")).sort((a, b) => (b.context_length || 0) - (a.context_length || 0)).map(mini));
+      setImgModels(rows.filter((m) => (m.architecture?.output_modalities || []).includes("image")).sort((a, b) => Number(isFree(b)) - Number(isFree(a))).map(mini));
+    } catch (e) { setNote(`Couldn't load the OpenRouter model list: ${(e as Error).message}`); }
+    setLoadingModels(false);
+  }
+  useEffect(() => { loadModels(); }, []);
   useEffect(() => {
     if (!address) return;
     apiFetch(`/api/groups?member=${address.toLowerCase()}&limit=100`).then((r) => r.json()).then((l) => {
@@ -100,7 +120,7 @@ export default function AIWriter() {
   async function generateOne(r: Row) {
     patch(r.key, { state: "generating", err: undefined, open: false });
     try {
-      const n = kind === "post" ? 0 : Math.min(3, Number(imgCount) || 0);
+      const n = kind === "post" || !withImages ? 0 : Math.min(3, Number(imgCount) || 0);
       const d = await ai({ kind, topic: r.topic, words: Number(words) || 900, tone, audience, category: category || (kind === "research" ? "Research" : ""), instructions: extra, images: n });
       if (kind === "post") { patch(r.key, { state: "ready", body: plainPost(String(d.text)), title: r.topic }); return; }
       const it = parseBulk(String(d.text), r.topic)[0];
@@ -113,6 +133,14 @@ export default function AIWriter() {
       }
       patch(r.key, { state: "ready", err: undefined, title: it.title || r.topic, blurb: it.blurb, category: it.category || category || (kind === "research" ? "Research" : "General"), body: markdownToArticleHtml(it.body, imgs) });
     } catch (e) { patch(r.key, { state: "error", err: (e as Error).message }); }
+  }
+
+  async function continueFailed() {
+    const todo = rows.filter((r) => r.state === "error" || r.state === "queued");
+    if (!todo.length) return;
+    stop.current = false; setBusy(true); setNote("");
+    for (const r of todo) { if (stop.current) { patch(r.key, { state: "error", err: "Stopped" }); continue; } await generateOne(r); }
+    setBusy(false);
   }
 
   async function generateAll() {
@@ -208,13 +236,23 @@ export default function AIWriter() {
           {kind !== "post" && <div><label style={lab}>Audience</label><input style={inp} value={audience} onChange={(e) => setAudience(e.target.value)} /></div>}
           {kind !== "post" && <div><label style={lab}>Category</label><input list="ai-cats" style={inp} value={category} placeholder={kind === "research" ? "Research" : "AI picks"} onChange={(e) => setCategory(e.target.value)} /><datalist id="ai-cats">{CATS.map((c) => <option key={c} value={c} />)}</datalist></div>}
           {kind !== "post" && <div><label style={lab}>Price (USDC, 0 = free)</label><input style={inp} value={price} onChange={(e) => setPrice(e.target.value.replace(/[^0-9.]/g, ""))} /></div>}
-          {kind !== "post" && <div><label style={lab}>AI images per article</label>
+          {kind !== "post" && (
+            <div style={{ display: "flex", flexDirection: "column", justifyContent: "flex-end" }}>
+              <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13, fontWeight: 600, color: "var(--text)", cursor: "pointer", padding: "8px 0" }}>
+                <input type="checkbox" checked={withImages} onChange={(e) => setWithImages(e.target.checked)} style={{ width: 16, height: 16, accentColor: "var(--brand)" }} />Generate images
+              </label>
+            </div>
+          )}
+          {kind !== "post" && withImages && <div><label style={lab}>Images per article</label>
             <select style={inp} value={imgCount} onChange={(e) => setImgCount(e.target.value)}>
-              <option value="0">None</option><option value="1">1 (cover)</option><option value="2">2</option><option value="3">3</option>
+              <option value="1">1 (cover)</option><option value="2">2</option><option value="3">3</option>
             </select></div>}
-          {kind !== "post" && Number(imgCount) > 0 && <div><label style={lab}>Image model</label>
-            <input list="ai-img-models" style={inp} value={imgModel} onChange={(e) => { setImgModel(e.target.value); try { localStorage.setItem("rl-img-model", e.target.value); } catch { /* ignore */ } }} />
-            <datalist id="ai-img-models"><option value="google/gemini-2.5-flash-image" /><option value="google/gemini-3-pro-image-preview" /><option value="openai/gpt-5-image-mini" /></datalist></div>}
+          {kind !== "post" && withImages && <div><label style={lab}>Image model</label>
+            <select style={inp} value={imgModel} onChange={(e) => { setImgModel(e.target.value); try { localStorage.setItem("rl-img-model", e.target.value); } catch { /* ignore */ } }}>
+              {!imgModels.some((m) => m.id === imgModel) && <option value={imgModel}>{imgModel}</option>}
+              {imgModels.some((m) => m.free) && <optgroup label="Free image models">{imgModels.filter((m) => m.free).map((m) => <option key={m.id} value={m.id}>{m.name}</option>)}</optgroup>}
+              <optgroup label="Image models (paid)">{imgModels.filter((m) => !m.free).map((m) => <option key={m.id} value={m.id}>{m.name}</option>)}</optgroup>
+            </select></div>}
           {kind === "post" && (
             <div><label style={lab}>Post in space</label>
               <select style={inp} value={space} onChange={(e) => setSpace(e.target.value)}>
@@ -222,9 +260,11 @@ export default function AIWriter() {
                 {spaces.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
               </select></div>
           )}
-          <div><label style={lab}>AI model</label>
+          <div><label style={lab}>AI model <button type="button" onClick={loadModels} disabled={loadingModels} style={{ background: "none", border: "none", color: "var(--brand)", fontSize: 10, fontWeight: 700, cursor: "pointer", padding: 0, marginLeft: 6 }}>{loadingModels ? "loading…" : "refresh free models"}</button></label>
             <select style={inp} value={model} onChange={(e) => setModel(e.target.value)}>
-              {models.map((m) => <option key={m.id} value={m.id}>{m.name || m.id}</option>)}
+              {model && !models.some((m) => m.id === model) && !freeText.some((m) => m.id === model) && <option value={model}>{model}</option>}
+              {models.length > 0 && <optgroup label="Your selected models">{models.map((m) => <option key={m.id} value={m.id}>{m.name || m.id}</option>)}</optgroup>}
+              <optgroup label={`All free models on OpenRouter (${freeText.length})`}>{freeText.filter((m) => !models.some((x) => x.id === m.id)).map((m) => <option key={m.id} value={m.id}>{m.name}</option>)}</optgroup>
             </select></div>
         </div>
         <div><label style={lab}>Extra instructions (optional)</label><input style={inp} value={extra} onChange={(e) => setExtra(e.target.value)} placeholder="e.g. Use Nigerian examples. Include a short FAQ at the end." /></div>
@@ -234,6 +274,7 @@ export default function AIWriter() {
             {busy ? <Loader2 size={14} className="spin" /> : <Sparkles size={14} />}Generate {topicList().length || ""}
           </button>
           {busy && rows.some((r) => r.state === "queued" || r.state === "generating") && <button className="btn btn-ghost btn-sm" onClick={() => { stop.current = true; }}>Stop</button>}
+          {!busy && rows.some((r) => r.state === "error" || r.state === "queued") ? <button className="btn btn-secondary btn-sm" onClick={continueFailed} title="Pick another model above first if the last one failed">Continue with {(model.split("/").pop() || "model").replace(":free", "")}</button> : null}
           {note && <span style={{ fontSize: 12, color: "var(--text-3)" }}>{note}</span>}
         </div>
       </div>
@@ -271,7 +312,7 @@ export default function AIWriter() {
                     : null
                 )}
                 <div style={{ display: "flex", alignItems: "center", gap: 10, fontSize: 11, color: r.state === "error" ? "#dc2626" : "var(--text-4)" }}>
-                  <span>{r.state === "error" || r.state === "publishing" || r.state === "generating" ? (r.err || "Writing…") : r.state === "queued" ? "Queued" : `${wordCount(r.body).toLocaleString()} words`}</span>
+                  <span>{r.state === "error" || r.state === "publishing" || r.state === "generating" ? (r.state === "error" && kind !== "post" || r.state === "error" ? `${r.err || "Failed"} — switch the AI model above and press Continue.` : r.err || "Writing…") : r.state === "queued" ? "Queued" : `${wordCount(r.body).toLocaleString()} words`}</span>
                   {kind !== "post" && (r.state === "ready" || r.state === "done") && (
                     <button onClick={() => patch(r.key, { open: !r.open })} style={{ background: "none", border: "none", cursor: "pointer", color: "var(--brand)", fontSize: 11, fontWeight: 700, display: "flex", alignItems: "center", gap: 3 }}>
                       {r.open ? <>Hide <ChevronUp size={12} /></> : <>Read / edit <ChevronDown size={12} /></>}
