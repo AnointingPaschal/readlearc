@@ -48,11 +48,12 @@ export async function getLogsAuto(filter: { address: string; topics: (string | s
 }
 
 /** Edge-cached log reader (/api/logs): one fast request instead of walking the RPC from the browser. */
-async function scanViaEdge(address: string, topics: (string | string[] | null)[], from: number): Promise<ethers.Log[] | null> {
+async function edgeLogs(address: string, topics: (string | string[] | null)[], from: number, to?: number): Promise<ethers.Log[] | null> {
   try {
-    const q = new URLSearchParams({ a: address, t: JSON.stringify(topics), f: String(from), v: String(writeStamp()) });
+    const q = new URLSearchParams({ a: address, t: JSON.stringify(topics), f: String(from) });
+    if (to !== undefined) q.set("to", String(to)); else q.set("v", String(writeStamp()));
     const ctl = new AbortController();
-    const timer = setTimeout(() => ctl.abort(), 15000);
+    const timer = setTimeout(() => ctl.abort(), 20000);
     const r = await fetch(`/api/logs?${q}`, { signal: ctl.signal });
     clearTimeout(timer);
     if (!r.ok) return null;
@@ -63,6 +64,7 @@ async function scanViaEdge(address: string, topics: (string | string[] | null)[]
     return d.logs as ethers.Log[];
   } catch { return null; }
 }
+const scanViaEdge = (address: string, topics: (string | string[] | null)[], from: number) => edgeLogs(address, topics, from);
 
 export async function scan(address: string, topics: (string | string[] | null)[], from = cfg.startBlock): Promise<ethers.Log[]> {
   let logs = await scanViaEdge(address, topics, from);
@@ -102,7 +104,7 @@ export async function fetchChunks(
   const out = new Map<number, Uint8Array>();
   const topics: (string | string[] | null)[] = [CHUNK_TOPIC, pad(id), pad(version)];
   if (indices) topics.push(indices.map((i) => pad(i)));
-  const logs = await getLogsAuto({ address: cfg.contentStore, topics }, firstBlock, lastBlock);
+  const logs = (await edgeLogs(cfg.contentStore, topics, firstBlock, lastBlock)) ?? (await getLogsAuto({ address: cfg.contentStore, topics }, firstBlock, lastBlock));
   for (const l of logs) {
     const p = IFACES.store.parseLog(l)!;
     out.set(Number(p.args.index), ethers.getBytes(p.args.data));
@@ -126,7 +128,8 @@ export function orderedConcat(map: Map<number, Uint8Array>, count: number): Uint
 }
 
 export async function fetchThumb(id: number | bigint, block: number): Promise<Uint8Array | null> {
-  const logs = await getLogsAuto({ address: cfg.contentStore, topics: [topic(IFACES.store, "Thumb"), pad(id)] }, block, block);
+  const tt = [topic(IFACES.store, "Thumb"), pad(id)];
+  const logs = (await edgeLogs(cfg.contentStore, tt, block, block)) ?? (await getLogsAuto({ address: cfg.contentStore, topics: tt }, block, block));
   if (!logs.length) return null;
   return ethers.getBytes(IFACES.store.parseLog(logs[logs.length - 1])!.args.data);
 }

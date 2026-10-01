@@ -7,6 +7,7 @@ import { chainFor } from "../_lib/chain";
  * for the site's own contracts, plus the block timestamps involved. Replaces many slow browser→RPC round trips.
  */
 const TTL = 15;
+const TTL_RANGE = 3600; // explicit [from,to] ranges (content bodies, thumbnails) never change
 const hex = (n: number) => "0x" + n.toString(16);
 
 async function rpc(url: string, calls: { method: string; params: unknown[] }[]) {
@@ -42,7 +43,9 @@ export const onRequestGet: PagesFunction<Env> = async ({ request, env, waitUntil
         return x.concat(y);
       }
     };
-    const raw = await getLogs(Math.min(Math.max(from, startBlock), latest), latest);
+    const toQ = url.searchParams.get("to");
+    const to = toQ ? Math.min(Number(toQ), latest) : latest;
+    const raw = await getLogs(Math.min(Math.max(from, startBlock), to), to);
     const logs = raw.map((l) => ({ address: l.address, blockNumber: Number(l.blockNumber), index: Number(l.logIndex), transactionHash: l.transactionHash, topics: l.topics, data: l.data }));
 
     const times: Record<number, number> = {};
@@ -56,7 +59,7 @@ export const onRequestGet: PagesFunction<Env> = async ({ request, env, waitUntil
         }
       } catch { /* the browser fetches missing timestamps itself */ }
     }
-    const res = new Response(JSON.stringify({ latest, logs, times }), { headers: { "Content-Type": "application/json", "Cache-Control": `public, max-age=${TTL}` } });
+    const res = new Response(JSON.stringify({ latest, logs, times }), { headers: { "Content-Type": "application/json", "Cache-Control": `public, max-age=${url.searchParams.has("to") ? TTL_RANGE : TTL}` } });
     if (cache) waitUntil(cache.put(key, res.clone()));
     return res;
   } catch (e) { return err((e as Error).message, 502); }

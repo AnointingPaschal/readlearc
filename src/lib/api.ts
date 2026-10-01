@@ -48,10 +48,14 @@ async function articleDetail(id: number, reader: string | null, admin: boolean) 
   const signer = getActiveSigner();
   const readerAddr = reader || signer?.address || "";
   const free = c.price === 0n;
-  const access = free || (await content.hasAccess(id, readerAddr)) || (admin && !!signer);
+  // access check, monetization flag and (for free content) the body are independent — fetch them together
+  const monP = C.mon().isMonetized(c.author).catch(() => false);
+  const accessP = free ? Promise.resolve(true) : content.hasAccess(id, readerAddr).catch(() => false);
+  const bodyP = c.finalized && free ? content.readArticleBody(c, signer).catch((e) => { if (!admin) console.warn("body:", (e as Error).message); return null; }) : null;
+  const access = (await accessP) || (admin && !!signer);
   let body: string | null = null;
   if (c.finalized && access) {
-    try { body = await content.readArticleBody(c, signer); } catch (e) { if (!admin) console.warn("body:", (e as Error).message); }
+    body = bodyP ? await bodyP : await content.readArticleBody(c, signer).catch((e) => { if (!admin) console.warn("body:", (e as Error).message); return null; });
   }
   const base = content.articleJson(c);
   const split = body ? Math.floor(body.length * 0.55) : 0;
@@ -61,7 +65,7 @@ async function articleDetail(id: number, reader: string | null, admin: boolean) 
     contentPreview: body ? content.makePreview(body) : c.preview,
     contentBlur: body ? body.slice(split, split + 1400) : FILLER,
     hasPaid: access && body !== null,
-    authorMonetized: await C.mon().isMonetized(c.author).catch(() => false),
+    authorMonetized: await monP,
   });
 }
 
@@ -430,7 +434,7 @@ async function passthrough(path: string, method: string, body: string | undefine
 }
 
 // ── stale-while-revalidate for public read routes: instant on repeat views, refreshed behind the scenes ──
-const SWR = [/^\/api\/(?:articles|videos)$/, /^\/api\/profiles\/0x[0-9a-fA-F]{40}$/, /^\/api\/social\/follow$/, /^\/api\/groups$/, /^\/api\/groups\/\d+$/, /^\/api\/groups\/\d+\/posts$/];
+const SWR = [/^\/api\/(?:articles|videos)$/, /^\/api\/articles\/\d+$/, /^\/api\/profiles\/0x[0-9a-fA-F]{40}$/, /^\/api\/social\/follow$/, /^\/api\/groups$/, /^\/api\/groups\/\d+$/, /^\/api\/groups\/\d+\/posts$/];
 const API_PFX = "rl-api:";
 const API_FRESH = 10_000, API_STALE = 10 * 60_000;
 const apiMem = new Map<string, { at: number; data: unknown }>();

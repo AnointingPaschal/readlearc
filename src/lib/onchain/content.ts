@@ -204,8 +204,8 @@ export async function listCards(o: ListOpts = {}): Promise<Card[]> {
 
 export async function getContent(id: number): Promise<Content | null> {
   try {
-    const r = await C.store().get(id);
-    const reads = Number(await C.pay().reads(id));
+    const [r, readsRaw] = await Promise.all([C.store().get(id), C.pay().reads(id).catch(() => 0n)]);
+    const reads = Number(readsRaw);
     return {
       ...toCard(id, r, reads),
       preview: r.preview,
