@@ -9,9 +9,9 @@ pages_build_output_dir = "dist"
 # (Local dev uses `wrangler pages dev --kv RL_KV`, see package.json "dev:cf".)
 #
 # To bind from this file instead, uncomment and fill in your namespace id:
-# [[kv_namespaces]]
-# binding = "RL_KV"
-# id = "<your-kv-namespace-id>"
+[[kv_namespaces]]
+binding = "RL_KV"
+id = "a85a0d39982a4dec87dc3e6aa3ab71c2"
 
 # Optional, set as secrets / dashboard variables instead of here:
 #   ADMIN_ADDRESSES         comma-separated wallets that may administer before on-chain roles exist
