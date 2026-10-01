@@ -8,6 +8,7 @@ import { chainFor } from "../_lib/chain";
  */
 const TTL = 15;
 const TTL_RANGE = 3600; // explicit [from,to] ranges (content bodies, thumbnails) never change
+const RANGE_ERR = /range|limit|exceed|too (many|large|big)|more than|10000|query returned|response size|max/i;
 const hex = (n: number) => "0x" + n.toString(16);
 
 async function rpc(url: string, calls: { method: string; params: unknown[] }[]) {
@@ -37,7 +38,7 @@ export const onRequestGet: PagesFunction<Env> = async ({ request, env, waitUntil
     const getLogs = async (a: number, b: number, depth = 0): Promise<any[]> => {
       try { return await ch.provider.send("eth_getLogs", [{ address, topics, fromBlock: hex(a), toBlock: hex(b) }]); }
       catch (e) {
-        if (a >= b || depth > 6) throw e;
+        if (a >= b || depth > 6 || !RANGE_ERR.test(String((e as Error).message))) throw e;
         const mid = Math.floor((a + b) / 2);
         const [x, y] = await Promise.all([getLogs(a, mid, depth + 1), getLogs(mid + 1, b, depth + 1)]);
         return x.concat(y);

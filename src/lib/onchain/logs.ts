@@ -33,17 +33,25 @@ export async function latestBlock(): Promise<number> {
  * eth_getLogs over [from,to]. RPC providers cap the block range and/or result size; on any error we
  * split the range in half and retry, so this adapts to whatever limit the endpoint enforces.
  */
-export async function getLogsAuto(filter: { address: string; topics: (string | string[] | null)[] }, from: number, to: number, depth = 0): Promise<ethers.Log[]> {
+const RANGE_ERR = /range|limit|exceed|too (many|large|big)|more than|10000|query returned|response size|max/i;
+const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+
+export async function getLogsAuto(filter: { address: string; topics: (string | string[] | null)[] }, from: number, to: number, depth = 0, attempt = 0): Promise<ethers.Log[]> {
   try {
     return await readProvider().getLogs({ ...filter, fromBlock: from, toBlock: to });
   } catch (e) {
-    if (from >= to || depth > 24) throw e;
-    const mid = Math.floor((from + to) / 2);
-    const [a, b] = await Promise.all([
-      getLogsAuto(filter, from, mid, depth + 1),
-      getLogsAuto(filter, mid + 1, to, depth + 1),
-    ]);
-    return a.concat(b);
+    const msg = String((e as Error).message || e);
+    if (RANGE_ERR.test(msg) && from < to && depth <= 24) {
+      const mid = Math.floor((from + to) / 2);
+      const [a, b] = await Promise.all([
+        getLogsAuto(filter, from, mid, depth + 1),
+        getLogsAuto(filter, mid + 1, to, depth + 1),
+      ]);
+      return a.concat(b);
+    }
+    // rate limit / network blip: back off and retry instead of splitting the range into hundreds of requests
+    if (attempt < 2) { await sleep(500 * (attempt + 1) ** 2); return getLogsAuto(filter, from, to, depth, attempt + 1); }
+    throw e;
   }
 }
 

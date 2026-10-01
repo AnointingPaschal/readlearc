@@ -2,11 +2,13 @@ import type { Env } from "../_lib/env";
 import { err, json } from "../_lib/env";
 import { getConfig, saveConfig } from "../_lib/store";
 import { authenticate } from "../_lib/auth";
+import { ensureStartBlock } from "../_lib/chain";
 
 /** GET  → public runtime config (chain + contract addresses) read by the SPA at boot.
  *  PUT  → admin only: save edited config to KV (Admin → Finance → Contracts). */
 export const onRequestGet: PagesFunction<Env> = async ({ env }) => {
   const cfg = await getConfig(env);
+  if (cfg.contentStore && !cfg.startBlock) { const sb = await ensureStartBlock(env, cfg); if (sb) cfg.startBlock = sb; }
   return json(cfg, 200, { "Cache-Control": "public, max-age=15" });
 };
 
