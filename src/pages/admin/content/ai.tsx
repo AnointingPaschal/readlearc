@@ -11,7 +11,9 @@ import { apiFetch } from "@/lib/api";
 import { explainError } from "@/lib/chain";
 import { publishArticle } from "@/lib/onchain/content";
 import { runBatch } from "@/lib/tx-approval";
-import { parseBulk, bodyToHtml, wordCount } from "@/lib/bulk-articles";
+import { parseBulk, wordCount } from "@/lib/bulk-articles";
+import { imageMarkers, markdownToArticleHtml, plainPost, shrinkImage } from "@/lib/ai-content";
+import RichEditor from "@/components/ui/RichEditor";
 import { encodePost } from "@/lib/post";
 import { ensureDefaultSpace } from "@/lib/space";
 import { FACULTIES } from "@/lib/categories";
@@ -42,6 +44,8 @@ export default function AIWriter() {
   const [category, setCategory] = useState("");
   const [price, setPrice] = useState("0");
   const [extra, setExtra] = useState("");
+  const [imgCount, setImgCount] = useState("2");
+  const [imgModel, setImgModel] = useState(() => { try { return localStorage.getItem("rl-img-model") || "google/gemini-2.5-flash-image"; } catch { return "google/gemini-2.5-flash-image"; } });
   const [models, setModels] = useState<{ id: string; name: string }[]>([]);
   const [model, setModel] = useState("");
   const [keySet, setKeySet] = useState(true);
@@ -84,14 +88,30 @@ export default function AIWriter() {
     setBusy(false);
   }
 
-  async function generateOne(r: Row) {
-    patch(r.key, { state: "generating", err: undefined });
+  async function makeImage(prompt: string): Promise<string | null> {
     try {
-      const d = await ai({ kind, topic: r.topic, words: Number(words) || 900, tone, audience, category: category || (kind === "research" ? "Research" : ""), instructions: extra });
-      if (kind === "post") { patch(r.key, { state: "ready", body: String(d.text).trim(), title: r.topic }); return; }
+      const r = await apiFetch("/api/admin/ai-image", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ prompt, model: imgModel }) });
+      const d = await r.json().catch(() => ({}));
+      if (!r.ok || !d.image) throw new Error(d.error || "no image");
+      return await shrinkImage(d.image);
+    } catch (e) { setNote(`Image skipped: ${(e as Error).message}`); return null; }
+  }
+
+  async function generateOne(r: Row) {
+    patch(r.key, { state: "generating", err: undefined, open: false });
+    try {
+      const n = kind === "post" ? 0 : Math.min(3, Number(imgCount) || 0);
+      const d = await ai({ kind, topic: r.topic, words: Number(words) || 900, tone, audience, category: category || (kind === "research" ? "Research" : ""), instructions: extra, images: n });
+      if (kind === "post") { patch(r.key, { state: "ready", body: plainPost(String(d.text)), title: r.topic }); return; }
       const it = parseBulk(String(d.text), r.topic)[0];
       if (!it) throw new Error("The AI reply wasn't in the expected format. Try Regenerate.");
-      patch(r.key, { state: "ready", title: it.title || r.topic, blurb: it.blurb, category: it.category || category || (kind === "research" ? "Research" : "General"), body: it.body });
+      const prompts = imageMarkers(it.body).slice(0, n);
+      const imgs: (string | null)[] = [];
+      for (let i = 0; i < prompts.length; i++) {
+        patch(r.key, { err: `Drawing image ${i + 1} of ${prompts.length}…` });
+        imgs.push(await makeImage(prompts[i]));
+      }
+      patch(r.key, { state: "ready", err: undefined, title: it.title || r.topic, blurb: it.blurb, category: it.category || category || (kind === "research" ? "Research" : "General"), body: markdownToArticleHtml(it.body, imgs) });
     } catch (e) { patch(r.key, { state: "error", err: (e as Error).message }); }
   }
 
@@ -127,7 +147,7 @@ export default function AIWriter() {
               if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error || "Couldn't post");
               patch(r.key, { state: "done", err: undefined });
             } else {
-              const out = await publishArticle(signer, { title: r.title, blurb: r.blurb, category: r.category || "General", price: r.price || "0", content: bodyToHtml(r.body) }, (d) => patch(r.key, { err: d }));
+              const out = await publishArticle(signer, { title: r.title, blurb: r.blurb, category: r.category || "General", price: r.price || "0", content: r.body }, (d) => patch(r.key, { err: d }));
               patch(r.key, { state: "done", id: out.id, err: undefined });
             }
           } catch (e) { patch(r.key, { state: "error", err: explainError(e, "Failed") }); }
@@ -188,6 +208,13 @@ export default function AIWriter() {
           {kind !== "post" && <div><label style={lab}>Audience</label><input style={inp} value={audience} onChange={(e) => setAudience(e.target.value)} /></div>}
           {kind !== "post" && <div><label style={lab}>Category</label><input list="ai-cats" style={inp} value={category} placeholder={kind === "research" ? "Research" : "AI picks"} onChange={(e) => setCategory(e.target.value)} /><datalist id="ai-cats">{CATS.map((c) => <option key={c} value={c} />)}</datalist></div>}
           {kind !== "post" && <div><label style={lab}>Price (USDC, 0 = free)</label><input style={inp} value={price} onChange={(e) => setPrice(e.target.value.replace(/[^0-9.]/g, ""))} /></div>}
+          {kind !== "post" && <div><label style={lab}>AI images per article</label>
+            <select style={inp} value={imgCount} onChange={(e) => setImgCount(e.target.value)}>
+              <option value="0">None</option><option value="1">1 (cover)</option><option value="2">2</option><option value="3">3</option>
+            </select></div>}
+          {kind !== "post" && Number(imgCount) > 0 && <div><label style={lab}>Image model</label>
+            <input list="ai-img-models" style={inp} value={imgModel} onChange={(e) => { setImgModel(e.target.value); try { localStorage.setItem("rl-img-model", e.target.value); } catch { /* ignore */ } }} />
+            <datalist id="ai-img-models"><option value="google/gemini-2.5-flash-image" /><option value="google/gemini-3-pro-image-preview" /><option value="openai/gpt-5-image-mini" /></datalist></div>}
           {kind === "post" && (
             <div><label style={lab}>Post in space</label>
               <select style={inp} value={space} onChange={(e) => setSpace(e.target.value)}>
@@ -236,11 +263,15 @@ export default function AIWriter() {
                 )}
                 {(r.state === "ready" || r.state === "done") && (
                   r.open || kind === "post"
-                    ? <textarea style={{ ...inp, minHeight: kind === "post" ? 90 : 260, resize: "vertical", fontFamily: kind === "post" ? "inherit" : "JetBrains Mono,monospace", lineHeight: 1.55 }} value={r.body} disabled={r.state === "done"} onChange={(e) => patch(r.key, { body: e.target.value })} />
+                    ? (kind === "post"
+                        ? <textarea style={{ ...inp, minHeight: 90, resize: "vertical", lineHeight: 1.55 }} value={r.body} disabled={r.state === "done"} onChange={(e) => patch(r.key, { body: e.target.value })} />
+                        : r.state === "done"
+                          ? <div className="article-render" style={{ maxHeight: 360, overflow: "auto" }} dangerouslySetInnerHTML={{ __html: r.body }} />
+                          : <RichEditor key={r.key} value={r.body} onChange={(h) => patch(r.key, { body: h })} minHeight={260} />)
                     : null
                 )}
                 <div style={{ display: "flex", alignItems: "center", gap: 10, fontSize: 11, color: r.state === "error" ? "#dc2626" : "var(--text-4)" }}>
-                  <span>{r.state === "error" || r.state === "publishing" ? r.err : r.state === "queued" ? "Queued" : r.state === "generating" ? "Writing…" : `${wordCount(r.body).toLocaleString()} words`}</span>
+                  <span>{r.state === "error" || r.state === "publishing" || r.state === "generating" ? (r.err || "Writing…") : r.state === "queued" ? "Queued" : `${wordCount(r.body).toLocaleString()} words`}</span>
                   {kind !== "post" && (r.state === "ready" || r.state === "done") && (
                     <button onClick={() => patch(r.key, { open: !r.open })} style={{ background: "none", border: "none", cursor: "pointer", color: "var(--brand)", fontSize: 11, fontWeight: 700, display: "flex", alignItems: "center", gap: 3 }}>
                       {r.open ? <>Hide <ChevronUp size={12} /></> : <>Read / edit <ChevronDown size={12} /></>}

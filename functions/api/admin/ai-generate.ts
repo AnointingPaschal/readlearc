@@ -11,9 +11,11 @@ import { authenticate } from "../../_lib/auth";
  */
 const BASE = "Never invent statistics, quotes, URLs or citations. If you are not sure a source exists, leave it out. Write original, accurate, well-structured content.";
 
-function system(kind: string, o: { words: number; tone: string; audience: string; category: string }): string {
+const FMT = (n: number) => `Format with Markdown: use **bold** for key terms and *italics* for emphasis, titles of works or foreign words (sparingly), "##" headings, bullet lists and an occasional > quote where they genuinely help. ${n > 0 ? `Place exactly ${n} image marker${n > 1 ? "s" : ""}, each alone on its own line, written as [[IMAGE: a concrete, vivid description of an illustration that fits that part, no text or words in the picture]]. The first marker goes right after the intro paragraph${n > 1 ? "; spread the rest between sections" : ""}.` : "Do not include image markers."}`;
+
+function system(kind: string, o: { words: number; tone: string; audience: string; category: string; images: number }): string {
   if (kind === "post")
-    return `You write short, engaging community posts for an online learning community (like a Facebook post). Plain text only: no markdown, no hashtags spam, no links. Keep it under 700 characters. Tone: ${o.tone}. ${BASE}`;
+    return `You write short, engaging community posts for an online learning community (like a Facebook post). Plain text only: no markdown symbols (no #, *, _ or backticks), no hashtag spam, no links. Keep it under 700 characters. Tone: ${o.tone}. ${BASE}`;
   if (kind === "research")
     return `You are a research writer. Write a complete, rigorous research article of about ${o.words} words in Markdown for ${o.audience}. Tone: ${o.tone}.
 Output EXACTLY this layout and nothing before it:
@@ -28,7 +30,7 @@ Blurb: <one sentence summary, max 160 characters>
 ## Findings and Discussion
 ## Conclusion
 ## References
-Use "##" headings and "###" for sub-sections, short paragraphs, no first-person. In References list only works you are confident are real (APA 7th); otherwise write "References to be added by the author". ${BASE}`;
+Use "##" headings and "###" for sub-sections, short paragraphs, no first-person. ${FMT(o.images)} In References list only works you are confident are real (APA 7th); otherwise write "References to be added by the author". ${BASE}`;
   return `You are an expert article writer for Readlearc, a learning and publishing platform. Write a complete, engaging article of about ${o.words} words in Markdown for ${o.audience}. Tone: ${o.tone}.
 Output EXACTLY this layout and nothing before it:
 # <Title>
@@ -36,6 +38,7 @@ Category: ${o.category || "General"}
 Blurb: <one sentence summary, max 160 characters>
 
 <article body: an intro, "##" section headings, short paragraphs, lists where useful, and a conclusion>
+${FMT(o.images)}
 ${BASE}`;
 }
 
@@ -56,7 +59,7 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
 
   const kind = String(b.kind || "article");
   const words = Math.min(3000, Math.max(150, Number(b.words) || 800));
-  const o = { words, tone: String(b.tone || "clear and engaging"), audience: String(b.audience || "a general educated audience"), category: String(b.category || "") };
+  const o = { words, tone: String(b.tone || "clear and engaging"), audience: String(b.audience || "a general educated audience"), category: String(b.category || ""), images: kind === "post" ? 0 : Math.min(3, Math.max(0, Number(b.images) || 0)) };
   let sys: string, user: string, maxTokens: number;
   if (kind === "ideas") {
     const n = Math.min(30, Math.max(1, Number(b.count) || 8));

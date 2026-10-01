@@ -209,7 +209,7 @@ export default function RichEditor({ value, onChange, placeholder="Start writing
         [contenteditable] pre{background:var(--bg-alt);border:1px solid var(--border);border-radius:8px;padding:12px;font-family:JetBrains Mono,monospace;font-size:13px;overflow-x:auto}
         [contenteditable] a{color:var(--brand);text-decoration:underline}
         [contenteditable] hr{border:none;border-top:2px solid var(--border);margin:20px 0}
-        [contenteditable] ul,[contenteditable] ol{padding-left:24px}
+        [contenteditable] ul,[contenteditable] ol{padding-left:24px}[contenteditable] ul{list-style:disc}[contenteditable] ol{list-style:decimal}
         [contenteditable] li{margin:4px 0}
         [contenteditable] img{max-width:100%;border-radius:8px;margin:8px 0}
       `}</style>
