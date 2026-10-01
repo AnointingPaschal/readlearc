@@ -40,6 +40,9 @@ Default revenue split 85 / 10 / 5 (writer / referrer / platform; no referrer →
    - `CONTENT_MASTER_SECRET` – long random string for content keys. **Keep it stable**: changing it makes existing paid content undecryptable.
 5. Open `/admin` with the admin wallet → **Finance → Contracts**, paste the addresses (saved to KV), set the start block, brand and AI key.
    Optional build-time defaults: see `.env.example`.
+6. **Banking (optional)** – Admin → **Finance → Banking** (or the env vars `CIRCLE_API_KEY`, `CIRCLE_ENV`, `CIRCLE_ACCOUNT_ID`, `CIRCLE_CLIENT_ENTITY_ID`, `PAYSTACK_SECRET_KEY`).
+   - *Circle*: wire-account linking, wire instructions, deposits and withdrawals in the wallet.
+   - *Nigerian banks*: users send USDC to the **treasury** address (Finance → Contracts); the server verifies it on-chain and pays Naira through Paystack Transfers at your rate. Add `https://<your-site>/api/bank/ng/webhook` as the Paystack webhook.
 
 ## Local development
 

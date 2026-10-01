@@ -1,5 +1,5 @@
 import { Link } from "@/lib/nav";
-import { ArrowUpRight, Percent, CreditCard, FileCode, Rocket } from "lucide-react";
+import { ArrowUpRight, Percent, CreditCard, FileCode, Rocket, Landmark } from "lucide-react";
 export default function FinancePage() {
   return (
     <div style={{ display:"flex", flexDirection:"column", gap:16 }}>
@@ -7,6 +7,7 @@ export default function FinancePage() {
       <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fill,minmax(200px,1fr))", gap:12 }}>
         {[{ href:"/admin/finance/fees",label:"Fee Splits",icon:Percent,desc:"Live on-chain fee config" },
           { href:"/admin/finance/payouts",label:"Payouts",icon:CreditCard,desc:"Treasury & USDC" },
+          { href:"/admin/finance/banking",label:"Banking",icon:Landmark,desc:"Circle & Nigerian banks" },
           { href:"/admin/finance/contracts",label:"Contracts",icon:FileCode,desc:"Deployed addresses" },
           { href:"/admin/finance/deploy",label:"Deploy Contracts",icon:Rocket,desc:"Compile & deploy in-browser" }].map(l => (
           <Link key={l.href} href={l.href} style={{ textDecoration:"none" }}>

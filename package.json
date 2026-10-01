@@ -15,6 +15,7 @@
     "contracts:deploy": "cd contracts && npm install && npm run compile && npm run deploy"
   },
   "dependencies": {
+    "@circle-fin/device-checks": "^0.1.2",
     "@ffmpeg/ffmpeg": "^0.12.15",
     "@ffmpeg/util": "^0.12.2",
     "ethers": "^6.16.0",
