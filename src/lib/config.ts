@@ -50,21 +50,41 @@ export const cfg: RLConfig = {
   txBytes: Number(env.VITE_TX_BYTES || 120_000),
 };
 
-export async function loadConfig(timeoutMs = 2500): Promise<void> {
+const CFG_KEY = "rl-cfg-v1";
+function applyRemote(remote: Partial<RLConfig>) {
+  for (const [k, v] of Object.entries(remote)) {
+    if (v !== undefined && v !== null && v !== "") (cfg as unknown as Record<string, unknown>)[k] = v;
+  }
+  cfg.explorerUrl = cfg.explorerUrl.replace(/\/$/, "");
+}
+
+async function fetchRemote(timeoutMs: number): Promise<boolean> {
   try {
     const ctl = new AbortController();
     const t = setTimeout(() => ctl.abort(), timeoutMs);
     const r = await fetch("/api/config", { signal: ctl.signal });
     clearTimeout(t);
-    if (!r.ok) return;
+    if (!r.ok) return false;
     const remote = (await r.json()) as Partial<RLConfig>;
-    for (const [k, v] of Object.entries(remote)) {
-      if (v !== undefined && v !== null && v !== "") (cfg as unknown as Record<string, unknown>)[k] = v;
-    }
-    cfg.explorerUrl = cfg.explorerUrl.replace(/\/$/, "");
-  } catch {
-    /* offline / no Functions (plain `vite dev`): keep build-time defaults */
+    applyRemote(remote);
+    try { localStorage.setItem(CFG_KEY, JSON.stringify(remote)); } catch { /* ignore */ }
+    return true;
+  } catch { return false; /* offline / no Functions (plain `vite dev`): keep build-time defaults */ }
+}
+
+/**
+ * Runtime config (contract addresses etc.) from Cloudflare KV. Returning visitors start instantly from the
+ * copy saved on this device while a fresh one loads in the background; first-time visitors wait for it.
+ */
+export async function loadConfig(timeoutMs = 4000): Promise<void> {
+  let cached: Partial<RLConfig> | null = null;
+  try { cached = JSON.parse(localStorage.getItem(CFG_KEY) || "null"); } catch { /* ignore */ }
+  if (cached && Object.keys(cached).length) {
+    applyRemote(cached);
+    void fetchRemote(timeoutMs);
+    return;
   }
+  await fetchRemote(timeoutMs);
 }
 
 await loadConfig();

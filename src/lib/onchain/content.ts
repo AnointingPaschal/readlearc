@@ -72,42 +72,96 @@ const toCard = (id: number, r: RawCard, reads = 0): Card => ({
 });
 
 // ── Listing (cached) ─────────────────────────────────────────────
+// Three layers: in-memory (15s) → device cache (instant on return visits, refreshed in the background)
+// → the edge-cached /api/cards list → finally the chain itself.
 let cache: { at: number; cards: Card[] } | null = null;
 let inflight: Promise<Card[]> | null = null;
 const TTL = 15_000;
+const LS_KEY = "rl-cards-v1";
+const STALE_OK = 30 * 60_000;
+let needFresh = false;
 
-export function invalidateContent() { cache = null; }
+const ser = (cards: Card[]) => JSON.stringify(cards.map((c) => ({ ...c, price: c.price.toString() })));
+const de = (rows: any[]): Card[] => rows.map((c) => ({ ...c, price: BigInt(c.price) }));
+
+function readDevice(): { at: number; cards: Card[] } | null {
+  try {
+    const raw = localStorage.getItem(LS_KEY);
+    if (!raw) return null;
+    const j = JSON.parse(raw) as { at: number; chain: string; cards: any[] };
+    if (j.chain !== `${cfg.chainId}:${cfg.contentStore}`) return null;
+    return { at: j.at, cards: de(j.cards) };
+  } catch { return null; }
+}
+function writeDevice(cards: Card[]) {
+  try { localStorage.setItem(LS_KEY, `{"at":${Date.now()},"chain":"${cfg.chainId}:${cfg.contentStore}","cards":${ser(cards)}}`); } catch { /* quota */ }
+}
+
+export function invalidateContent() {
+  cache = null; needFresh = true;
+  try { localStorage.removeItem(LS_KEY); } catch { /* ignore */ }
+}
+
+async function fetchFromEdge(fresh: boolean): Promise<Card[] | null> {
+  try {
+    const ctl = new AbortController();
+    const t = setTimeout(() => ctl.abort(), 12000);
+    const r = await fetch(`/api/cards${fresh ? "?fresh=1" : ""}`, { signal: ctl.signal });
+    clearTimeout(t);
+    if (!r.ok) return null;
+    const rows = await r.json();
+    return Array.isArray(rows) ? de(rows) : null;
+  } catch { return null; }
+}
+
+async function fetchFromChain(): Promise<Card[]> {
+  const store = C.store();
+  const total = Number(await store.count());
+  if (!total) return [];
+  const PAGE = 100;
+  const ranges: [number, number][] = [];
+  for (let s = 1; s <= total; s += PAGE) ranges.push([s, Math.min(s + PAGE - 1, total)]);
+  const pay = C.pay();
+  const out: Card[] = [];
+  for (let i = 0; i < ranges.length; i += 4) {
+    const parts = await Promise.all(
+      ranges.slice(i, i + 4).map(async ([a, b]) => {
+        const [rows, reads] = await Promise.all([
+          store.getCards(a, b),
+          pay.readsBatch(Array.from({ length: b - a + 1 }, (_, k) => a + k)),
+        ]);
+        return (rows as RawCard[]).map((r, k) => toCard(a + k, r, Number(reads[k])));
+      }),
+    );
+    out.push(...parts.flat());
+  }
+  return out;
+}
+
+function refresh(fresh = false): Promise<Card[]> {
+  if (inflight) return inflight;
+  inflight = (async () => {
+    const cards = (await fetchFromEdge(fresh || needFresh)) ?? (await fetchFromChain());
+    needFresh = false;
+    cache = { at: Date.now(), cards };
+    writeDevice(cards);
+    return cards;
+  })().finally(() => { inflight = null; });
+  return inflight;
+}
 
 export async function loadCards(force = false): Promise<Card[]> {
   if (!force && cache && Date.now() - cache.at < TTL) return cache.cards;
-  if (inflight) return inflight;
-  inflight = (async () => {
-    const store = C.store();
-    const total = Number(await store.count());
-    if (!total) { cache = { at: Date.now(), cards: [] }; return []; }
-    const PAGE = 40;
-    const ranges: [number, number][] = [];
-    for (let s = 1; s <= total; s += PAGE) ranges.push([s, Math.min(s + PAGE - 1, total)]);
-    const pay = C.pay();
-    const out: Card[] = [];
-    // modest parallelism to stay friendly to public RPCs
-    for (let i = 0; i < ranges.length; i += 3) {
-      const slice = ranges.slice(i, i + 3);
-      const parts = await Promise.all(
-        slice.map(async ([a, b]) => {
-          const [rows, reads] = await Promise.all([
-            store.getCards(a, b),
-            pay.readsBatch(Array.from({ length: b - a + 1 }, (_, k) => a + k)),
-          ]);
-          return (rows as RawCard[]).map((r, k) => toCard(a + k, r, Number(reads[k])));
-        }),
-      );
-      out.push(...parts.flat());
+  if (!force) {
+    const dev = readDevice();
+    if (dev && Date.now() - dev.at < STALE_OK) {
+      // show what we have right away, update behind the scenes
+      cache = { at: Date.now() - TTL + 2000, cards: dev.cards };
+      if (Date.now() - dev.at > 8000) refresh().catch(() => {});
+      return dev.cards;
     }
-    cache = { at: Date.now(), cards: out };
-    return out;
-  })().finally(() => { inflight = null; });
-  return inflight;
+  }
+  return refresh(force);
 }
 
 export interface ListOpts {
