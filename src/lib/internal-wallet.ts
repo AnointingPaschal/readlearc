@@ -5,6 +5,7 @@
  */
 import { ethers } from "ethers";
 import { cfg } from "@/lib/config";
+import { markWrite } from "@/lib/freshness";
 import { approveTransaction } from "@/lib/tx-approval";
 
 export const ARC_RPC      = cfg.rpcUrl;
@@ -131,7 +132,10 @@ export async function addWallet(
 export class ApprovalWallet extends ethers.Wallet {
   override async sendTransaction(tx: ethers.TransactionRequest): Promise<ethers.TransactionResponse> {
     await approveTransaction(tx, this);
-    return super.sendTransaction(tx);
+    const resp = await super.sendTransaction(tx);
+    markWrite();
+    resp.wait().then(markWrite, () => {});
+    return resp;
   }
   override connect(provider: ethers.Provider | null): ApprovalWallet { return new ApprovalWallet(this.signingKey, provider); }
 }

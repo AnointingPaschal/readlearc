@@ -2,6 +2,7 @@
 import { ethers } from "ethers";
 import { readProvider } from "@/lib/chain";
 import { cfg } from "@/lib/config";
+import { writeStamp } from "@/lib/freshness";
 import ContentStoreAbi from "@/abi/ContentStore.json";
 import SocialAbi from "@/abi/Social.json";
 import PaymentsAbi from "@/abi/Payments.json";
@@ -46,9 +47,29 @@ export async function getLogsAuto(filter: { address: string; topics: (string | s
   }
 }
 
+/** Edge-cached log reader (/api/logs): one fast request instead of walking the RPC from the browser. */
+async function scanViaEdge(address: string, topics: (string | string[] | null)[], from: number): Promise<ethers.Log[] | null> {
+  try {
+    const q = new URLSearchParams({ a: address, t: JSON.stringify(topics), f: String(from), v: String(writeStamp()) });
+    const ctl = new AbortController();
+    const timer = setTimeout(() => ctl.abort(), 15000);
+    const r = await fetch(`/api/logs?${q}`, { signal: ctl.signal });
+    clearTimeout(timer);
+    if (!r.ok) return null;
+    const d = (await r.json()) as { latest: number; logs: unknown[]; times?: Record<string, number> };
+    if (!Array.isArray(d.logs)) return null;
+    latestCache = { at: Date.now(), n: d.latest };
+    for (const [b, t] of Object.entries(d.times || {})) tsCache.set(Number(b), t);
+    return d.logs as ethers.Log[];
+  } catch { return null; }
+}
+
 export async function scan(address: string, topics: (string | string[] | null)[], from = cfg.startBlock): Promise<ethers.Log[]> {
-  const to = await latestBlock();
-  const logs = await getLogsAuto({ address, topics }, Math.min(from, to), to);
+  let logs = await scanViaEdge(address, topics, from);
+  if (!logs) {
+    const to = await latestBlock();
+    logs = await getLogsAuto({ address, topics }, Math.min(from, to), to);
+  }
   return logs.sort((a, b) => a.blockNumber - b.blockNumber || a.index - b.index);
 }
 

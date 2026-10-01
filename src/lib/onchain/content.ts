@@ -5,6 +5,7 @@
 import { ethers } from "ethers";
 import { C, lc, shortAddr, fmtUsdc, send } from "@/lib/chain";
 import { cfg } from "@/lib/config";
+import { onWrite } from "@/lib/freshness";
 import { decodeText, encodeText, splitChunks, hashBytes, concat } from "@/lib/onchain/codec";
 import { fetchChunks, orderedConcat, fetchThumb } from "@/lib/onchain/logs";
 import { getContentKey } from "@/lib/onchain/keys";
@@ -96,6 +97,8 @@ function readDevice(): { at: number; cards: Card[] } | null {
 function writeDevice(cards: Card[]) {
   try { localStorage.setItem(LS_KEY, `{"at":${Date.now()},"chain":"${cfg.chainId}:${cfg.contentStore}","cards":${ser(cards)}}`); } catch { /* quota */ }
 }
+
+onWrite(() => invalidateContent());
 
 export function invalidateContent() {
   cache = null; needFresh = true;

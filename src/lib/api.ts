@@ -14,6 +14,7 @@ import { cfg, isConfigured } from "@/lib/config";
 import { getActiveSigner, requireSigner } from "@/lib/signer";
 import { authHeader } from "@/lib/onchain/auth";
 import { withActivity } from "@/lib/activity";
+import { onWrite } from "@/lib/freshness";
 import * as content from "@/lib/onchain/content";
 import * as social from "@/lib/onchain/social";
 import * as money from "@/lib/onchain/money";
@@ -428,6 +429,48 @@ async function passthrough(path: string, method: string, body: string | undefine
   return fetch(path + ((init as { __qs?: string }).__qs ?? ""), { ...init, method, headers, body });
 }
 
+// ── stale-while-revalidate for public read routes: instant on repeat views, refreshed behind the scenes ──
+const SWR = [/^\/api\/(?:articles|videos)$/, /^\/api\/profiles\/0x[0-9a-fA-F]{40}$/, /^\/api\/social\/follow$/, /^\/api\/groups$/, /^\/api\/groups\/\d+$/, /^\/api\/groups\/\d+\/posts$/];
+const API_PFX = "rl-api:";
+const API_FRESH = 10_000, API_STALE = 10 * 60_000;
+const apiMem = new Map<string, { at: number; data: unknown }>();
+const apiBusy = new Map<string, Promise<unknown>>();
+
+function dropApiCache() {
+  apiMem.clear();
+  try { Object.keys(localStorage).filter((k) => k.startsWith(API_PFX)).forEach((k) => localStorage.removeItem(k)); } catch { /* ignore */ }
+}
+onWrite(dropApiCache);
+
+async function swr(key: string, run: () => Promise<unknown>): Promise<unknown> {
+  const k = `${getActiveSigner()?.address ?? ""}|${cfg.contentStore}|${key}`;
+  let hit = apiMem.get(k);
+  if (!hit) {
+    try {
+      const raw = localStorage.getItem(API_PFX + k);
+      if (raw) { hit = JSON.parse(raw); if (hit) apiMem.set(k, hit); }
+    } catch { /* ignore */ }
+  }
+  const refresh = () => {
+    let p = apiBusy.get(k);
+    if (!p) {
+      p = run().then((out) => {
+        if (out instanceof Response) return out;
+        const entry = { at: Date.now(), data: out };
+        apiMem.set(k, entry);
+        try { const str = JSON.stringify(entry); if (str.length < 250_000) localStorage.setItem(API_PFX + k, str); } catch { try { Object.keys(localStorage).filter((x) => x.startsWith(API_PFX)).forEach((x) => localStorage.removeItem(x)); } catch { /* ignore */ } }
+        return out;
+      }).finally(() => apiBusy.delete(k));
+      apiBusy.set(k, p);
+    }
+    return p;
+  };
+  const age = hit ? Date.now() - hit.at : Infinity;
+  if (hit && age < API_FRESH) return hit.data;
+  if (hit && age < API_STALE) { refresh().catch(() => {}); return hit.data; }
+  { const o = await refresh(); return o instanceof Response ? o.clone() : o; }
+}
+
 export async function apiFetch(input: RequestInfo | URL, init: RequestInit = {}): Promise<Response> {
   const raw = typeof input === "string" ? input : input instanceof URL ? input.toString() : input.url;
   if (!raw.startsWith("/api/")) return fetch(input, init);
@@ -441,8 +484,11 @@ export async function apiFetch(input: RequestInfo | URL, init: RequestInit = {})
     if (!m) continue;
     const isFn = re.source.includes("analyze");
     if (!isFn && !isConfigured()) return err("Contracts aren’t configured yet. An admin must set them in Admin → Finance → Contracts.", 503);
+    const run = async () => handler({ path: url.pathname, method, params: m.slice(1), q: url.searchParams, body });
     try {
-      const out = await handler({ path: url.pathname, method, params: m.slice(1), q: url.searchParams, body });
+      if (method === "GET" && SWR.some((r) => r.test(url.pathname))) { const v = await swr(url.pathname + url.search, run); return v instanceof Response ? v : json(v); }
+      const out = await run();
+      if (method !== "GET") dropApiCache();
       return out instanceof Response ? out : json(out);
     } catch (e) {
       const { explainError } = await import("@/lib/chain");
