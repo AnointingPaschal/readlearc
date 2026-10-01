@@ -7,7 +7,7 @@ import ConnectGate from "@/components/ui/ConnectGate";
 import Navbar from "@/components/ui/Navbar";
 import {
   Zap, LayoutDashboard, Settings, Palette, BookOpen, Flag, Bell,
-  Users, PenTool, UserCheck, Percent, CreditCard, FileCode, Rocket,
+  Users, PenTool, UserCheck, Percent, CreditCard, FileCode, Rocket, Sparkles,
   Lock, Bot, Cpu, FileText, Globe, Search as SearchIcon,
   DollarSign, Shield, BadgeDollarSign, Menu, X, Sun, Moon, ChevronRight, LogOut, MessageSquare,
 } from "lucide-react";
@@ -19,6 +19,7 @@ const NAV = [
   { label:"Content",  items:[
     { href:"/admin/content/moderation", icon:BookOpen,        label:"All Articles"     },
     { href:"/write/article",            icon:PenTool,         label:"Write Article"    },
+    { href:"/admin/content/ai",         icon:Sparkles,        label:"AI Writer"        },
     { href:"/admin/content/bulk",       icon:FileText,        label:"Bulk Write"       },
     { href:"/admin/logs",               icon:Flag,            label:"Activity Logs"    },
     { href:"/admin/notifications",      icon:Bell,            label:"Notifications"    },
@@ -38,7 +39,7 @@ const NAV = [
     { href:"/admin/finance/fees",       icon:Percent,         label:"Fee Splits"       },
     { href:"/admin/finance/payouts",    icon:CreditCard,      label:"Payouts"          },
     { href:"/admin/finance/contracts",  icon:FileCode,        label:"Contracts"        },
-    { href:"/admin/finance/deploy",     icon:Rocket,          label:"Deploy Contracts" },
+    { href:"/admin/finance/deploy",     icon:Rocket, Sparkles,          label:"Deploy Contracts" },
     { href:"/admin/earnings",           icon:DollarSign,      label:"Earnings & Payout"},
   ]},
   { label:"AI",       items:[
