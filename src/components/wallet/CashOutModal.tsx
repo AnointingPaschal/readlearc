@@ -74,7 +74,7 @@ export default function CashOutModal({ wallet, balance, cfg, accounts, onClose, 
           <div>
             <label style={lbl}>Pay to</label>
             <select className="input" value={acct} onChange={(e) => setAcct(e.target.value)}>
-              {accounts.map((a) => <option key={a.id} value={a.id}>{a.bankName} ••{a.last4} — {a.accountName}</option>)}
+              {accounts.map((a) => <option key={a.id} value={a.id}>{a.bankName} ••{a.last4} — {a.accountName}{a.ready === false ? " (re-add needed)" : ""}</option>)}
             </select>
           </div>
           <div>

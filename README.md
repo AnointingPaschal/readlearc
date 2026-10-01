@@ -40,10 +40,10 @@ Default revenue split 85 / 10 / 5 (writer / referrer / platform; no referrer →
    - `CONTENT_MASTER_SECRET` – long random string for content keys. **Keep it stable**: changing it makes existing paid content undecryptable.
 5. Open `/admin` with the admin wallet → **Finance → Contracts**, paste the addresses (saved to KV), set the start block, brand and AI key.
    Optional build-time defaults: see `.env.example`.
-6. **Banking (optional)** – Admin → **Finance → Banking** (or the env vars `CIRCLE_API_KEY`, `CIRCLE_ENV`, `CIRCLE_ACCOUNT_ID`, `CIRCLE_CLIENT_ENTITY_ID`, `PAYSTACK_SECRET_KEY`).
+6. **Banking (optional)** – Admin → **Finance → Banking** (or the env vars `CIRCLE_API_KEY`, `CIRCLE_ENV`, `CIRCLE_ACCOUNT_ID`, `CIRCLE_CLIENT_ENTITY_ID`, `FLUTTERWAVE_SECRET_KEY`, `FLUTTERWAVE_WEBHOOK_HASH`).
    - *Circle*: wire-account linking, wire instructions, deposits and withdrawals in the wallet.
    - *Managed wallets (optional)*: Circle developer-controlled wallets. Register an entity secret in Circle Console (**save the recovery file separately**), add it as an encrypted Pages secret `CIRCLE_ENTITY_SECRET` (never in KV/git), paste the developer-wallet API key in Admin → Finance → Banking, then press *Create wallet set*.
-   - *Nigerian banks*: users send USDC to the **treasury** address (Finance → Contracts); the server verifies it on-chain and pays Naira through Paystack Transfers at your rate. Add `https://<your-site>/api/bank/ng/webhook` as the Paystack webhook.
+   - *Nigerian banks*: users send USDC to the **treasury** address (Finance → Contracts); the server verifies it on-chain and pays Naira through Flutterwave Transfers at your rate. Add `https://<your-site>/api/bank/ng/webhook` as the Flutterwave webhook.
 
 ## Local development
 

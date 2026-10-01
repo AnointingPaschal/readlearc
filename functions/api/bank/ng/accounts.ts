@@ -1,13 +1,13 @@
 import type { Env } from "../../../_lib/env";
 import { err, json } from "../../../_lib/env";
-import { errResp, isResp, kvList, ngKey, paystack, requireUser, type NgAccount } from "../../../_lib/bank";
+import { errResp, isResp, kvList, ngKey, flutterwave, publicAcct, requireUser, type NgAccount } from "../../../_lib/bank";
 
 /** GET    /api/bank/ng/accounts           — the caller's saved Nigerian bank accounts
- *  POST   /api/bank/ng/accounts           — {accountNumber, bankCode, bankName}: verify at Paystack, create a transfer recipient, save
+ *  POST   /api/bank/ng/accounts           — {accountNumber, bankCode, bankName}: verify the account at Flutterwave and save it
  *  DELETE /api/bank/ng/accounts?id=<id>   — remove one */
 export const onRequestGet: PagesFunction<Env> = async ({ request, env }) => {
   const who = await requireUser(request, env); if (isResp(who)) return who;
-  return json({ data: await kvList<NgAccount>(env, ngKey(who.address)) });
+  return json({ data: (await kvList<NgAccount>(env, ngKey(who.address))).map(publicAcct) });
 };
 
 export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
@@ -20,15 +20,16 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
   try {
     const cur = await kvList<NgAccount>(env, ngKey(who.address));
     if (cur.length >= 5) return err("You can save up to 5 bank accounts — remove one first");
-    if (cur.some((a) => a.bankCode === p.bankCode && a.last4 === accountNumber.slice(-4) && a.id.endsWith(accountNumber.slice(-4)))) return err("That account is already saved");
-    const r = await paystack(env, "/transferrecipient", { method: "POST", body: JSON.stringify({ type: "nuban", name: p.accountName || "Readlearc user", account_number: accountNumber, bank_code: p.bankCode, currency: "NGN" }) });
-    const d = r?.data;
+    if (cur.some((a) => a.bankCode === p.bankCode && a.last4 === accountNumber.slice(-4) && (!a.accountNumber || a.accountNumber === accountNumber))) return err("That account is already saved");
+    const r = await flutterwave(env, "/accounts/resolve", { method: "POST", body: JSON.stringify({ account_number: accountNumber, account_bank: p.bankCode }) });
+    const name = r?.data?.account_name;
+    if (!name) return err("We couldn't verify that account — check the number and bank");
     const acct: NgAccount = {
-      id: `${d.recipient_code}-${accountNumber.slice(-4)}`, bankCode: p.bankCode, bankName: p.bankName,
-      accountName: d.details?.account_name || p.accountName || "", last4: accountNumber.slice(-4), recipientCode: d.recipient_code, createdAt: Date.now(),
+      id: `ng${Date.now().toString(36)}${accountNumber.slice(-4)}`, bankCode: p.bankCode, bankName: p.bankName,
+      accountName: name, last4: accountNumber.slice(-4), accountNumber, createdAt: Date.now(),
     };
     await env.RL_KV.put(ngKey(who.address), JSON.stringify([acct, ...cur]));
-    return json({ data: acct });
+    return json({ data: publicAcct(acct) });
   } catch (e) { return errResp(e); }
 };
 

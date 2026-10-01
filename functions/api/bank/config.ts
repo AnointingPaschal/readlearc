@@ -11,8 +11,8 @@ export const onRequestGet: PagesFunction<Env> = async ({ env }) => {
   const d = await dcwCfg(env);
   return json({
     circle: Boolean(c.circleKey),
-    ngn: Boolean(c.paystackKey && c.ngEnabled && c.rate > 0 && cfg.treasury),
-    ngnConfigured: Boolean(c.paystackKey),
+    ngn: Boolean(c.flwKey && c.ngEnabled && c.rate > 0 && cfg.treasury),
+    ngnConfigured: Boolean(c.flwKey),
     rate: c.rate, feePct: c.feePct, minUsd: c.minUsd, maxUsd: c.maxUsd,
     treasury: cfg.treasury || "",
     managed: dcwReady(d), managedChain: d.blockchain, managedMax: d.maxSendUsd,

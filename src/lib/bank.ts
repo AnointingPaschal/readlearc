@@ -3,7 +3,7 @@ import { signedJson } from "@/lib/onchain/auth";
 
 export interface BankConfig { circle: boolean; ngn: boolean; ngnConfigured: boolean; rate: number; feePct: number; minUsd: number; maxUsd: number; treasury: string; sandbox: boolean; managed?: boolean; managedChain?: string; managedMax?: number }
 export interface NgBank { name: string; code: string }
-export interface NgAccount { id: string; bankCode: string; bankName: string; accountName: string; last4: string; recipientCode: string; createdAt: number }
+export interface NgAccount { id: string; bankCode: string; bankName: string; accountName: string; last4: string; ready?: boolean; createdAt: number }
 export interface Cashout { id: string; txHash: string; address: string; amountUsd: number; feeUsd: number; rate: number; ngn: number; bankName: string; accountName: string; last4: string; status: "processing" | "success" | "failed" | "reversed"; error?: string; createdAt: number }
 export interface WireLink { id: string; description: string; trackingRef?: string; status?: string; holder?: string; createdAt: number }
 export interface Money { amount: string; currency: string }
