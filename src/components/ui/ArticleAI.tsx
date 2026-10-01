@@ -91,7 +91,7 @@ export default function ArticleAI({ articleId, articleTitle, articleContent, isU
     <>
       {/* Floating button */}
       <button onClick={()=>setOpen(true)}
-        style={{ position:"fixed",bottom:22,right:14,zIndex:200,width:50,height:50,borderRadius:"50%",background:"linear-gradient(135deg,var(--brand),var(--accent))",border:"2.5px solid white",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",boxShadow:"0 4px 18px rgba(109,40,217,.45)",transition:"transform .15s" }}
+        style={{ position:"fixed",bottom:"calc(var(--bottom-nav-h,0px) + 14px)",right:12,zIndex:200,width:46,height:46,borderRadius:"50%",background:"linear-gradient(135deg,var(--brand),var(--accent))",border:"2.5px solid white",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",boxShadow:"0 4px 18px rgba(109,40,217,.45)",transition:"transform .15s" }}
         title="AI Reading Assistant"
         onMouseEnter={e=>(e.currentTarget.style.transform="scale(1.1)")}
         onMouseLeave={e=>(e.currentTarget.style.transform="scale(1)")}>
