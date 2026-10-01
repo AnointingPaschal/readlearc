@@ -7,6 +7,8 @@ const subs = new Set<(i: ActivityItem[]) => void>();
 const emit = () => subs.forEach((s) => s(items));
 
 export const activity = {
+  /** label of the most recent running operation */
+  current(): string | undefined { return [...items].reverse().find((i) => i.state === "run")?.label; },
   subscribe(fn: (i: ActivityItem[]) => void) { subs.add(fn); fn(items); return () => { subs.delete(fn); }; },
   start(label: string): number {
     const id = ++seq;
@@ -31,8 +33,19 @@ export const activity = {
   dismiss(id: number) { items = items.filter((i) => i.id !== id); emit(); },
 };
 
-/** Run `fn` while showing a progress toast. */
-export async function withActivity<T>(label: string, fn: (update: (detail?: string, pct?: number) => void) => Promise<T>): Promise<T> {
+/**
+ * Run `fn` while showing a progress toast.
+ * `opts.batch` marks a multi-transaction job: the person approves it once up front (see lib/tx-approval.ts).
+ */
+export async function withActivity<T>(
+  label: string,
+  fn: (update: (detail?: string, pct?: number) => void) => Promise<T>,
+  opts?: { batch?: string; count?: number },
+): Promise<T> {
+  if (opts?.batch) {
+    const { runBatch } = await import("@/lib/tx-approval");
+    return runBatch({ title: label, detail: opts.batch, count: opts.count }, () => withActivity(label, fn));
+  }
   const id = activity.start(label);
   try {
     const r = await fn((d, p) => activity.update(id, d, p));

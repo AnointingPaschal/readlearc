@@ -6,7 +6,7 @@ import { ethers } from "ethers";
 import {
   loadWallets, getActiveIndex, setActiveIndex,
   decryptKey, getUsdcBalance, StoredWallet,
-  getProvider,
+  getProvider, ApprovalWallet,
 } from "@/lib/internal-wallet";
 import { saveSession, restoreSession, clearSession } from "@/lib/session";
 import { setActiveSigner, setSignerRequester } from "@/lib/signer";
@@ -94,7 +94,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const ws  = loadWallets();
       const idx = Math.min(s.walletIndex, Math.max(0, ws.length - 1));
       const prov = getProvider();
-      const w    = new ethers.Wallet(s.privateKey, prov);
+      const w    = new ApprovalWallet(s.privateKey, prov);
       setSigner(w);
       setWallets(ws);
       setActiveIdx_(idx);
@@ -135,7 +135,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     // Decrypt with user password
     const pk   = await decryptKey(w.encryptedKey, password);
     const prov = getProvider();
-    const wallet = new ethers.Wallet(pk, prov);
+    const wallet = new ApprovalWallet(pk, prov);
     // Save persistent session (no expiry — until logout)
     await saveSession(pk, wallet.address, idx);
     setSigner(wallet);

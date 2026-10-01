@@ -88,7 +88,8 @@ on(/^\/api\/(?:admin\/)?articles$/, async (c) => {
     if (!b?.title || !b?.content) return err("title and content required");
     const signer = await requireSigner();
     const r = await withActivity("Publishing article on-chain", (u) =>
-      content.publishArticle(signer, { title: b.title, blurb: b.blurb, content: b.content, price: b.price, category: b.category, readTime: b.readTime, isResearch: b.isResearch }, u));
+      content.publishArticle(signer, { title: b.title, blurb: b.blurb, content: b.content, price: b.price, category: b.category, readTime: b.readTime, isResearch: b.isResearch }, u),
+      { batch: "Publishes your article on-chain. It is written in several transactions, all signed automatically once you approve." });
     return json({ id: String(r.id), txHash: r.txHash, ok: true }, 201);
   }
   if (c.method === "PUT") {
@@ -116,7 +117,8 @@ on(/^\/api\/articles\/(\d+)$/, async (c) => {
       return json({ ok: true });
     }
     await withActivity("Updating article on-chain", (u) =>
-      content.updateArticle(signer, id, { title: b.title, blurb: b.blurb, content: b.content, price: b.price, category: b.category, isResearch: b.isResearch, readTime: b.readTime }, u));
+      content.updateArticle(signer, id, { title: b.title, blurb: b.blurb, content: b.content, price: b.price, category: b.category, isResearch: b.isResearch, readTime: b.readTime }, u),
+      { batch: "Updates your article on-chain in several transactions, all signed automatically once you approve." });
     return json({ ok: true });
   }
   return err("Method not allowed", 405);

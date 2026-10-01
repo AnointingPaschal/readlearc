@@ -9,7 +9,7 @@ import { listCards } from "@/lib/onchain/content";
 
 import { EXPLORER_URL as EXPLORER } from "@/lib/chain";
 
-type Tab = "posts"|"followers"|"following"|"about";
+type Tab = "posts"|"spaces"|"followers"|"following"|"about";
 
 interface Profile {
   wallet_address:string; username?:string; display_name?:string;
@@ -34,6 +34,7 @@ export default function ProfilePage() {
   const [savingChain, setSavingChain] = useState(false);
   const [editForm,    setEditForm]    = useState<Partial<Profile>>({});
   const [loading,     setLoading]     = useState(true);
+  const [spaces,      setSpaces]      = useState<any[]>([]);
 
   const isOwn  = address?.toLowerCase() === profileAddr?.toLowerCase();
   const avatarColor = profile?.avatar_color || `hsl(${parseInt(profileAddr?.slice(2,4)||"0",16)*1.4}deg,65%,55%)`;
@@ -64,6 +65,7 @@ export default function ProfilePage() {
   }
 
   useEffect(()=>{ load(); },[profileAddr, address]);
+  useEffect(()=>{ if(profileAddr) apiFetch(`/api/groups?member=${profileAddr.toLowerCase()}&limit=100`).then(r=>r.json()).then(d=>setSpaces(Array.isArray(d)?d:[])).catch(()=>{}); },[profileAddr]);
   useEffect(()=>{ if(tab==="followers"||tab==="following") loadFollowers(); },[tab]);
 
   async function toggleFollow() {
@@ -220,9 +222,9 @@ export default function ProfilePage() {
 
         {/* Tabs */}
         <div style={{ display:"flex",borderBottom:"1px solid var(--border)",marginBottom:16,background:"var(--bg-card)",borderRadius:"var(--r-lg) var(--r-lg) 0 0",overflow:"hidden" }}>
-          {(["posts","followers","following","about"] as Tab[]).map(t=>(
+          {(["posts","spaces","followers","following","about"] as Tab[]).map(t=>(
             <button key={t} onClick={()=>setTab(t)} style={{ flex:1,padding:"13px 8px",border:"none",background:"transparent",cursor:"pointer",fontFamily:"Outfit,sans-serif",fontSize:13,fontWeight:700,color:tab===t?"var(--brand)":"var(--text-4)",borderBottom:`2px solid ${tab===t?"var(--brand)":"transparent"}`,transition:"all .15s",textTransform:"capitalize" }}>
-              {t==="posts"?`Posts (${articles.length})`:t==="followers"?`Followers (${followerCt})`:t.charAt(0).toUpperCase()+t.slice(1)}
+              {t==="posts"?`Articles (${articles.length})`:t==="spaces"?`Spaces (${spaces.length})`:t==="followers"?`Followers (${followerCt})`:t.charAt(0).toUpperCase()+t.slice(1)}
             </button>
           ))}
         </div>
@@ -256,6 +258,26 @@ export default function ProfilePage() {
               ))}
             </div>
           )
+        )}
+
+        {/* Spaces tab */}
+        {tab==="spaces" && (
+          <div style={{ display:"flex",flexDirection:"column",gap:10 }}>
+            {isOwn && (
+              <Link href="/contribute/create" className="btn btn-primary" style={{ alignSelf:"flex-start",gap:6 }}>+ Create a space</Link>
+            )}
+            {!spaces.length ? (
+              <div className="card" style={{ padding:"30px 20px",textAlign:"center",fontSize:13,color:"var(--text-4)" }}>{isOwn?"You haven't joined or created any spaces yet.":"No spaces yet."}</div>
+            ) : spaces.map((g:any)=>(
+              <Link key={g.id} href={`/contribute/${g.id}`} className="card card-hover" style={{ padding:"14px 16px",textDecoration:"none",display:"flex",alignItems:"center",gap:12 }}>
+                <div style={{ width:42,height:42,borderRadius:12,background:`linear-gradient(135deg,hsl(${(Number(g.id)*47)%360}deg,50%,40%),hsl(${(Number(g.id)*47+60)%360}deg,45%,30%))`,flexShrink:0 }}/>
+                <div style={{ minWidth:0,flex:1 }}>
+                  <div style={{ fontFamily:"Outfit,sans-serif",fontWeight:800,fontSize:14,color:"var(--text)" }}>{g.name}{String(g.owner_address||"").toLowerCase()===profileAddr?.toLowerCase()&&<span style={{ marginLeft:6,fontSize:9,fontWeight:700,padding:"1px 6px",borderRadius:99,background:"var(--brand-muted)",color:"var(--brand)" }}>OWNER</span>}</div>
+                  <div style={{ fontSize:11,color:"var(--text-4)" }}>{g.member_count} members · {g.post_count} posts</div>
+                </div>
+              </Link>
+            ))}
+          </div>
         )}
 
         {/* Followers tab */}

@@ -2,6 +2,8 @@ import { apiFetch } from "@/lib/api";
 import { useState, useEffect } from "react";
 import { User, Check, X, AtSign } from "lucide-react";
 import { useAuth } from "@/lib/auth";
+import { runBatch } from "@/lib/tx-approval";
+import { ensureDefaultSpace, defaultSpaceName } from "@/lib/space";
 
 interface Props { onComplete?: () => void; }
 
@@ -46,13 +48,21 @@ export default function UsernameModal({ onComplete }: Props) {
     if (!username || !available || !address) return;
     setSaving(true); setError("");
     try {
-      const r = await apiFetch("/api/profiles", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ walletAddress: address, username, displayName, bio }),
+      const nice = displayName.trim() || username;
+      await runBatch({
+        title: "Create your profile and space",
+        detail: `Saves your profile and creates your default space "${defaultSpaceName(nice)}" on-chain.`,
+        count: 2, from: address,
+      }, async () => {
+        const r = await apiFetch("/api/profiles", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ walletAddress: address, username, displayName, bio }),
+        });
+        const d = await r.json().catch(() => ({}));
+        if (!r.ok) throw new Error(d.error || "Couldn't save the profile.");
+        try { await ensureDefaultSpace(address, nice); } catch { /* profile is saved; the space can be created later from Write */ }
       });
-      const d = await r.json().catch(() => ({}));
-      if (!r.ok) throw new Error(d.error || "Couldn't save the profile.");
       setShow(false);
       onComplete?.();
     } catch (e: any) { setError(e.message); }

@@ -71,7 +71,7 @@ export default function VideoUploadPage() {
           title: title.trim(), blurb: blurb.trim(), slug: finalSlug, category,
           pricePerSec: effectivePrice, freePreviewSecs,
         }, seg, update);
-      });
+      }, { batch: "Uploads your video to the blockchain. After processing it is written in many transactions, all signed automatically once you approve." });
       setSaved(true);
     } catch (e) {
       setError(explainError(e, "Failed to upload video"));

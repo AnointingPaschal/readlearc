@@ -18,6 +18,7 @@ import {
   listVersions, compile, evmVersionsFor, supportsViaIR, parseVer,
   type CompileResult, type CompiledContract, type CompileSettings, type SolcBuild,
 } from "@/lib/solc/compiler";
+import { runBatch } from "@/lib/tx-approval";
 import { deployContract, deploySuite, ctorInputs, ctorPayable, parseArg, SUITE_STEPS, type StepStatus } from "@/lib/solc/deploy";
 
 // ─────────────── persistence ───────────────
@@ -154,7 +155,7 @@ export default function DeployPage() {
       const r = await compile(Object.fromEntries(need.map((n) => [n + ".sol", bundled[n + ".sol"]])), { ...SUITE_SETTINGS, buildPath: build.path }, (t) => setStep("compile", "running", t));
       if (!r.ok) { setStep("compile", "error", r.diagnostics.find((d) => d.severity === "error")?.message); throw new Error("Compilation failed"); }
       setStep("compile", "done", `${r.contracts.length} contracts · solc ${SUITE_SETTINGS.version}`);
-      const res = await deploySuite({
+      const res = await runBatch({ title: "Deploy the Readlearc suite", detail: "Deploys Roles, ContentStore, Social, Monetization, Payments and StreamPay, links them together and saves the addresses to Cloudflare KV.", count: 7, from: signer.address }, () => deploySuite({
         signer, compiled: r.contracts, usdc, treasury, onStep: setStep,
         save: async (a) => {
           const resp = await apiFetch("/api/config", {
@@ -164,7 +165,7 @@ export default function DeployPage() {
           const d = await resp.json().catch(() => ({}));
           if (!resp.ok) throw new Error((d.error || `Save failed (${resp.status})`) + " — contracts ARE deployed; paste the addresses in Finance → Contracts manually.");
         },
-      });
+      }));
       setDeployed((d) => [...Object.entries({ Roles: res.roles, ContentStore: res.contentStore, Social: res.social, Monetization: res.monetization, Payments: res.payments, StreamPay: res.streamPay })
         .map(([name, address]) => ({ id: name + address, name, address, abi: r.contracts.find((c) => c.name === name)!.abi, txHash: "", at: Date.now() })), ...d]);
       setSuiteDone(true);

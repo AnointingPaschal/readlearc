@@ -3,7 +3,8 @@
  * (Long-form, monetizable articles live at /write/article.)
  */
 import { useEffect, useState } from "react";
-import { PenLine, Users, FileText } from "lucide-react";
+import { PenLine, Users, FileText, FlaskConical, Loader2, Plus } from "lucide-react";
+import { ensureDefaultSpace } from "@/lib/space";
 import Navbar from "@/components/ui/Navbar";
 import ConnectGate from "@/components/ui/ConnectGate";
 import PostForm from "@/components/ui/PostForm";
@@ -21,6 +22,9 @@ export default function WritePost() {
   const [groups, setGroups] = useState<G[] | null>(null);
   const [gid, setGid] = useState("");
   const [name, setName] = useState("");
+  const [creating, setCreating] = useState(false);
+  const [err, setErr] = useState("");
+  const [reload, setReload] = useState(0);
 
   useEffect(() => {
     if (!isAuth || !address) return;
@@ -31,7 +35,14 @@ export default function WritePost() {
       setGid(list.find((g) => String(g.id) === last)?.id ? last : list[0] ? String(list[0].id) : "");
     }).catch(() => setGroups([]));
     apiFetch(`/api/profiles/${address}`).then((r) => r.json()).then((p) => setName(p?.display_name || p?.username || "")).catch(() => {});
-  }, [isAuth, address]);
+  }, [isAuth, address, reload]);
+
+  async function createMine() {
+    setCreating(true); setErr("");
+    try { await ensureDefaultSpace(address, name || `${address.slice(0, 6)}…${address.slice(-4)}`); setReload((x) => x + 1); }
+    catch (e) { setErr((e as Error).message); }
+    setCreating(false);
+  }
 
   const shell = (children: React.ReactNode) => (
     <div style={{ minHeight: "100vh", background: "var(--bg)" }}>
@@ -69,20 +80,28 @@ export default function WritePost() {
       ) : groups.length === 0 ? (
         <div style={{ textAlign: "center", padding: "26px 10px" }}>
           <Users size={30} style={{ color: "var(--text-4)", marginBottom: 8 }} />
-          <p style={{ fontSize: 14, fontWeight: 700, color: "var(--text)", margin: "0 0 4px" }}>Join a space to start posting</p>
-          <p style={{ fontSize: 12, color: "var(--text-4)", margin: "0 0 14px" }}>Posts are shared inside spaces. Join one or start your own.</p>
+          <p style={{ fontSize: 14, fontWeight: 700, color: "var(--text)", margin: "0 0 4px" }}>You don't have a space yet</p>
+          <p style={{ fontSize: 12, color: "var(--text-4)", margin: "0 0 14px" }}>Posts are shared inside spaces. Create your own, or join one.</p>
           <div style={{ display: "flex", gap: 8, justifyContent: "center", flexWrap: "wrap" }}>
-            <Link href="/contribute" className="btn btn-primary btn-sm">Browse spaces</Link>
-            <Link href="/contribute/create" className="btn btn-ghost btn-sm">Create one</Link>
+            <button onClick={createMine} disabled={creating} className="btn btn-primary btn-sm" style={{ display: "flex", alignItems: "center", gap: 6 }}>
+              {creating ? <><Loader2 size={13} className="spin" />Creating…</> : <><Plus size={13} />Create my space</>}
+            </button>
+            <Link href="/contribute" className="btn btn-ghost btn-sm">Browse spaces</Link>
           </div>
+          {err && <p style={{ fontSize: 12, color: "#dc2626", marginTop: 10 }}>{err}</p>}
         </div>
       ) : (
         <PostForm key={gid} groupId={gid} rows={5} placeholder="What's on your mind?" onPosted={() => router.push(`/contribute/${gid}`)} />
       )}
     </div>
 
-    <Link href="/write/article" style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 14, fontSize: 12, color: "var(--text-3)", textDecoration: "none" }}>
-      <FileText size={14} style={{ color: "var(--brand)" }} />Writing a long article or research paper? <b style={{ color: "var(--brand)" }}>Open the article editor →</b>
-    </Link>
+    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginTop: 14 }}>
+      <Link href="/write/article" className="btn btn-secondary" style={{ justifyContent: "center", gap: 7, height: 46, fontWeight: 700 }}>
+        <FileText size={15} />Write Article
+      </Link>
+      <Link href="/write/research" className="btn btn-primary" style={{ justifyContent: "center", gap: 7, height: 46, fontWeight: 700 }}>
+        <FlaskConical size={15} />Research Studio
+      </Link>
+    </div>
   </>);
 }

@@ -29,7 +29,7 @@ function hue(addr:string){return parseInt((addr||"000000").slice(2,4)||"0",16)*1
 
 export default function ArticlePage() {
   const { id } = useParams<{ id:string }>();
-  const { isAuth, address, signer, requireAuth, refresh, requestSign } = useAuth();
+  const { isAuth, address, signer, requireAuth, refresh } = useAuth();
 
   const [article, setArticle] = useState<Article|null>(null);
   const [loading, setLoading] = useState(true);
@@ -70,8 +70,6 @@ export default function ArticlePage() {
         setError(`Insufficient USDC. Have $${fmtUsdc(bal)}, need $${parseFloat(article.price).toFixed(3)}. Get test USDC at faucet.circle.com.`);
         setPaying(false);setPayStep("");return;
       }
-      const ok=await requestSign({title:"Pay to Read",description:article.title.slice(0,70),to:article.authorAddress,amount:`$${parseFloat(article.price).toFixed(3)}`,token:"USDC",type:"USDC Transfer"});
-      if (!ok){setPaying(false);setPayStep("");return;}
       setPayStep("Paying on-chain…");
       const {txHash:_txHash}=await payForArticle(signer,Number(article.id));
       setTxHash(_txHash);

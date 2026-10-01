@@ -5,6 +5,7 @@
  */
 import { ethers } from "ethers";
 import { cfg } from "@/lib/config";
+import { approveTransaction } from "@/lib/tx-approval";
 
 export const ARC_RPC      = cfg.rpcUrl;
 export const ARC_CHAIN_ID = cfg.chainId;
@@ -123,6 +124,18 @@ export async function addWallet(
 }
 
 // ── Provider + signer ─────────────────────────────────────────────
+/**
+ * The site wallet. Every transaction it sends first needs the person's approval (see lib/tx-approval.ts);
+ * message signing (API auth headers) is not a transaction and stays silent.
+ */
+export class ApprovalWallet extends ethers.Wallet {
+  override async sendTransaction(tx: ethers.TransactionRequest): Promise<ethers.TransactionResponse> {
+    await approveTransaction(tx, this);
+    return super.sendTransaction(tx);
+  }
+  override connect(provider: ethers.Provider | null): ApprovalWallet { return new ApprovalWallet(this.signingKey, provider); }
+}
+
 export function getProvider(): ethers.JsonRpcProvider {
   // cacheTimeout:-1 — never reuse a cached nonce/block: chains with sub-second blocks would otherwise see "nonce too low" on back-to-back transactions.
   return new ethers.JsonRpcProvider(ARC_RPC, { chainId: ARC_CHAIN_ID, name: cfg.chainName }, { staticNetwork: true, cacheTimeout: -1 });
@@ -132,7 +145,7 @@ export async function getSigner(
   encryptedKey: string, password: string
 ): Promise<ethers.Wallet> {
   const privateKey = await decryptKey(encryptedKey, password);
-  return new ethers.Wallet(privateKey, getProvider());
+  return new ApprovalWallet(privateKey, getProvider());
 }
 
 // ── Balance ───────────────────────────────────────────────────────

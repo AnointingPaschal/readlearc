@@ -18,6 +18,8 @@ const NAV = [
   ]},
   { label:"Content",  items:[
     { href:"/admin/content/moderation", icon:BookOpen,        label:"All Articles"     },
+    { href:"/write/article",            icon:PenTool,         label:"Write Article"    },
+    { href:"/admin/content/bulk",       icon:FileText,        label:"Bulk Write"       },
     { href:"/admin/logs",               icon:Flag,            label:"Activity Logs"    },
     { href:"/admin/notifications",      icon:Bell,            label:"Notifications"    },
   ]},

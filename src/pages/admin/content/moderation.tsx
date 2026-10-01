@@ -165,6 +165,8 @@ export default function ModerationPage() {
           <p style={{fontSize:12,color:"var(--text-4)",marginTop:2}}>{arts.length} articles · {analyzed} analyzed{aiCfg.keySet&&aiCfg.model&&<span style={{color:"var(--accent)"}}> · {aiCfg.model}</span>}</p>
         </div>
         <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
+          <Link href="/write/article" className="btn btn-primary btn-sm" style={{gap:5}}><Edit3 size={12}/>Write article</Link>
+          <Link href="/admin/content/bulk" className="btn btn-secondary btn-sm" style={{gap:5}}><Zap size={12}/>Bulk write</Link>
           <button onClick={load} disabled={loading} style={{display:"flex",alignItems:"center",gap:5,padding:"7px 12px",border:"1.5px solid var(--border)",background:"var(--bg-alt)",borderRadius:"var(--r-f)",cursor:"pointer",fontSize:12,fontWeight:600,color:"var(--text-3)"}}>
             <RefreshCw size={12} className={loading?"spin":""}/>Refresh
           </button>
