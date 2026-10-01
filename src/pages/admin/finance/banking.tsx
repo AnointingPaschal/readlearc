@@ -5,6 +5,8 @@ import { signedJson } from "@/lib/onchain/auth";
 import { fmtNgn, fmtUsd, ago, type Cashout } from "@/lib/bank";
 import { StatusChip } from "@/components/wallet/Sheet";
 
+const NATURE = ["otherOperatingCompanies", "eCommercePlatform", "paymentProcessorPlatform", "cryptoSoftwareProvider", "otherCryptoServices", "marketing", "education", "nonProfit", "web3GamingSocial", "tokenProject", "p2p", "trading", "banking", "assetManager", "insurance", "healthCare", "realEstate", "construction", "agriculture", "art", "film", "accounting", "manufacturingOther", "transportation", "utilities", "cryptoExchange", "cryptoInvesting", "cryptoCustodian", "nftMarketplace", "stakingServices"];
+const INST = ["privateCo", "publicCo", "soleTrader", "partnership", "coop", "foundation", "trust", "associationOrConsortium", "governmentBody"];
 interface Status { circle: { ok: boolean; error?: string; env?: string }; paystack: { ok: boolean; error?: string; data?: { currency: string; balance: number }[] }; cashouts: Cashout[] }
 const F = ({ l, hint, children }: { l: string; hint?: string; children: React.ReactNode }) => (
   <div><label style={{ fontSize: 11, fontWeight: 700, color: "var(--text-3)", display: "block", marginBottom: 4 }}>{l}</label>{children}{hint && <div style={{ fontSize: 11, color: "var(--text-4)", marginTop: 3, lineHeight: 1.5 }}>{hint}</div>}</div>
@@ -19,6 +21,16 @@ export default function BankingAdmin() {
   const [st, setSt] = useState<Status | null>(null);
   const [testing, setTesting] = useState(false);
   const set = (k: string) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => setS((p) => ({ ...p, [k]: e.target.value }));
+  const [cl, setCl] = useState({ clientName: "", country: "NG", natureOfBusiness: "otherOperatingCompanies", institutionType: "privateCo" });
+  const [creating, setCreating] = useState(false);
+  const [clMsg, setClMsg] = useState("");
+  async function createClient() {
+    if (!signer) return; setCreating(true); setClMsg("");
+    const r = await signedJson<{ clientEntityId?: string; error?: string }>(signer, "POST", "/api/bank/client", cl);
+    if (r.ok && r.data.clientEntityId) { setS((p) => ({ ...p, circle_client_entity_id: r.data.clientEntityId! })); setClMsg("Created and saved: " + r.data.clientEntityId); }
+    else setClMsg(r.data?.error || "Failed");
+    setCreating(false);
+  }
   const webhook = typeof location !== "undefined" ? `${location.origin}/api/bank/ng/webhook` : "";
 
   async function test() {
@@ -72,7 +84,23 @@ export default function BankingAdmin() {
         <F l="API key">
           <div style={{ display: "flex", gap: 6 }}>{input("circle_api_key", "SAND_API_KEY:…", true)}<button className="btn btn-ghost btn-sm" onClick={() => setShow((v) => !v)}>{show ? <EyeOff size={14} /> : <Eye size={14} />}</button></div>
         </F>
-        <F l="Client entity ID" hint="From POST /v1/partner/clients. Needed for the device check that Circle requires before a bank account can be created.">{input("circle_client_entity_id", "a3f1b2c4-…")}</F>
+        <F l="Client entity ID" hint="Needed for the device check Circle requires before a bank account can be created. Paste an existing one, or create it below.">{input("circle_client_entity_id", "a3f1b2c4-…")}</F>
+        <details style={{ border: "1px solid var(--border)", borderRadius: "var(--r)", padding: "10px 12px" }}>
+          <summary style={{ cursor: "pointer", fontSize: 13, fontWeight: 700, color: "var(--brand)" }}>Create client entity at Circle</summary>
+          <div style={{ display: "flex", flexDirection: "column", gap: 10, marginTop: 12 }}>
+            <div style={{ fontSize: 11, color: "var(--text-4)" }}>Uses the API key above (save it first). Registers your platform as a business client.</div>
+            <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr", gap: 10 }}>
+              <F l="Business name"><input className="input" value={cl.clientName} onChange={(e) => setCl({ ...cl, clientName: e.target.value })} /></F>
+              <F l="Country (2 letters)"><input className="input" maxLength={2} value={cl.country} onChange={(e) => setCl({ ...cl, country: e.target.value.toUpperCase() })} /></F>
+            </div>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+              <F l="Nature of business"><select className="input" value={cl.natureOfBusiness} onChange={(e) => setCl({ ...cl, natureOfBusiness: e.target.value })}>{NATURE.map((n) => <option key={n}>{n}</option>)}</select></F>
+              <F l="Institution type"><select className="input" value={cl.institutionType} onChange={(e) => setCl({ ...cl, institutionType: e.target.value })}>{INST.map((n) => <option key={n}>{n}</option>)}</select></F>
+            </div>
+            <button className="btn btn-secondary btn-sm" onClick={createClient} disabled={creating || !cl.clientName || cl.country.length !== 2} style={{ alignSelf: "flex-start" }}>{creating ? "Creating…" : "Create client entity"}</button>
+            {clMsg && <div style={{ fontSize: 12, color: clMsg.startsWith("Created") ? "#059669" : "#dc2626" }}>{clMsg}</div>}
+          </div>
+        </details>
       </div>
 
       <div className="card" style={{ padding: 18, display: "flex", flexDirection: "column", gap: 12 }}>
