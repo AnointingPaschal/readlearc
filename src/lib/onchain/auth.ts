@@ -28,6 +28,7 @@ export async function signedJson<T = unknown>(signer: ethers.Signer | null, meth
   if (signer) headers["Authorization"] = await authHeader(signer, method, new URL(path, location.origin).pathname, body);
   const res = await fetch(path, { method, headers, body: body || undefined });
   let data: unknown = null;
-  try { data = await res.json(); } catch { /* empty */ }
+  const raw = await res.text().catch(() => "");
+  try { data = JSON.parse(raw); } catch { if (!res.ok) data = { error: /<html|<!doctype/i.test(raw) ? `Server error (${res.status}) — please try again` : raw.slice(0, 160) || undefined }; }
   return { ok: res.ok, status: res.status, data: data as T };
 }

@@ -4,6 +4,8 @@ import { bankCfg, cashKey, CASH_ALL, errResp, ethers, isResp, kvList, kvPush, kv
 import { chainFor } from "../../../_lib/chain";
 import { getManaged } from "../../../_lib/dcw";
 
+/** Plain-language reason for a failed payout (the raw Paystack text is kept in the record for admins). */
+const friendly = (m?: string) => /balance|insufficient/i.test(m || "") ? "Payouts are temporarily unavailable. Your USDC is safe — press Retry in a little while." : /third.?party|not enabled|disabled|permission|otp/i.test(m || "") ? "Bank transfers aren't enabled on the payout account yet. Your USDC is safe — contact support." : (m || "The bank payout failed") + " — your USDC is safe; press Retry.";
 const TRANSFER = ethers.id("Transfer(address,address,uint256)");
 const ERC20 = ["function decimals() view returns (uint8)"];
 
@@ -40,8 +42,11 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
     const acct = (await kvList<NgAccount>(env, ngKey(who.address))).find((a) => a.id === p.accountId);
     if (!acct) return err("Choose one of your saved bank accounts");
     const id = "rl_" + txHash.slice(2, 42).toLowerCase();                      // Paystack reference (16–50 chars, a-z0-9_-)
-    const used = await env.RL_KV.get(`bank:cash-tx:${txHash.toLowerCase()}`);
-    if (used) return err("That transaction was already cashed out", 409);
+    // A tx hash is honoured once. If an earlier attempt ended before Paystack accepted a transfer (crash, or Paystack refused), it may be retried:
+    // the Paystack reference is derived from the tx hash, so a retry can never pay twice.
+    const prior = (await kvList<Cashout>(env, cashKey(who.address))).find((x) => x.id === id);
+    if (prior && (prior.status !== "failed" || prior.transferCode)) return json({ data: prior });          // already handled → idempotent answer
+    if (!prior && (await env.RL_KV.get(`bank:cash-tx:${txHash.toLowerCase()}`)) && (await env.RL_KV.get(`bank:cash-tx:${txHash.toLowerCase()}`)) !== who.address) return err("That transaction was already cashed out", 409);
 
     // verify the USDC transfer on-chain
     let receipt = null as ethers.TransactionReceipt | null;
@@ -82,8 +87,9 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
     } catch (e) {
       rec.status = "failed"; rec.error = (e as Error).message;
     }
-    await kvPush(env, cashKey(who.address), rec, 100);
-    await kvPush(env, CASH_ALL, rec, 300);
-    return json({ data: rec }, rec.status === "failed" ? 502 : 200);
+    if (prior) { await kvPatch<Cashout>(env, cashKey(who.address), id, rec); await kvPatch<Cashout>(env, CASH_ALL, id, rec); }
+    else { await kvPush(env, cashKey(who.address), rec, 100); await kvPush(env, CASH_ALL, rec, 300); }
+    if (rec.status === "failed") return json({ error: friendly(rec.error), data: rec }, 502);
+    return json({ data: rec });
   } catch (e) { return errResp(e); }
 };
