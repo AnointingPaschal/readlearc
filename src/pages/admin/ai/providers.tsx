@@ -11,6 +11,8 @@ const POPULAR_MODELS = [
   { id:"deepseek/deepseek-r1",           name:"DeepSeek R1",               provider:"DeepSeek",  ctx:"64k",  best:"Reasoning"               },
 ];
 
+interface FreeModel { id:string; name:string; provider:string; ctx?:string; ctxN:number; vision?:boolean }
+
 interface AIState {
   key: string;
   models: Array<{ id:string; name:string; provider:string; ctx?:string; custom?:boolean }>;
@@ -29,6 +31,32 @@ export default function OpenRouterPage() {
   const [customId,  setCustomId]  = useState("");
   const [customName,setCustomName]= useState("");
   const [loading,   setLoading]   = useState(true);
+  const [free,      setFree]      = useState<FreeModel[]>([]);
+  const [freeLoading,setFreeLoading]=useState(false);
+  const [freeErr,   setFreeErr]   = useState("");
+  const [query,     setQuery]     = useState("");
+
+  async function loadFree() {
+    setFreeLoading(true); setFreeErr("");
+    try {
+      const r = await fetch("https://openrouter.ai/api/v1/models");
+      if (!r.ok) throw new Error(`OpenRouter returned ${r.status}`);
+      const d = await r.json();
+      const list: FreeModel[] = (d.data || [])
+        .filter((m:any) => (m.id?.endsWith(":free") || (Number(m.pricing?.prompt) === 0 && Number(m.pricing?.completion) === 0)) && (m.architecture?.output_modalities || ["text"]).includes("text"))
+        .map((m:any) => ({
+          id: m.id, name: String(m.name || m.id).replace(/\s*\(free\)\s*$/i, ""), provider: String(m.id).split("/")[0],
+          ctx: m.context_length ? (m.context_length >= 1_000_000 ? `${Math.round(m.context_length/1_000_000)}M` : `${Math.round(m.context_length/1000)}k`) : undefined,
+          ctxN: m.context_length || 0,
+          vision: (m.architecture?.input_modalities || []).includes("image"),
+        }))
+        .sort((a:FreeModel, b:FreeModel) => b.ctxN - a.ctxN);
+      setFree(list);
+      if (!list.length) setFreeErr("OpenRouter returned no free models right now.");
+    } catch (e:any) { setFreeErr(e.message || "Couldn't reach OpenRouter"); }
+    setFreeLoading(false);
+  }
+  useEffect(() => { loadFree(); }, []);
 
   useEffect(() => {
     apiFetch("/api/openrouter/models").then(r=>r.json()).then(d => {
@@ -58,6 +86,20 @@ export default function OpenRouterPage() {
     } catch { setTestResult("✗ Connection failed"); }
     setTesting(false);
   }
+
+  function toggleFree(m: FreeModel) {
+    togglePopularModel({ id:m.id, name:m.name, provider:m.provider, ctx:m.ctx||"", best:"" });
+  }
+  const shown = free.filter(m => !query || (m.id + " " + m.name).toLowerCase().includes(query.toLowerCase()));
+  function addShown() {
+    setState(s => {
+      const have = new Set(s.models.map(x=>x.id));
+      const add = shown.filter(m=>!have.has(m.id)).map(m=>({ id:m.id, name:m.name, provider:m.provider, ctx:m.ctx }));
+      const models = [...s.models, ...add];
+      return { ...s, models, activeModel: s.activeModel || models[0]?.id || "" };
+    });
+  }
+  function clearAll() { setState(s=>({ ...s, models:[], activeModel:"" })); }
 
   function togglePopularModel(m: typeof POPULAR_MODELS[0]) {
     const exists = state.models.find(x=>x.id===m.id);
@@ -108,7 +150,7 @@ export default function OpenRouterPage() {
           <button onClick={testConnection} disabled={!state.key||testing} className="btn btn-ghost btn-sm">
             {testing?<><div style={{ width:11,height:11,border:"1.5px solid currentColor",borderTopColor:"transparent",borderRadius:"50%"}} className="spin"/>Testing…</>:<>Test connection</>}
           </button>
-          {testResult && <span style={{ fontSize:11, fontWeight:600, color:testResult.startsWith("")?"#059669":"#dc2626" }}>{testResult}</span>}
+          {testResult && <span style={{ fontSize:11, fontWeight:600, color:testResult.startsWith("✗")?"#dc2626":"#059669" }}>{testResult}</span>}
         </div>
       </div>
 
@@ -139,6 +181,44 @@ export default function OpenRouterPage() {
             <span style={{ fontSize:11, color:"#059669" }}>Active: {state.models.find(m=>m.id===state.activeModel)?.name||state.activeModel} · Will analyze new articles on publish.</span>
           </div>
         )}
+      </div>
+
+      {/* Free models */}
+      <div className="card" style={{ padding:"20px" }}>
+        <div style={{ display:"flex", alignItems:"center", gap:8, marginBottom:4, flexWrap:"wrap" }}>
+          <h2 style={{ fontSize:14, fontWeight:700, color:"var(--text)" }}>Free OpenRouter models</h2>
+          <span className="badge badge-green" style={{ fontSize:9 }}>{free.length} FREE</span>
+          <button onClick={loadFree} disabled={freeLoading} className="btn btn-ghost btn-sm" style={{ marginLeft:"auto", display:"flex", gap:5, alignItems:"center" }}>
+            <RefreshCw size={12} className={freeLoading?"spin":""}/>Refresh
+          </button>
+        </div>
+        <p style={{ fontSize:12, color:"var(--text-3)", lineHeight:1.6, marginBottom:12 }}>
+          Live list from OpenRouter (models that cost $0). Tick the ones you want, pick a default below, then press <b>Save</b>. Free models can be rate-limited or change over time.
+        </p>
+        <input className="input" placeholder="Search free models…" value={query} onChange={e=>setQuery(e.target.value)} style={{ marginBottom:10, fontSize:12 }}/>
+        <div style={{ display:"flex", gap:8, marginBottom:10, flexWrap:"wrap", alignItems:"center" }}>
+          <button onClick={addShown} disabled={!shown.length} className="btn btn-ghost btn-sm">Select all shown ({shown.length})</button>
+          <button onClick={clearAll} disabled={!state.models.length} className="btn btn-ghost btn-sm">Clear selection</button>
+          <span style={{ fontSize:11, color:"var(--text-4)" }}>{state.models.length} selected</span>
+        </div>
+        {freeErr && <div style={{ fontSize:12, color:"#dc2626", marginBottom:8 }}>{freeErr}</div>}
+        {freeLoading && !free.length && [1,2,3].map(i=><div key={i} className="skeleton" style={{ height:44, borderRadius:10, marginBottom:6 }}/>)}
+        <div style={{ display:"flex", flexDirection:"column", gap:6, maxHeight:420, overflowY:"auto" }}>
+          {shown.map(m => {
+            const on = state.models.some(x=>x.id===m.id);
+            return (
+              <label key={m.id} style={{ display:"flex", alignItems:"center", gap:10, padding:"9px 11px", borderRadius:"var(--r)", border:`1.5px solid ${on?"var(--brand)":"var(--border)"}`, background:on?"var(--brand-muted)":"transparent", cursor:"pointer" }}>
+                <input type="checkbox" checked={on} onChange={()=>toggleFree(m)} style={{ flexShrink:0 }}/>
+                <div style={{ minWidth:0, flex:1 }}>
+                  <div style={{ fontSize:12.5, fontWeight:700, color:on?"var(--brand)":"var(--text-2)" }}>{m.name}</div>
+                  <div style={{ fontSize:10, color:"var(--text-4)", fontFamily:"JetBrains Mono,monospace", overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{m.id}</div>
+                </div>
+                <div style={{ fontSize:10, color:"var(--text-4)", textAlign:"right", flexShrink:0 }}>{m.ctx && <div>{m.ctx} ctx</div>}{m.vision && <div>vision</div>}</div>
+              </label>
+            );
+          })}
+          {!freeLoading && !shown.length && !freeErr && <div style={{ fontSize:12, color:"var(--text-4)" }}>No models match “{query}”.</div>}
+        </div>
       </div>
 
       {/* Model selector */}
@@ -177,7 +257,11 @@ export default function OpenRouterPage() {
       {/* Active model list */}
       {state.models.length > 0 && (
         <div className="card" style={{ padding:"20px" }}>
-          <h2 style={{ fontSize:14, fontWeight:700, color:"var(--text)", marginBottom:14 }}>Your Models · Select Active</h2>
+          <h2 style={{ fontSize:14, fontWeight:700, color:"var(--text)", marginBottom:10 }}>Your Models · Default model</h2>
+          <select value={state.activeModel} onChange={e=>setActive(e.target.value)} className="input" style={{ marginBottom:12, fontSize:12 }}>
+            <option value="">— choose a default model —</option>
+            {state.models.map(m => <option key={m.id} value={m.id}>{m.name} ({m.id})</option>)}
+          </select>
           <div style={{ display:"flex", flexDirection:"column", gap:7 }}>
             {state.models.map(m => (
               <div key={m.id} style={{ display:"flex", alignItems:"center", gap:10, padding:"10px 13px", borderRadius:"var(--r)", border:`1.5px solid ${state.activeModel===m.id?"var(--brand)":"var(--border)"}`, background:state.activeModel===m.id?"var(--brand-muted)":"var(--bg-alt)", transition:"all .15s", cursor:"pointer" }}
