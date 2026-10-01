@@ -2,6 +2,7 @@ import type { Env } from "../../../_lib/env";
 import { err, json } from "../../../_lib/env";
 import { bankCfg, cashKey, CASH_ALL, errResp, ethers, isResp, kvList, kvPush, kvPatch, ngKey, paystack, requireUser, type Cashout, type NgAccount } from "../../../_lib/bank";
 import { chainFor } from "../../../_lib/chain";
+import { getManaged } from "../../../_lib/dcw";
 
 const TRANSFER = ethers.id("Transfer(address,address,uint256)");
 const ERC20 = ["function decimals() view returns (uint8)"];
@@ -49,12 +50,15 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
     // Prefer the ERC-20 Transfer event; fall back to decoding the call itself (some USDC deployments, e.g. Arc's native-USDC interface, may not emit one).
     const dec = Number(await new ethers.Contract(usdc, ERC20, chain.provider).decimals());
     let raw: bigint | null = null;
+    // the sender may be the signed-in wallet or that user's own managed (Circle developer-controlled) wallet
+    const senders = new Set([who.address]);
+    const mw = await getManaged(env, who.address); if (mw) senders.add(ethers.getAddress(mw.address));
     const log = receipt.logs.find((l) => l.address.toLowerCase() === usdc.toLowerCase() && l.topics[0] === TRANSFER && l.topics.length >= 3
-      && ethers.getAddress("0x" + l.topics[1].slice(26)) === who.address && ethers.getAddress("0x" + l.topics[2].slice(26)) === ethers.getAddress(treasury));
+      && senders.has(ethers.getAddress("0x" + l.topics[1].slice(26))) && ethers.getAddress("0x" + l.topics[2].slice(26)) === ethers.getAddress(treasury));
     if (log) raw = BigInt(log.data);
     else {
       const tx = await chain.provider.getTransaction(txHash);
-      if (tx && tx.to?.toLowerCase() === usdc.toLowerCase() && ethers.getAddress(tx.from) === who.address) {
+      if (tx && tx.to?.toLowerCase() === usdc.toLowerCase() && senders.has(ethers.getAddress(tx.from))) {
         try {
           const parsed = new ethers.Interface(["function transfer(address to, uint256 amount)"]).parseTransaction({ data: tx.data });
           if (parsed && ethers.getAddress(parsed.args[0]) === ethers.getAddress(treasury)) raw = BigInt(parsed.args[1]);

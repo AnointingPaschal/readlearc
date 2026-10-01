@@ -31,11 +31,20 @@ export default function BankingAdmin() {
     else setClMsg(r.data?.error || "Failed");
     setCreating(false);
   }
+  const [dc, setDc] = useState<{ ok?: boolean; error?: string; appId?: string; entitySecret?: boolean; walletSetId?: string; hasKey?: boolean; cipherOk?: boolean; cipherError?: string } | null>(null);
+  const [wsMsg, setWsMsg] = useState("");
+  async function loadDcw() { if (!signer) return; const r = await signedJson<any>(signer, "GET", "/api/dcw/admin"); if (r.ok) setDc(r.data); }
+  async function makeSet() {
+    if (!signer) return; setWsMsg("Creating…");
+    const r = await signedJson<{ walletSetId?: string; error?: string }>(signer, "POST", "/api/dcw/admin", {});
+    if (r.ok && r.data.walletSetId) { setS((p) => ({ ...p, dcw_wallet_set_id: r.data.walletSetId! })); setWsMsg("Wallet set created and saved"); void loadDcw(); } else setWsMsg(r.data?.error || "Failed");
+  }
   const webhook = typeof location !== "undefined" ? `${location.origin}/api/bank/ng/webhook` : "";
 
   async function test() {
     if (!signer) return; setTesting(true);
     const r = await signedJson<Status>(signer, "GET", "/api/bank/admin");
+    void loadDcw();
     setSt(r.ok ? r.data : null); if (!r.ok) setMsg((r.data as any)?.error || "Couldn't load status");
     setTesting(false);
   }
@@ -47,7 +56,7 @@ export default function BankingAdmin() {
 
   async function save() {
     if (!signer) return; setSaving(true); setMsg("");
-    const keys = ["circle_env", "circle_api_key", "circle_account_id", "circle_client_entity_id", "paystack_secret_key", "ngn_enabled", "ngn_per_usd", "ngn_fee_pct", "ngn_min_usd", "ngn_max_usd"];
+    const keys = ["dcw_api_key", "dcw_blockchain", "dcw_max_send_usd", "dcw_enabled", "circle_env", "circle_api_key", "circle_account_id", "circle_client_entity_id", "paystack_secret_key", "ngn_enabled", "ngn_per_usd", "ngn_fee_pct", "ngn_min_usd", "ngn_max_usd"];
     const r = await signedJson(signer, "POST", "/api/admin/settings", Object.fromEntries(keys.map((k) => [k, s[k] ?? ""])));
     setMsg(r.ok ? "Saved" : (r.data as any)?.error || "Save failed");
     setSaving(false); if (r.ok) { void test(); setTimeout(() => setMsg(""), 2500); }
@@ -119,6 +128,31 @@ export default function BankingAdmin() {
         <F l="Webhook URL" hint="Paste into Paystack → Settings → API Keys & Webhooks so payout statuses update instantly.">
           <div style={{ display: "flex", gap: 6 }}><input className="input" readOnly value={webhook} style={{ fontFamily: "JetBrains Mono,monospace", fontSize: 12 }} /><button className="btn btn-ghost btn-sm" onClick={() => navigator.clipboard?.writeText(webhook)}><Copy size={14} /></button></div>
         </F>
+      </div>
+
+      <div className="card" style={{ padding: 18, display: "flex", flexDirection: "column", gap: 12 }}>
+        <div style={{ fontFamily: "Outfit,sans-serif", fontSize: 15, fontWeight: 800, color: "var(--text)" }}>Managed wallets — Circle developer-controlled (optional)</div>
+        <div style={{ fontSize: 12, color: "var(--text-4)", lineHeight: 1.6 }}>
+          Lets users also hold a wallet whose keys Circle secures and <b>you</b> authorise with the entity secret. Setup: (1) register an entity secret in Circle Console and <b>save the recovery file somewhere separate</b>; (2) add the secret in Cloudflare Pages → Settings → Variables as an encrypted secret named <code>CIRCLE_ENTITY_SECRET</code> — it is never stored in KV or shown here; (3) paste the developer-wallet API key below; (4) create the wallet set.
+        </div>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(220px,1fr))", gap: 8 }}>
+          {pill(dc?.ok, dc?.ok ? `Circle connected · app ${String(dc.appId).slice(0, 8)}…` : "Developer API key", dc?.error || (dc && !dc.hasKey ? "No API key" : undefined))}
+          {pill(dc?.entitySecret && dc?.cipherOk, "Entity secret", !dc?.entitySecret ? "CIRCLE_ENTITY_SECRET not set" : dc?.cipherError)}
+          {pill(!!dc?.walletSetId, "Wallet set", "Not created yet")}
+        </div>
+        <F l="Developer-wallet API key"><div style={{ display: "flex", gap: 6 }}>{input("dcw_api_key", "TEST_API_KEY:…", true)}<button className="btn btn-ghost btn-sm" onClick={() => setShow((v) => !v)}>{show ? <EyeOff size={14} /> : <Eye size={14} />}</button></div></F>
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+          <F l="Network"><select className="input" value={s.dcw_blockchain || "ARC-TESTNET"} onChange={set("dcw_blockchain")}><option>ARC-TESTNET</option><option>ARC</option></select></F>
+          <F l="Max $ per send">{input("dcw_max_send_usd", "1000")}</F>
+        </div>
+        <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13, color: "var(--text-3)" }}>
+          <input type="checkbox" checked={(s.dcw_enabled ?? "true") !== "false"} onChange={(e) => setS((p) => ({ ...p, dcw_enabled: e.target.checked ? "true" : "false" }))} />Managed wallets enabled
+        </label>
+        <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+          <button className="btn btn-secondary btn-sm" onClick={makeSet} disabled={!dc?.ok || !dc?.entitySecret || !!dc?.walletSetId}>Create wallet set</button>
+          {dc?.walletSetId && <code style={{ fontSize: 11, color: "var(--text-4)" }}>{dc.walletSetId}</code>}
+          {wsMsg && <span style={{ fontSize: 12, color: wsMsg.includes("created") ? "#059669" : "var(--text-4)" }}>{wsMsg}</span>}
+        </div>
       </div>
 
       <div style={{ display: "flex", alignItems: "center", gap: 12 }}>

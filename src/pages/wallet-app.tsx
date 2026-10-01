@@ -11,6 +11,7 @@ import { useBank } from "@/components/wallet/useBank";
 import BankTab from "@/components/wallet/BankTab";
 import CashOutModal from "@/components/wallet/CashOutModal";
 import AddMoneyModal from "@/components/wallet/AddMoneyModal";
+import ManagedWallet from "@/components/wallet/ManagedWallet";
 import UnlockPrompt from "@/components/wallet/UnlockPrompt";
 import { Sheet } from "@/components/wallet/Sheet";
 
@@ -259,6 +260,10 @@ export default function WalletApp() {
             <div style={{ padding:"10px 12px",background:"var(--bg-alt)",border:"1px solid var(--border)",borderRadius:"var(--r-md)",fontSize:11,color:"var(--text-4)",marginBottom:14 }}>
               Get test USDC: <a href="https://faucet.circle.com" target="_blank" rel="noopener noreferrer" style={{ color:"var(--brand)",fontWeight:600 }}>faucet.circle.com</a> → select Arc Testnet
             </div>
+            {bcfg?.managed && active && (
+              <ManagedWallet signer={signer} cfg={bcfg} ngAccounts={bank.ng} mainAddress={active.address}
+                onUnlock={()=>setModal("unlock")} onFund={(a)=>{ setSendTo(a); setModal("send"); }} onChanged={()=>{ loadBal(active.address); bank.refresh(); }}/>
+            )}
             {bankOn && (
               <button onClick={()=>setTab("bank")} className="card card-hover" style={{ width:"100%",padding:"14px 16px",display:"flex",alignItems:"center",gap:12,marginBottom:12,cursor:"pointer",textAlign:"left" }}>
                 <div style={{ width:40,height:40,borderRadius:12,background:"linear-gradient(135deg,#059669,#2775ca)",display:"flex",alignItems:"center",justifyContent:"center" }}><Landmark size={18} color="white"/></div>
