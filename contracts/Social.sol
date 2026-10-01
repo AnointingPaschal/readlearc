@@ -335,7 +335,7 @@ contract Social {
         Group storage g = _groups[groupId];
         if (!g.active) revert NotFound();
         if (!isMember[groupId][msg.sender]) revert NotMember();
-        if (bytes(content).length == 0 || bytes(content).length > 4000) revert BadInput();
+        if (bytes(content).length == 0 || bytes(content).length > 100_000) revert BadInput();
         id = ++postCount;
         postGroup[id] = groupId;
         postAuthor[id] = msg.sender;

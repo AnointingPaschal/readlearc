@@ -3,7 +3,8 @@ import { useState, useEffect } from "react";
 import { Link } from "@/lib/nav";
 import Navbar from "@/components/ui/Navbar";
 import { useAuth } from "@/lib/auth";
-import { Users, Lock, Globe, Plus, Search, BookOpen, Flame, Tag } from "lucide-react";
+import PostBody from "@/components/ui/PostBody";
+import { Users, Lock, Globe, Plus, Search, BookOpen, Flame, Tag, ImagePlus } from "lucide-react";
 
 interface Group {
   id: string; name: string; description: string; type: "public" | "private";
@@ -53,8 +54,13 @@ export default function ContributePage() {
   const [loading, setLoading] = useState(true);
   const [search,  setSearch]  = useState("");
   const [cat,     setCat]     = useState("All");
-  const [tab,     setTab]     = useState<"discover" | "mine">("discover");
+  const [tab,     setTab]     = useState<"feed" | "discover" | "mine">("feed");
   const [loadErr, setLoadErr] = useState(false);
+  const [feed,    setFeed]    = useState<any[] | null>(null);
+
+  useEffect(() => {
+    apiFetch("/api/groups/0/posts").then(r => r.json()).then(d => setFeed(Array.isArray(d) ? d : [])).catch(() => setFeed([]));
+  }, []);
 
   useEffect(() => {
     setLoading(true); setLoadErr(false);
@@ -98,7 +104,7 @@ export default function ContributePage() {
 
         {/* Tabs */}
         <div style={{ display: "flex", gap: 0, marginBottom: 16, borderBottom: "2px solid var(--border)" }}>
-          {(["discover","mine"] as const).map(t => (
+          {(["feed","discover","mine"] as const).map(t => (
             <button key={t} onClick={() => setTab(t)} style={{
               padding: "9px 18px", border: "none", cursor: "pointer", fontFamily: "Outfit,sans-serif",
               fontSize: 13, fontWeight: 700, background: "transparent",
@@ -106,11 +112,50 @@ export default function ContributePage() {
               borderBottom: `2px solid ${tab === t ? "var(--brand)" : "transparent"}`,
               marginBottom: -2, transition: "all .15s", textTransform: "capitalize",
             }}>
-              {t === "mine" ? `My Groups ${mine.length > 0 ? `(${mine.length})` : ""}` : "Discover"}
+              {t === "mine" ? `My Spaces ${mine.length > 0 ? `(${mine.length})` : ""}` : t === "feed" ? "Feed" : "Discover"}
             </button>
           ))}
         </div>
 
+        {tab === "feed" && (
+          <div style={{ maxWidth: 640, margin: "0 auto" }}>
+            <Link href="/write" className="card card-hover" style={{ display: "flex", alignItems: "center", gap: 10, padding: "12px 14px", textDecoration: "none", marginBottom: 12 }}>
+              <div style={{ width: 36, height: 36, borderRadius: "50%", background: "var(--brand-muted)", flexShrink: 0 }} />
+              <span style={{ flex: 1, padding: "9px 14px", background: "var(--bg-alt)", borderRadius: 99, fontSize: 13, color: "var(--text-4)" }}>What's on your mind?</span>
+              <ImagePlus size={18} style={{ color: "#16a34a" }} />
+            </Link>
+            {feed === null ? [1,2,3].map(i => <div key={i} className="skeleton" style={{ height: 120, borderRadius: "var(--r-lg)", marginBottom: 10 }} />) :
+              (() => {
+                const pub = new Map(groups.map(g => [String(g.id), g]));
+                const items = feed.filter(p => pub.has(String(p.group_id))).slice(0, 40);
+                if (!items.length) return (
+                  <div style={{ textAlign: "center", padding: "50px 20px", background: "var(--bg-card)", borderRadius: "var(--r-xl)", border: "1.5px dashed var(--border)" }}>
+                    <Flame size={34} style={{ color: "var(--text-4)", marginBottom: 10 }} />
+                    <p style={{ fontSize: 15, fontWeight: 700, color: "var(--text)", fontFamily: "Outfit,sans-serif", marginBottom: 4 }}>No posts yet</p>
+                    <p style={{ fontSize: 12, color: "var(--text-4)" }}>Join a space and be the first to post.</p>
+                  </div>
+                );
+                return items.map(p => {
+                  const g = pub.get(String(p.group_id))!;
+                  const h = parseInt(String(p.author_address ?? "0").slice(2, 4) || "0", 16) * 1.4;
+                  return (
+                    <div key={p.id} className="card" style={{ padding: "14px 16px", marginBottom: 10 }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: 9, marginBottom: 10 }}>
+                        <div style={{ width: 34, height: 34, borderRadius: "50%", background: `hsl(${h}deg,45%,50%)`, flexShrink: 0 }} />
+                        <div style={{ minWidth: 0 }}>
+                          <div style={{ fontFamily: "JetBrains Mono,monospace", fontSize: 11, fontWeight: 700, color: "var(--text)" }}>{String(p.author_address).slice(0, 6)}…{String(p.author_address).slice(-4)}</div>
+                          <div style={{ fontSize: 11, color: "var(--text-4)" }}>in <Link href={`/contribute/${g.id}`} style={{ color: "var(--brand)", fontWeight: 600, textDecoration: "none" }}>{g.name}</Link> · {new Date(p.created_at).toLocaleDateString()}</div>
+                        </div>
+                      </div>
+                      <PostBody content={p.content} />
+                    </div>
+                  );
+                });
+              })()}
+          </div>
+        )}
+
+        {tab !== "feed" && (<>
         {/* Search + filter */}
         <div style={{ display: "flex", gap: 8, marginBottom: 16, flexWrap: "wrap" }}>
           <div style={{ position: "relative", flex: 1, minWidth: 200 }}>
@@ -150,6 +195,7 @@ export default function ContributePage() {
             {list.map(g => <GroupCard key={g.id} g={g} isMember={(g.member_addresses || []).includes(address?.toLowerCase() || "")} />)}
           </div>
         )}
+        </>)}
       </div>
     </div>
   );

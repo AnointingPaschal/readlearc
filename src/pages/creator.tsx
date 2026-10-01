@@ -140,7 +140,7 @@ export default function CreatorPage() {
               <RefreshCw size={14} className={refreshing?"spin":""}/>
             </button>
             <Link href="/contribute/video" className="btn btn-ghost btn-sm" style={{ fontWeight:700 }}><PlusCircle size={13}/>Upload Video</Link>
-            <Link href="/write" className="btn btn-primary btn-sm" style={{ fontWeight:700 }}><PlusCircle size={13}/>New Article</Link>
+            <Link href="/write/article" className="btn btn-primary btn-sm" style={{ fontWeight:700 }}><PlusCircle size={13}/>New Article</Link>
           </div>
         </div>
 
@@ -189,7 +189,7 @@ export default function CreatorPage() {
               <div style={{ padding:"40px 20px", textAlign:"center" }}>
                 <BookOpen size={28} style={{ color:"var(--text-4)", marginBottom:10 }}/>
                 <p style={{ fontSize:14, fontWeight:600, color:"var(--text-3)", marginBottom:4 }}>No articles yet</p>
-                <Link href="/write" className="btn btn-primary btn-sm" style={{ marginTop:10 }}>Write First Article</Link>
+                <Link href="/write/article" className="btn btn-primary btn-sm" style={{ marginTop:10 }}>Write First Article</Link>
               </div>
             ) : articles.map((a, i) => (
               <div key={a.id} style={{ borderBottom:i<articles.length-1?"1px solid var(--border)":"none" }}>

@@ -232,7 +232,7 @@ export default function HomePage(){
       <div className="card" style={{padding:"14px",background:"var(--brand-muted)",border:"1px solid var(--brand-border)",marginBottom:10}}>
         <div style={{fontFamily:"Outfit,sans-serif",fontSize:13,fontWeight:800,color:"var(--brand)",marginBottom:6}}>Start Publishing</div>
         <p style={{fontSize:11,color:"var(--text-3)",lineHeight:1.6,marginBottom:10}}>Earn 85% of every USDC payment.</p>
-        <Link href="/write" style={{display:"block",textAlign:"center",padding:"8px",background:"var(--brand)",color:"white",borderRadius:"var(--r)",fontWeight:700,fontSize:12,textDecoration:"none",marginBottom:6}}>Write Article</Link>
+        <Link href="/write/article" style={{display:"block",textAlign:"center",padding:"8px",background:"var(--brand)",color:"white",borderRadius:"var(--r)",fontWeight:700,fontSize:12,textDecoration:"none",marginBottom:6}}>Write Article</Link>
         <Link href="/write/research" style={{display:"block",textAlign:"center",padding:"7px",background:"transparent",color:"var(--brand)",border:"1px solid var(--brand-border)",borderRadius:"var(--r)",fontWeight:700,fontSize:12,textDecoration:"none"}}>Research Studio</Link>
       </div>
       <div className="card" style={{padding:"14px"}}>
@@ -449,7 +449,7 @@ export default function HomePage(){
               </div>
               <p style={{fontSize:11,color:"var(--text-4)",lineHeight:1.7}}>{cfg.brand_tagline||"Pay per word. Own every read."}</p>
             </div>
-            {[{label:"Platform",links:[{l:"Explore",h:"/explore"},{l:"Write Article",h:"/write"},{l:"Research Studio",h:"/write/research"},{l:"Contribute",h:"/contribute"}]},{label:"Account",links:[{l:"My Wallet",h:"/wallet-app"},{l:"Reading History",h:"/reading-history"},{l:"My Profile",h:"/profile"}]},{label:"Network",links:[{l:"Arc Testnet",h:"https://testnet.arcscan.app"},{l:"Circle USDC",h:"https://faucet.circle.com"}]}].map(col=>(
+            {[{label:"Platform",links:[{l:"Explore",h:"/explore"},{l:"Write Article",h:"/write/article"},{l:"Create Post",h:"/write"},{l:"Research Studio",h:"/write/research"},{l:"Contribute",h:"/contribute"}]},{label:"Account",links:[{l:"My Wallet",h:"/wallet-app"},{l:"Reading History",h:"/reading-history"},{l:"My Profile",h:"/profile"}]},{label:"Network",links:[{l:"Arc Testnet",h:"https://testnet.arcscan.app"},{l:"Circle USDC",h:"https://faucet.circle.com"}]}].map(col=>(
               <div key={col.label}>
                 <div style={{fontFamily:"Outfit,sans-serif",fontSize:10,fontWeight:800,color:"var(--text-3)",textTransform:"uppercase",letterSpacing:".1em",marginBottom:10}}>{col.label}</div>
                 {col.links.map(l=>(

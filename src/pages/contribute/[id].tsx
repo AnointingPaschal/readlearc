@@ -4,8 +4,10 @@ import { useParams } from "@/lib/nav";
 import { Link } from "@/lib/nav";
 import Navbar from "@/components/ui/Navbar";
 import { useAuth } from "@/lib/auth";
+import PostForm from "@/components/ui/PostForm";
+import PostBody from "@/components/ui/PostBody";
 import {
-  Users, Lock, Globe, ArrowLeft, Send, BookOpen,
+  Users, Lock, Globe, ArrowLeft, BookOpen,
   Flame, Crown, CheckCircle2, AlertCircle,
 } from "lucide-react";
 
@@ -30,10 +32,7 @@ export default function ContributeDetailPage() {
   const [space,   setGroup]   = useState<Group | null>(null);
   const [posts,   setPosts]   = useState<Post[]>([]);
   const [loading, setLoading] = useState(true);
-  const [posting, setPosting] = useState(false);
   const [joining, setJoining] = useState(false);
-  const [draft,   setDraft]   = useState("");
-  const [postType,setPostType]= useState<"discussion" | "announcement">("discussion");
   const [error,   setError]   = useState("");
   const [success, setSuccess] = useState("");
 
@@ -72,19 +71,6 @@ export default function ContributeDetailPage() {
       body: JSON.stringify({ memberAddress: address, action: "leave" }),
     });
     if (r.ok) load();
-  }
-
-  async function submitPost() {
-    if (!draft.trim()) return;
-    setPosting(true); setError("");
-    const r = await apiFetch(`/api/groups/${id}/posts`, {
-      method: "POST", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ authorAddress: address, content: draft, type: postType }),
-    });
-    const d = await r.json();
-    if (r.ok) { setDraft(""); load(); }
-    else setError(d.error || "Failed to post");
-    setPosting(false);
   }
 
   if (loading) return (
@@ -179,26 +165,8 @@ export default function ContributeDetailPage() {
               {/* Compose */}
               {isMember && (
                 <div className="card" style={{ padding: "14px", marginBottom: 14 }}>
-                  <div style={{ display: "flex", gap: 6, marginBottom: 10 }}>
-                    {(["discussion","announcement"] as const).map(t => (
-                      <button key={t} onClick={() => setPostType(t)} style={{
-                        padding: "4px 12px", fontSize: 11, fontWeight: 700, borderRadius: "var(--r-f)", cursor: "pointer",
-                        border: `1.5px solid ${postType === t ? "var(--brand)" : "var(--border)"}`,
-                        background: postType === t ? "var(--brand-muted)" : "transparent",
-                        color: postType === t ? "var(--brand)" : "var(--text-4)",
-                        textTransform: "capitalize",
-                      }}>{t}</button>
-                    ))}
-                  </div>
-                  <textarea value={draft} onChange={e => setDraft(e.target.value)}
-                    placeholder={postType === "announcement" ? "Share an announcement with the space…" : "Share research, ask questions, share an article, ask a question…"}
-                    rows={3}
-                    style={{ width: "100%", padding: "10px 12px", background: "var(--bg-alt)", border: "1.5px solid var(--border)", borderRadius: "var(--r)", fontSize: 13, color: "var(--text)", outline: "none", resize: "none", boxSizing: "border-box" as const, lineHeight: 1.6 }} />
-                  <div style={{ display: "flex", justifyContent: "flex-end", marginTop: 8 }}>
-                    <button onClick={submitPost} disabled={posting || !draft.trim()} className="btn btn-primary btn-sm" style={{ gap: 5 }}>
-                      {posting ? "Posting…" : <><Send size={12} />Post</>}
-                    </button>
-                  </div>
+                  <PostForm groupId={id!} rows={3} allowAnnouncement={isOwner} onPosted={load}
+                    placeholder={`Share something with ${space.name}…`} />
                 </div>
               )}
 
@@ -225,7 +193,7 @@ export default function ContributeDetailPage() {
                         </div>
                       </div>
                     </div>
-                    <p style={{ fontSize: 13, color: "var(--text)", lineHeight: 1.65, whiteSpace: "pre-wrap" }}>{p.content}</p>
+                    <PostBody content={p.content} />
                   </div>
                 ))
               )}

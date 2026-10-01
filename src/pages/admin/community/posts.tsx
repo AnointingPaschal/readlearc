@@ -1,3 +1,4 @@
+import { postPreview } from "@/lib/post";
 import { apiFetch } from "@/lib/api";
 import { useState, useEffect } from "react";
 import { Link } from "@/lib/nav";
@@ -59,7 +60,7 @@ export default function AdminPostsPage() {
     if (typeFilter!=="all"&&p.type!==typeFilter) return false;
     if (search) {
       const q=search.toLowerCase();
-      return p.content.toLowerCase().includes(q)||p.author_address.includes(q)||(p.group_name||"").toLowerCase().includes(q);
+      return postPreview(p.content).toLowerCase().includes(q)||p.author_address.includes(q)||(p.group_name||"").toLowerCase().includes(q);
     }
     return true;
   });
@@ -138,7 +139,7 @@ export default function AdminPostsPage() {
                     )}
                     <span style={{fontSize:10,color:"var(--text-4)",marginLeft:"auto",whiteSpace:"nowrap"}}>{new Date(p.created_at).toLocaleDateString()}</span>
                   </div>
-                  <p style={{fontSize:12,color:"var(--text)",lineHeight:1.6,display:"-webkit-box",WebkitLineClamp:3,WebkitBoxOrient:"vertical" as any,overflow:"hidden"}}>{p.content}</p>
+                  <p style={{fontSize:12,color:"var(--text)",lineHeight:1.6,display:"-webkit-box",WebkitLineClamp:3,WebkitBoxOrient:"vertical" as any,overflow:"hidden"}}>{postPreview(p.content)}</p>
                 </div>
                 <button onClick={()=>deletePost(p.id)} disabled={deleting===p.id}
                   style={{width:28,height:28,borderRadius:"var(--r)",border:"1px solid rgba(220,38,38,.25)",background:"rgba(220,38,38,.07)",display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer",color:"#dc2626",flexShrink:0}}>

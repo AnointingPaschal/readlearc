@@ -85,7 +85,8 @@ export default function Navbar() {
                     {/* Navigation links */}
                     {[
                       { href:"/explore",            icon:BookOpen,       label:"Browse Articles"    },
-                      { href:"/write",              icon:PenLine,        label:"Write Article"      },
+                      { href:"/write",              icon:PenLine,        label:"Create Post"        },
+                      { href:"/write/article",      icon:BookOpen,       label:"Write Article"      },
                       { href:"/my-articles",        icon:BookOpen,       label:"My Articles"       },
                       { href:"/creator",            icon:LayoutDashboard,label:"Creator Studio"     },
                       { href:`/profile/${address}`, icon:User,           label:"My Profile"         },
@@ -153,7 +154,7 @@ export default function Navbar() {
           {[
             { href:"/",          label:"Home",            icon:Zap         },
             { href:"/explore",   label:"Browse Articles", icon:BookOpen    },
-            { href:"/write",     label:"Write Article",   icon:PenLine     },
+            { href:"/write",     label:"Create Post",     icon:PenLine     },
             { href:"/creator",   label:"Creator Studio",  icon:LayoutDashboard },
             { href:"/wallet-app",label:"Wallet",          icon:Wallet      },
           ].map(l => (

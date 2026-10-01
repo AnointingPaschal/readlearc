@@ -139,7 +139,7 @@ export default function MyArticlesPage() {
             <button onClick={load} style={{display:"flex",alignItems:"center",gap:5,padding:"8px 12px",background:"var(--bg-alt)",border:"1.5px solid var(--border)",borderRadius:"var(--r)",cursor:"pointer",fontSize:12,color:"var(--text-3)",fontWeight:600}}>
               <RefreshCw size={13}/>Refresh
             </button>
-            <Link href="/write" className="btn btn-secondary" style={{gap:5}}><PenLine size={13}/>Article</Link>
+            <Link href="/write/article" className="btn btn-secondary" style={{gap:5}}><PenLine size={13}/>Article</Link>
             <Link href="/write/research" className="btn btn-primary" style={{gap:5}}><FlaskConical size={13}/>Research</Link>
           </div>
         </div>
@@ -269,7 +269,7 @@ export default function MyArticlesPage() {
                       {search||filter!=="all"?"No articles match":"No articles yet"}
                     </p>
                     <p style={{fontSize:12,color:"var(--text-4)",marginBottom:16}}>Write your first article and start earning USDC</p>
-                    <Link href="/write" className="btn btn-primary" style={{gap:5}}><Plus size={13}/>Write First Article</Link>
+                    <Link href="/write/article" className="btn btn-primary" style={{gap:5}}><Plus size={13}/>Write First Article</Link>
                   </div>
                 ):(
                   <div style={{display:"flex",flexDirection:"column",gap:8}}>
