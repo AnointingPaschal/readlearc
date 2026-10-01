@@ -5,7 +5,7 @@ import { Link } from "@/lib/nav";
 import Navbar from "@/components/ui/Navbar";
 import { useAuth } from "@/lib/auth";
 import PostForm from "@/components/ui/PostForm";
-import PostBody from "@/components/ui/PostBody";
+import PostCard from "@/components/ui/PostCard";
 import {
   Users, Lock, Globe, ArrowLeft, BookOpen,
   Flame, Crown, CheckCircle2, AlertCircle,
@@ -178,24 +178,7 @@ export default function ContributeDetailPage() {
                   <p style={{ fontSize: 12, color: "var(--text-4)" }}>{isMember ? "Be the first to share research, ask questions!" : "Join to post."}</p>
                 </div>
               ) : (
-                posts.map(p => (
-                  <div key={p.id} className="card" style={{ padding: "14px 16px", marginBottom: 10 }}>
-                    <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10 }}>
-                      <div style={{ width: 32, height: 32, borderRadius: "50%", background: `hsl(${hue(p.author_address)}deg,40%,50%)`, flexShrink: 0 }} />
-                      <div>
-                        <div style={{ fontFamily: "JetBrains Mono,monospace", fontSize: 10, fontWeight: 700, color: "var(--text)" }}>
-                          {short(p.author_address)}
-                          {p.author_address === space.owner_address && <Crown size={9} style={{ display: "inline", marginLeft: 4, color: "#ca8a04" }} />}
-                        </div>
-                        <div style={{ fontSize: 10, color: "var(--text-4)" }}>
-                          {new Date(p.created_at).toLocaleDateString()} ·
-                          <span style={{ marginLeft: 4, fontSize: 9, fontWeight: 700, padding: "1px 6px", borderRadius: 99, background: p.type === "announcement" ? "rgba(220,38,38,.1)" : "var(--brand-muted)", color: p.type === "announcement" ? "#dc2626" : "var(--brand)", border: `1px solid ${p.type === "announcement" ? "rgba(220,38,38,.2)" : "var(--brand-border)"}` }}>{p.type}</span>
-                        </div>
-                      </div>
-                    </div>
-                    <PostBody content={p.content} />
-                  </div>
-                ))
+                posts.map(p => <PostCard key={p.id} post={p} group={{ id: space.id, name: space.name }} />)
               )}
             </div>
 

@@ -6,10 +6,11 @@ import { useAuth } from "@/lib/auth";
 import Navbar from "@/components/ui/Navbar";
 import { BookOpen, Users, Zap, Globe, Edit2, Check, X, Save, ExternalLink, Flame, MessageCircle, Clock, Shield, AtSign } from "lucide-react";
 import { listCards } from "@/lib/onchain/content";
+import PostCard, { type PostRow } from "@/components/ui/PostCard";
 
 import { EXPLORER_URL as EXPLORER } from "@/lib/chain";
 
-type Tab = "posts"|"spaces"|"followers"|"following"|"about";
+type Tab = "feed"|"posts"|"spaces"|"followers"|"following"|"about";
 
 interface Profile {
   wallet_address:string; username?:string; display_name?:string;
@@ -26,15 +27,15 @@ export default function ProfilePage() {
   const [articles,    setArticles]    = useState<any[]>([]);
   const [followers,   setFollowers]   = useState<any[]>([]);
   const [following,   setFollowing]   = useState<any[]>([]);
-  const [tab,         setTab]         = useState<Tab>("posts");
+  const [tab,         setTab]         = useState<Tab>("feed");
   const [isFollowing, setIsFollowing] = useState(false);
   const [followerCt,  setFollowerCt]  = useState(0);
   const [editing,     setEditing]     = useState(false);
   const [saving,      setSaving]      = useState(false);
-  const [savingChain, setSavingChain] = useState(false);
-  const [editForm,    setEditForm]    = useState<Partial<Profile>>({});
+    const [editForm,    setEditForm]    = useState<Partial<Profile>>({});
   const [loading,     setLoading]     = useState(true);
   const [spaces,      setSpaces]      = useState<any[]>([]);
+  const [feed,        setFeed]        = useState<{ post:PostRow; group:{id:number|string;name:string}|null }[] | null>(null);
 
   const isOwn  = address?.toLowerCase() === profileAddr?.toLowerCase();
   const avatarColor = profile?.avatar_color || `hsl(${parseInt(profileAddr?.slice(2,4)||"0",16)*1.4}deg,65%,55%)`;
@@ -48,7 +49,7 @@ export default function ProfilePage() {
     setProfile({ wallet_address:profileAddr, ...prof, savedToChain: !!prof?.username });
     setArticles(arts.map(x=>({ id:String(x.id), title:x.title, blurb:x.blurb, category:x.category, price:(Number(x.price)/1e6).toString(), reads:x.reads, created_at:x.createdAt*1000, is_research:x.isResearch, read_time:x.readTime })));
     setFollowerCt(prof?.followerCount || 0);
-    setEditForm({ username:prof?.username||"", display_name:prof?.display_name||"", bio:prof?.bio||"", website:prof?.website||"", twitter:prof?.twitter||"" });
+    setEditForm({ username:prof?.username||"", display_name:prof?.display_name||"", bio:prof?.bio||"", website:prof?.website||"", twitter:prof?.twitter||"", avatar_color:prof?.avatar_color||"#6d28d9" });
     if (address) {
       const list = await apiFetch(`/api/social/follow?address=${address.toLowerCase()}&action=following`).then(r=>r.json()).catch(()=>[]);
       setIsFollowing(Array.isArray(list) && list.some((x:any)=>x.following_address?.toLowerCase()===profileAddr.toLowerCase()));
@@ -67,6 +68,24 @@ export default function ProfilePage() {
   useEffect(()=>{ load(); },[profileAddr, address]);
   useEffect(()=>{ if(profileAddr) apiFetch(`/api/groups?member=${profileAddr.toLowerCase()}&limit=100`).then(r=>r.json()).then(d=>setSpaces(Array.isArray(d)?d:[])).catch(()=>{}); },[profileAddr]);
   useEffect(()=>{ if(tab==="followers"||tab==="following") loadFollowers(); },[tab]);
+  useEffect(()=>{
+    if(!profileAddr) return;
+    setFeed(null);
+    let live = true;
+    (async()=>{
+      try{
+        const q = isOwn ? `/api/groups?member=${profileAddr.toLowerCase()}&limit=200` : `/api/groups?limit=200`;
+        const [posts, groups] = await Promise.all([
+          apiFetch("/api/groups/0/posts").then(r=>r.json()).catch(()=>[]),
+          apiFetch(q).then(r=>r.json()).catch(()=>[]),
+        ]);
+        const gm = new Map((Array.isArray(groups)?groups:[]).map((g:any)=>[String(g.id), g]));
+        const mine = (Array.isArray(posts)?posts:[]).filter((p:any)=>String(p.author_address).toLowerCase()===profileAddr.toLowerCase() && gm.has(String(p.group_id)));
+        if(live) setFeed(mine.map((p:any)=>({ post:p, group:{ id:p.group_id, name:gm.get(String(p.group_id)).name } })));
+      }catch{ if(live) setFeed([]); }
+    })();
+    return ()=>{ live=false; };
+  },[profileAddr, isOwn]);
 
   async function toggleFollow() {
     if (!isAuth) { requireAuth(); return; }
@@ -76,20 +95,17 @@ export default function ProfilePage() {
   }
 
   async function saveProfile() {
-    setSaving(true);
-    const r = await apiFetch("/api/profiles",{ method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify({walletAddress:profileAddr,...editForm}) });
-    if (!r.ok) { alert((await r.json().catch(()=>({}))).error || "Could not save profile"); setSaving(false); return; }
-    setProfile(prev=> prev ? {...prev,...editForm,savedToChain:true} : null);
-    setEditing(false); setSaving(false);
-  }
-
-  async function saveToChain() {
     if (!signer) { requireAuth(); return; }
-    setSavingChain(true);
+    if (!editForm.username) { alert("Choose a username."); return; }
+    setSaving(true);
     try {
-      await saveProfile();
-    } catch(e:any) { console.error(e); }
-    setSavingChain(false);
+      const r = await apiFetch("/api/profiles",{ method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify({
+        username:editForm.username, displayName:editForm.display_name, bio:editForm.bio, website:editForm.website, twitter:editForm.twitter, avatarColor:editForm.avatar_color }) });
+      if (!r.ok) { alert((await r.json().catch(()=>({}))).error || "Could not save profile"); setSaving(false); return; }
+      setProfile(prev=> prev ? {...prev,...editForm,savedToChain:true} : null);
+      setEditing(false);
+    } catch(e:any) { alert(e?.message || "Could not save profile"); }
+    setSaving(false);
   }
 
   const short = (a:string) => `${a.slice(0,8)}…${a.slice(-4)}`;
@@ -136,18 +152,13 @@ export default function ProfilePage() {
                 {isOwn ? (
                   editing ? (
                     <>
-                      <button onClick={saveToChain} disabled={savingChain} className="btn btn-primary btn-sm" style={{ gap:5 }}>
-                        {savingChain?<><div style={{ width:11,height:11,border:"1.5px solid rgba(255,255,255,.3)",borderTopColor:"white",borderRadius:"50%"}} className="spin"/>Signing…</>:<><Shield size={11}/>Save to Blockchain</>}
+                      <button onClick={saveProfile} disabled={saving} className="btn btn-primary btn-sm" style={{ gap:5 }}>
+                        {saving?<><div style={{ width:11,height:11,border:"1.5px solid rgba(255,255,255,.3)",borderTopColor:"white",borderRadius:"50%"}} className="spin"/>Saving…</>:<><Save size={11}/>Save changes</>}
                       </button>
-                      <button onClick={saveProfile} disabled={saving} className="btn btn-secondary btn-sm">
-                        <Save size={11}/>{saving?"Saving…":"Save"}
-                      </button>
-                      <button onClick={()=>setEditing(false)} className="btn btn-ghost btn-sm"><X size={11}/></button>
+                      <button onClick={()=>{ setEditing(false); setEditForm({ username:profile?.username||"", display_name:profile?.display_name||"", bio:profile?.bio||"", website:profile?.website||"", twitter:profile?.twitter||"", avatar_color:profile?.avatar_color||"#6d28d9" }); }} className="btn btn-ghost btn-sm"><X size={11}/>Cancel</button>
                     </>
                   ) : (
-                    !profile?.savedToChain && (
-                      <button onClick={()=>setEditing(true)} className="btn btn-secondary btn-sm"><Edit2 size={11}/>Edit Profile</button>
-                    )
+                    <button onClick={()=>setEditing(true)} className="btn btn-secondary btn-sm"><Edit2 size={11}/>Edit Profile</button>
                   )
                 ) : (
                   <button onClick={toggleFollow} className={`btn btn-sm ${isFollowing?"btn-secondary":"btn-primary"}`} style={{ fontWeight:700 }}>
@@ -168,6 +179,13 @@ export default function ProfilePage() {
                 </div>
                 <div><label style={{ fontSize:10,fontWeight:700,color:"var(--text-4)",display:"block",marginBottom:3 }}>Bio</label>
                   <textarea value={editForm.bio||""} onChange={e=>setEditForm(f=>({...f,bio:e.target.value}))} rows={2} maxLength={160} className="input" style={{ height:"auto",resize:"none" }} placeholder="Tell readers about yourself…"/></div>
+                <div><label style={{ fontSize:10,fontWeight:700,color:"var(--text-4)",display:"block",marginBottom:5 }}>Profile colour</label>
+                  <div style={{ display:"flex",gap:8,flexWrap:"wrap" }}>
+                    {["#6d28d9","#2563eb","#0891b2","#059669","#ca8a04","#ea580c","#dc2626","#db2777","#475569"].map(c=>(
+                      <button key={c} type="button" onClick={()=>setEditForm(f=>({...f,avatar_color:c}))} aria-label={c}
+                        style={{ width:28,height:28,borderRadius:"50%",background:c,cursor:"pointer",border:editForm.avatar_color===c?"3px solid var(--text)":"2px solid var(--border)" }}/>
+                    ))}
+                  </div></div>
                 <div style={{ display:"grid",gridTemplateColumns:"1fr 1fr",gap:8 }}>
                   <div><label style={{ fontSize:10,fontWeight:700,color:"var(--text-4)",display:"block",marginBottom:3 }}>Website</label>
                     <input value={editForm.website||""} onChange={e=>setEditForm(f=>({...f,website:e.target.value}))} className="input" placeholder="https://…"/></div>
@@ -221,15 +239,36 @@ export default function ProfilePage() {
         </div>
 
         {/* Tabs */}
-        <div style={{ display:"flex",borderBottom:"1px solid var(--border)",marginBottom:16,background:"var(--bg-card)",borderRadius:"var(--r-lg) var(--r-lg) 0 0",overflow:"hidden" }}>
-          {(["posts","spaces","followers","following","about"] as Tab[]).map(t=>(
-            <button key={t} onClick={()=>setTab(t)} style={{ flex:1,padding:"13px 8px",border:"none",background:"transparent",cursor:"pointer",fontFamily:"Outfit,sans-serif",fontSize:13,fontWeight:700,color:tab===t?"var(--brand)":"var(--text-4)",borderBottom:`2px solid ${tab===t?"var(--brand)":"transparent"}`,transition:"all .15s",textTransform:"capitalize" }}>
-              {t==="posts"?`Articles (${articles.length})`:t==="spaces"?`Spaces (${spaces.length})`:t==="followers"?`Followers (${followerCt})`:t.charAt(0).toUpperCase()+t.slice(1)}
+        <div style={{ display:"flex",borderBottom:"1px solid var(--border)",marginBottom:16,background:"var(--bg-card)",borderRadius:"var(--r-lg) var(--r-lg) 0 0",overflowX:"auto" }}>
+          {(["feed","posts","spaces","followers","following","about"] as Tab[]).map(t=>(
+            <button key={t} onClick={()=>setTab(t)} style={{ flex:"1 0 auto",padding:"13px 12px",whiteSpace:"nowrap",border:"none",background:"transparent",cursor:"pointer",fontFamily:"Outfit,sans-serif",fontSize:13,fontWeight:700,color:tab===t?"var(--brand)":"var(--text-4)",borderBottom:`2px solid ${tab===t?"var(--brand)":"transparent"}`,transition:"all .15s",textTransform:"capitalize" }}>
+              {t==="feed"?"Posts":t==="posts"?`Articles (${articles.length})`:t==="spaces"?`Spaces (${spaces.length})`:t==="followers"?`Followers (${followerCt})`:t.charAt(0).toUpperCase()+t.slice(1)}
             </button>
           ))}
         </div>
 
-        {/* Posts tab */}
+        {/* Community posts (Facebook-style) */}
+        {tab==="feed" && (
+          <div style={{ maxWidth:640 }}>
+            {isOwn && (
+              <Link href="/write" className="card card-hover" style={{ display:"flex",alignItems:"center",gap:10,padding:"12px 14px",textDecoration:"none",marginBottom:12 }}>
+                <div style={{ width:36,height:36,borderRadius:"50%",background:avatarColor,flexShrink:0 }}/>
+                <span style={{ flex:1,padding:"9px 14px",background:"var(--bg-alt)",borderRadius:99,fontSize:13,color:"var(--text-4)" }}>What&apos;s on your mind{profile?.display_name?`, ${profile.display_name.split(" ")[0]}`:""}?</span>
+              </Link>
+            )}
+            {feed===null ? [1,2].map(i=><div key={i} className="skeleton" style={{ height:140,borderRadius:"var(--r-lg)",marginBottom:12 }}/>) :
+             !feed.length ? (
+              <div className="card" style={{ padding:"40px",textAlign:"center" }}>
+                <MessageCircle size={28} style={{ color:"var(--text-4)",marginBottom:10 }}/>
+                <p style={{ fontSize:14,color:"var(--text-3)" }}>{isOwn?"You haven't posted in a community yet.":"No community posts yet."}</p>
+              </div>
+             ) : feed.map(({post,group})=>(
+              <PostCard key={post.id} post={post} group={group} author={{ name:profile?.display_name, username:profile?.username }}/>
+             ))}
+          </div>
+        )}
+
+        {/* Articles tab */}
         {tab==="posts" && (
           articles.length===0 ? (
             <div className="card" style={{ padding:"40px",textAlign:"center" }}>

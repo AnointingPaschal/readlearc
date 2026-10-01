@@ -80,8 +80,11 @@ export default function Comments({ articleId }: Props) {
   const [submitting,setSubmitting]= useState(false);
 
   async function load() {
-    const res = await apiFetch(`/api/social/comments/${articleId}`);
-    setComments(await res.json());
+    try {
+      const res = await apiFetch(`/api/social/comments/${articleId}`);
+      const d = await res.json();
+      setComments(Array.isArray(d) ? d : []);
+    } catch { setComments([]); }
   }
 
   useEffect(() => {

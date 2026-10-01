@@ -17,9 +17,9 @@ export default function FollowButton({ targetAddress }: Props) {
   useEffect(() => {
     if (!address || !targetAddress || isSelf) return;
     apiFetch(`/api/social/follow?address=${address.toLowerCase()}&action=following`)
-      .then(r=>r.json()).then((list:{following_address:string}[])=>setFollowing(list.some(x=>x.following_address.toLowerCase()===targetAddress.toLowerCase())));
+      .then(r=>r.json()).then((list:{following_address:string}[])=>setFollowing(Array.isArray(list)&&list.some(x=>x.following_address.toLowerCase()===targetAddress.toLowerCase())));
     apiFetch(`/api/social/follow?address=${targetAddress.toLowerCase()}&action=followers`)
-      .then(r=>r.json()).then((list:unknown[])=>setFollowers(list.length));
+      .then(r=>r.json()).then((list:unknown[])=>setFollowers(Array.isArray(list)?list.length:0));
   }, [address, targetAddress]);
 
   async function toggle() {

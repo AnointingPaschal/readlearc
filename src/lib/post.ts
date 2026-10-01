@@ -57,3 +57,7 @@ export async function compressImage(file: File, budget: number): Promise<string>
   }
   throw new Error("That image is too detailed to store on-chain. Try a smaller one.");
 }
+
+/** Community posts reuse the article comment/reaction contracts under an id range far above any real content id. */
+export const POST_BASE = 1_000_000_000_000;
+export const postContentId = (postId: number | string) => String(POST_BASE + Number(postId));

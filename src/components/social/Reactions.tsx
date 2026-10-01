@@ -23,8 +23,8 @@ export default function Reactions({ articleId }: Props) {
   const [loading, setLoading] = useState(false);
 
   async function load() {
-    const res  = await apiFetch(`/api/social/reactions/${articleId}`);
-    const data = await res.json();
+    let data: any = {};
+    try { data = await (await apiFetch(`/api/social/reactions/${articleId}`)).json(); } catch { /* keep empty */ }
     setCounts(data.counts || {});
     if (address) setMine((data.voters?.[address.toLowerCase()] as ReactionKey) || null);
   }

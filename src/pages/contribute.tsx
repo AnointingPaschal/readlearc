@@ -3,7 +3,7 @@ import { useState, useEffect } from "react";
 import { Link } from "@/lib/nav";
 import Navbar from "@/components/ui/Navbar";
 import { useAuth } from "@/lib/auth";
-import PostBody from "@/components/ui/PostBody";
+import PostCard from "@/components/ui/PostCard";
 import { Users, Lock, Globe, Plus, Search, BookOpen, Flame, Tag, ImagePlus } from "lucide-react";
 
 interface Group {
@@ -137,19 +137,7 @@ export default function ContributePage() {
                 );
                 return items.map(p => {
                   const g = pub.get(String(p.group_id))!;
-                  const h = parseInt(String(p.author_address ?? "0").slice(2, 4) || "0", 16) * 1.4;
-                  return (
-                    <div key={p.id} className="card" style={{ padding: "14px 16px", marginBottom: 10 }}>
-                      <div style={{ display: "flex", alignItems: "center", gap: 9, marginBottom: 10 }}>
-                        <div style={{ width: 34, height: 34, borderRadius: "50%", background: `hsl(${h}deg,45%,50%)`, flexShrink: 0 }} />
-                        <div style={{ minWidth: 0 }}>
-                          <div style={{ fontFamily: "JetBrains Mono,monospace", fontSize: 11, fontWeight: 700, color: "var(--text)" }}>{String(p.author_address).slice(0, 6)}…{String(p.author_address).slice(-4)}</div>
-                          <div style={{ fontSize: 11, color: "var(--text-4)" }}>in <Link href={`/contribute/${g.id}`} style={{ color: "var(--brand)", fontWeight: 600, textDecoration: "none" }}>{g.name}</Link> · {new Date(p.created_at).toLocaleDateString()}</div>
-                        </div>
-                      </div>
-                      <PostBody content={p.content} />
-                    </div>
-                  );
+                  return <PostCard key={p.id} post={p} group={g} />;
                 });
               })()}
           </div>
