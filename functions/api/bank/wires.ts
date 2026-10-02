@@ -19,7 +19,7 @@ export const onRequestGet: PagesFunction<Env> = async ({ request, env }) => {
       try { const d = await circle(env, `/v1/banks/wires/${w.id}`); return { ...w, status: d?.data?.status ?? w.status }; } catch { return w; }
     }));
     return json({ data: out });
-  } catch (e) { return errResp(e); }
+  } catch (e) { return errResp(e, who.admin); }
 };
 
 export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
@@ -44,5 +44,5 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
     const link: WireLink = { id: w.id, description: w.description, trackingRef: w.trackingRef, status: w.status, holder: w.billingDetails?.name, createdAt: Date.now() };
     await kvPush(env, wiresKey(who.address), link, 20);
     return json({ data: link });
-  } catch (e) { return errResp(e); }
+  } catch (e) { return errResp(e, who.admin); }
 };

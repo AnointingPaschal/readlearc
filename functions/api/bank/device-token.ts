@@ -11,5 +11,5 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
     if (!c.clientEntityId) return json({ error: "Circle client entity isn't set (Admin → Finance → Banking)." }, 503);
     const d = await circle(env, `/v1/partner/clients/${c.clientEntityId}/device-checks`, { method: "POST", body: "{}" });
     return json({ token: d?.data?.deviceCheckToken, expiresAt: d?.data?.expiresAt, sandbox: c.circleBase.includes("sandbox") });
-  } catch (e) { return errResp(e); }
+  } catch (e) { return errResp(e, who.admin); }
 };

@@ -15,5 +15,11 @@ export const onRequestGet: PagesFunction<Env> = async ({ request, env }) => {
     c.flwKey ? test(() => balances(env, "flutterwave")) : { ok: false, error: "No secret key" },
     c.paystackKey ? test(() => balances(env, "paystack")) : { ok: false, error: "No secret key" },
   ]);
-  return json({ circle: { ...ci, env: c.circleBase.includes("sandbox") ? "sandbox" : "production" }, flutterwave: fw, paystack: ps, provider: c.provider, webhookSecret: Boolean(c.flwHash), cashouts: await kvList<Cashout>(env, CASH_ALL) });
+  // fixed-IP relay (for providers that require IP whitelisting): reports the IP to whitelist
+  const relay = c.relayUrl ? await test(async () => {
+    const r = await fetch(c.relayUrl.replace(/\/+$/, "") + "/ip", { headers: { "x-relay-token": c.relayToken } });
+    if (!r.ok) throw new Error(r.status === 401 ? "Relay rejected the token" : `Relay error ${r.status}`);
+    return (await r.json()) as { ip: string };
+  }) : null;
+  return json({ relay, circle: { ...ci, env: c.circleBase.includes("sandbox") ? "sandbox" : "production" }, flutterwave: fw, paystack: ps, provider: c.provider, webhookSecret: Boolean(c.flwHash), cashouts: await kvList<Cashout>(env, CASH_ALL) });
 };

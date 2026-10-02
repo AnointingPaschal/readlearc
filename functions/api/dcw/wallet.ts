@@ -41,5 +41,5 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
     const rec: Managed = { walletId: w.id, address: w.address, blockchain: w.blockchain || c.blockchain, createdAt: Date.now() };
     await env.RL_KV.put(dcwKey(who.address), JSON.stringify(rec));
     return json({ wallet: rec });
-  } catch (e) { return errResp(e); }
+  } catch (e) { return errResp(e, who.admin); }
 };

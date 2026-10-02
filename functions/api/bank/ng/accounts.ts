@@ -29,7 +29,7 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
     };
     await env.RL_KV.put(ngKey(who.address), JSON.stringify([acct, ...cur]));
     return json({ data: publicAcct(acct) });
-  } catch (e) { return errResp(e); }
+  } catch (e) { return errResp(e, who.admin); }
 };
 
 export const onRequestDelete: PagesFunction<Env> = async ({ request, env }) => {

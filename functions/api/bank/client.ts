@@ -23,7 +23,7 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
     await saveSettings(env, { circle_client_entity_id: id });
     return json({ clientEntityId: id, applicationId: d?.data?.applicationId });
   } catch (e) {
-    const r = errResp(e);
+    const r = errResp(e, true);
     if (r.status === 409) return err("Circle already has a client with this name and country — use a different name, or paste the existing ID.", 409);
     if (r.status === 403 || r.status === 401) return err("Circle refused the request — partner/end-user onboarding may not be enabled for this API key yet. Ask Circle to enable it.", r.status);
     return r;

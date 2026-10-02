@@ -13,5 +13,5 @@ export const onRequestGet: PagesFunction<Env> = async ({ request, env }) => {
     if (who.admin && u.get("all")) return json({ data: rows });
     const mine = new Set((await kvList<WireLink>(env, wiresKey(who.address))).map((w) => w.id));
     return json({ data: rows.filter((r) => mine.has(r.destination?.id)) });
-  } catch (e) { return errResp(e); }
+  } catch (e) { return errResp(e, who.admin); }
 };

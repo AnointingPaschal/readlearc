@@ -16,5 +16,5 @@ export const onRequestGet: PagesFunction<Env> = async ({ request, env }) => {
     if (!mine.size) return json({ data: [] });
     const detail = await Promise.all(rows.slice(0, 25).map((r) => circle(env, `/v1/accounts/deposits/${r.id}`).then((x) => x?.data).catch(() => null)));
     return json({ data: detail.filter((x) => x && mine.has(x.source?.id)) });
-  } catch (e) { return errResp(e); }
+  } catch (e) { return errResp(e, who.admin); }
 };

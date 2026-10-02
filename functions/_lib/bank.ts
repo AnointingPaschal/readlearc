@@ -10,7 +10,7 @@ import { authenticate, type Caller } from "./auth";
 export interface BankCfg {
   circleKey: string; circleBase: string; circleAccount: string; clientEntityId: string;
   flwKey: string; flwBase: string; flwHash: string; paystackKey: string; paystackBase: string;
-  provider: "flutterwave" | "paystack"; providerReady: boolean;
+  provider: "flutterwave" | "paystack"; providerReady: boolean; relayUrl: string; relayToken: string;
   rate: number; feePct: number; minUsd: number; maxUsd: number; ngEnabled: boolean;
 }
 
@@ -23,6 +23,7 @@ export async function bankCfg(env: Env): Promise<BankCfg> {
   // the admin's choice; if none is chosen, use whichever has a key (Flutterwave first)
   const provider: "flutterwave" | "paystack" = want === "paystack" ? "paystack" : want === "flutterwave" ? "flutterwave" : flwKey || !paystackKey ? "flutterwave" : "paystack";
   return {
+    relayUrl: s.payout_relay_url || env.PAYOUT_RELAY_URL || "", relayToken: s.payout_relay_token || env.PAYOUT_RELAY_TOKEN || "",
     provider, providerReady: Boolean(provider === "paystack" ? paystackKey : flwKey),
     paystackKey, paystackBase: env.PAYSTACK_BASE || "https://api.paystack.co",
     circleKey: s.circle_api_key || env.CIRCLE_API_KEY || "",
@@ -37,26 +38,31 @@ export async function bankCfg(env: Env): Promise<BankCfg> {
   };
 }
 
-export class BankError extends Error { constructor(msg: string, public status = 502, public detail?: unknown) { super(msg); } }
+/** `upstream` = the message came from a provider (Circle/Flutterwave/Paystack) or the network — never shown to ordinary users; `raw` = extra technical text for admins. */
+export class BankError extends Error { constructor(msg: string, public status = 502, public detail?: unknown, public upstream = false, public raw?: string) { super(msg); } }
+export const GENERIC_ERR = "The bank service is temporarily unavailable. Please try again shortly — your funds are safe.";
 
-async function call(base: string, key: string, who: string, path: string, init: RequestInit = {}) {
-  if (!key) throw new BankError(`${who} isn't configured yet — add the API key in Admin → Finance → Banking.`, 503);
+async function call(base: string, key: string, who: string, path: string, init: RequestInit = {}, relay?: { url: string; token: string }) {
+  if (!key) throw new BankError(`${who} isn't configured yet — add the API key in Admin → Finance → Banking.`, 503, undefined, true);
   let res: Response;
   try {
-    res = await fetch(base + path, { ...init, headers: { Accept: "application/json", "Content-Type": "application/json", Authorization: `Bearer ${key}`, ...(init.headers || {}) } });
-  } catch (e) { throw new BankError(`${who} is unreachable: ${(e as Error).message}`, 502); }
+    const headers: Record<string, string> = { Accept: "application/json", "Content-Type": "application/json", Authorization: `Bearer ${key}`, ...((init.headers as Record<string, string>) || {}) };
+    // Providers that require IP whitelisting can't be called from Cloudflare directly (no fixed IP) — go through the admin's fixed-IP relay.
+    if (relay) res = await fetch(relay.url.replace(/\/+$/, "") + "/f", { ...init, headers: { ...headers, "x-relay-token": relay.token, "x-relay-target": base + path } });
+    else res = await fetch(base + path, { ...init, headers });
+  } catch (e) { throw new BankError(`${who} is unreachable: ${(e as Error).message}`, 502, undefined, true); }
   let data: any = null;
   try { data = await res.json(); } catch { /* empty */ }
   if (!res.ok || ((who === "Flutterwave" && data && data.status === "error") || (who === "Paystack" && data && data.status === false))) {
     const msg = data?.externalMessage || data?.message || data?.data?.complete_message || `${who} error ${res.status}`;
-    throw new BankError(String(msg), res.status >= 400 && res.status < 500 ? res.status : 502, data);
+    throw new BankError(String(msg), res.status >= 400 && res.status < 500 ? res.status : 502, data, true);
   }
   return data;
 }
 
 export const circle = async (env: Env, path: string, init?: RequestInit) => { const c = await bankCfg(env); return call(c.circleBase, c.circleKey, "Circle", path, init); };
-export const paystack = async (env: Env, path: string, init?: RequestInit) => { const c = await bankCfg(env); return call(c.paystackBase, c.paystackKey, "Paystack", path, init); };
-export const flutterwave = async (env: Env, path: string, init?: RequestInit) => { const c = await bankCfg(env); return call(c.flwBase, c.flwKey, "Flutterwave", path, init); };
+export const paystack = async (env: Env, path: string, init?: RequestInit) => { const c = await bankCfg(env); return call(c.paystackBase, c.paystackKey, "Paystack", path, init, c.relayUrl && c.relayToken ? { url: c.relayUrl, token: c.relayToken } : undefined); };
+export const flutterwave = async (env: Env, path: string, init?: RequestInit) => { const c = await bankCfg(env); return call(c.flwBase, c.flwKey, "Flutterwave", path, init, c.relayUrl && c.relayToken ? { url: c.relayUrl, token: c.relayToken } : undefined); };
 
 export const qs = (o: Record<string, string | number | undefined | null>) => {
   const p = new URLSearchParams();
@@ -112,9 +118,13 @@ export const NG_BANKS_FALLBACK: { name: string; code: string }[] = [
 
 export const sha = async (t: string, algo = "SHA-256") => Array.from(new Uint8Array(await crypto.subtle.digest(algo, new TextEncoder().encode(t)))).map((b) => b.toString(16).padStart(2, "0")).join("");
 
-export function errResp(e: unknown) {
+/** Error response. Provider/technical errors are replaced with a generic message for ordinary users; admins see the real text. */
+export function errResp(e: unknown, admin = false) {
   const be = e as BankError;
-  return new Response(JSON.stringify({ error: be.message || "Bank request failed" }), { status: be.status || 500, headers: { "Content-Type": "application/json", "Cache-Control": "no-store" } });
+  if (be?.upstream && !admin) console.error("[bank]", be.message);
+  let msg = be?.upstream && !admin ? GENERIC_ERR : be?.message || "Bank request failed";
+  if (admin && be?.raw) msg += ` (${be.raw})`;
+  return new Response(JSON.stringify({ error: msg }), { status: be?.upstream && !admin ? 502 : be?.status || 500, headers: { "Content-Type": "application/json", "Cache-Control": "no-store" } });
 }
 
 export const isResp = (x: unknown): x is Response => x instanceof Response;

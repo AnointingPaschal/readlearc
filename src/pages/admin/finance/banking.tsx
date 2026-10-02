@@ -7,7 +7,7 @@ import { StatusChip } from "@/components/wallet/Sheet";
 
 const NATURE = ["otherOperatingCompanies", "eCommercePlatform", "paymentProcessorPlatform", "cryptoSoftwareProvider", "otherCryptoServices", "marketing", "education", "nonProfit", "web3GamingSocial", "tokenProject", "p2p", "trading", "banking", "assetManager", "insurance", "healthCare", "realEstate", "construction", "agriculture", "art", "film", "accounting", "manufacturingOther", "transportation", "utilities", "cryptoExchange", "cryptoInvesting", "cryptoCustodian", "nftMarketplace", "stakingServices"];
 const INST = ["privateCo", "publicCo", "soleTrader", "partnership", "coop", "foundation", "trust", "associationOrConsortium", "governmentBody"];
-interface Status { provider?: string; paystack?: { ok: boolean; error?: string; data?: { currency: string; balance: number }[] }; circle: { ok: boolean; error?: string; env?: string }; flutterwave: { ok: boolean; error?: string; data?: { currency: string; balance: number }[] }; webhookSecret?: boolean; cashouts: Cashout[] }
+interface Status { relay?: { ok: boolean; error?: string; data?: { ip: string } } | null; provider?: string; paystack?: { ok: boolean; error?: string; data?: { currency: string; balance: number }[] }; circle: { ok: boolean; error?: string; env?: string }; flutterwave: { ok: boolean; error?: string; data?: { currency: string; balance: number }[] }; webhookSecret?: boolean; cashouts: Cashout[] }
 const F = ({ l, hint, children }: { l: string; hint?: string; children: React.ReactNode }) => (
   <div><label style={{ fontSize: 11, fontWeight: 700, color: "var(--text-3)", display: "block", marginBottom: 4 }}>{l}</label>{children}{hint && <div style={{ fontSize: 11, color: "var(--text-4)", marginTop: 3, lineHeight: 1.5 }}>{hint}</div>}</div>
 );
@@ -56,7 +56,7 @@ export default function BankingAdmin() {
 
   async function save() {
     if (!signer) return; setSaving(true); setMsg("");
-    const keys = ["dcw_api_key", "dcw_blockchain", "dcw_max_send_usd", "dcw_enabled", "circle_env", "circle_api_key", "circle_account_id", "circle_client_entity_id", "ngn_provider", "flutterwave_secret_key", "flutterwave_webhook_secret", "paystack_secret_key", "ngn_enabled", "ngn_per_usd", "ngn_fee_pct", "ngn_min_usd", "ngn_max_usd"];
+    const keys = ["dcw_api_key", "dcw_blockchain", "dcw_max_send_usd", "dcw_enabled", "circle_env", "circle_api_key", "circle_account_id", "circle_client_entity_id", "ngn_provider", "payout_relay_url", "payout_relay_token", "flutterwave_secret_key", "flutterwave_webhook_secret", "paystack_secret_key", "ngn_enabled", "ngn_per_usd", "ngn_fee_pct", "ngn_min_usd", "ngn_max_usd"];
     const r = await signedJson(signer, "POST", "/api/admin/settings", Object.fromEntries(keys.map((k) => [k, s[k] ?? ""])));
     setMsg(r.ok ? "Saved" : (r.data as any)?.error || "Save failed");
     setSaving(false); if (r.ok) { void test(); setTimeout(() => setMsg(""), 2500); }
@@ -123,6 +123,15 @@ export default function BankingAdmin() {
         <F l="Flutterwave secret key"><div style={{ display: "flex", gap: 6 }}>{input("flutterwave_secret_key", "FLWSECK-…", true)}<button className="btn btn-ghost btn-sm" onClick={() => setShow((v) => !v)}>{show ? <EyeOff size={14} /> : <Eye size={14} />}</button></div></F>
         <F l="Flutterwave webhook secret hash" hint="Any long random string you choose. Enter the same value here and in Flutterwave → Settings → Webhooks → Secret hash.">{input("flutterwave_webhook_secret", "my-long-random-string", true)}</F>
         <F l="Paystack secret key" hint="Paystack needs Transfers enabled and a funded balance.">{input("paystack_secret_key", "sk_live_…", true)}</F>
+        <details style={{ border: "1px solid var(--border)", borderRadius: "var(--r)", padding: "10px 12px" }} open={Boolean(s.payout_relay_url) || undefined}>
+          <summary style={{ cursor: "pointer", fontSize: 13, fontWeight: 700, color: "var(--text)" }}>Fixed-IP relay — needed if the provider says "enable IP whitelisting"</summary>
+          <div style={{ display: "flex", flexDirection: "column", gap: 10, marginTop: 10 }}>
+            <div style={{ fontSize: 12, color: "var(--text-4)", lineHeight: 1.6 }}>Flutterwave (and optionally Paystack) only accept payout requests from whitelisted IPs, and Cloudflare has no fixed IP. Run the small relay in the repo's <code>relay/</code> folder on any server with a fixed IP, enter its address and token here, then whitelist the IP shown below in the provider's dashboard. Only payout-provider calls go through it.</div>
+            <F l="Relay URL" hint="e.g. https://relay.yourdomain.com">{input("payout_relay_url", "https://relay.example.com")}</F>
+            <F l="Relay token" hint="The RELAY_TOKEN you set on the relay server.">{input("payout_relay_token", "long random string", true)}</F>
+            {s.payout_relay_url && st?.relay && (st.relay.ok ? <div style={{ fontSize: 12, color: "#059669", fontWeight: 700 }}>Relay connected — whitelist this IP: <code>{st.relay.data?.ip}</code></div> : <div style={{ fontSize: 12, color: "#dc2626" }}>Relay problem: {st.relay.error}</div>)}
+          </div>
+        </details>
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(130px,1fr))", gap: 10 }}>
           <F l="₦ per $1" hint="Your payout rate.">{input("ngn_per_usd", "1500")}</F>
           <F l="Fee %">{input("ngn_fee_pct", "1")}</F>
@@ -180,7 +189,7 @@ export default function BankingAdmin() {
                   <td style={{ padding: "8px" }}>{fmtUsd(c.amountUsd)}</td>
                   <td style={{ padding: "8px", fontWeight: 700 }}>{fmtNgn(c.ngn)}</td>
                   <td style={{ padding: "8px" }}>{c.bankName} ••{c.last4}</td>
-                  <td style={{ padding: "8px" }}><StatusChip s={c.status} />{c.error && <div style={{ fontSize: 10, color: "#dc2626", marginTop: 2, maxWidth: 200 }}>{c.error}</div>}</td>
+                  <td style={{ padding: "8px" }}><StatusChip s={c.status} />{c.error && /whitelist/i.test(c.error) && <div style={{ fontSize: 10, color: "#b45309", marginTop: 2 }}>Set up the fixed-IP relay above, then whitelist its IP.</div>}{c.error && <div style={{ fontSize: 10, color: "#dc2626", marginTop: 2, maxWidth: 200 }}>{c.error}</div>}</td>
                 </tr>))}</tbody>
             </table>
           </div>

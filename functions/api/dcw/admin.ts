@@ -34,5 +34,5 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
     if (!id) return err("Circle returned no wallet set", 502);
     await saveSettings(env, { dcw_wallet_set_id: id });
     return json({ walletSetId: id });
-  } catch (e) { return errResp(e); }
+  } catch (e) { return errResp(e, true); }
 };

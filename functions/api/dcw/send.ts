@@ -34,7 +34,7 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
       refId: ("rl:" + who.address.toLowerCase()).slice(0, 50),
     }) });
     return json({ id: d?.data?.id, state: d?.data?.state });
-  } catch (e) { return errResp(e); }
+  } catch (e) { return errResp(e, who.admin); }
 };
 
 export const onRequestGet: PagesFunction<Env> = async ({ request, env }) => {
@@ -49,5 +49,5 @@ export const onRequestGet: PagesFunction<Env> = async ({ request, env }) => {
     // only the wallet's owner may look at it
     if (!w || String(t?.sourceAddress || "").toLowerCase() !== w.address.toLowerCase()) return err("Not your transaction", 403);
     return json({ id, state: t.state, txHash: t.txHash || null, errorReason: t.errorReason || null });
-  } catch (e) { return errResp(e); }
+  } catch (e) { return errResp(e, who.admin); }
 };

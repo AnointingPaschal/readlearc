@@ -5,8 +5,9 @@ import { payoutStatus, sendPayout } from "../../../_lib/ngpay";
 import { chainFor } from "../../../_lib/chain";
 import { getManaged } from "../../../_lib/dcw";
 
-/** Plain-language reason for a failed payout (the raw the payout provider text is kept in the record for admins). */
-const friendly = (m?: string) => /balance|insufficient|funds/i.test(m || "") ? "Payouts are temporarily unavailable. Your USDC is safe — press Retry in a little while." : /administrator|cannot be processed|third.?party|not enabled|disabled|permission|otp|ip |whitelist|not allowed|unauthori/i.test(m || "") ? "Bank transfers aren't enabled on the payout account yet. Your USDC is safe — contact support." : (m || "The bank payout failed") + " — your USDC is safe; press Retry.";
+/** What users see for a failed payout. The provider's raw text (e.g. "IP not whitelisted") is kept in the record and shown to admins only. */
+const USER_MSG = "The bank payout couldn't be completed right now. Your USDC is safe — press Retry in a little while, or contact support.";
+const safe = (c: Cashout, admin: boolean): Cashout => admin || !c.error ? c : { ...c, error: USER_MSG };
 const TRANSFER = ethers.id("Transfer(address,address,uint256)");
 const ERC20 = ["function decimals() view returns (uint8)"];
 
@@ -24,7 +25,7 @@ export const onRequestGet: PagesFunction<Env> = async ({ request, env }) => {
       if (next) { c.status = next; await kvPatch<Cashout>(env, cashKey(who.address), c.id, { status: next, updatedAt: Date.now() }); await kvPatch<Cashout>(env, CASH_ALL, c.id, { status: next, updatedAt: Date.now() }); }
     } catch { /* leave as is */ }
   }));
-  return json({ data: list });
+  return json({ data: list.map((c) => safe(c, who.admin)) });
 };
 
 export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
@@ -44,7 +45,7 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
     // A tx hash is honoured once. If an earlier attempt ended before the payout provider accepted a transfer (crash, or the payout provider refused), it may be retried:
     // the the payout provider reference is derived from the tx hash, so a retry can never pay twice.
     const prior = (await kvList<Cashout>(env, cashKey(who.address))).find((x) => x.id === id);
-    if (prior && (prior.status !== "failed" || prior.transferCode)) return json({ data: prior });          // already handled → idempotent answer
+    if (prior && (prior.status !== "failed" || prior.transferCode)) return json({ data: safe(prior, who.admin) });          // already handled → idempotent answer
     if (!prior && (await env.RL_KV.get(`bank:cash-tx:${txHash.toLowerCase()}`)) && (await env.RL_KV.get(`bank:cash-tx:${txHash.toLowerCase()}`)) !== who.address) return err("That transaction was already cashed out", 409);
 
     // verify the USDC transfer on-chain
@@ -86,7 +87,7 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
     }
     if (prior) { await kvPatch<Cashout>(env, cashKey(who.address), id, rec); await kvPatch<Cashout>(env, CASH_ALL, id, rec); }
     else { await kvPush(env, cashKey(who.address), rec, 100); await kvPush(env, CASH_ALL, rec, 300); }
-    if (rec.status === "failed") return json({ error: friendly(rec.error), data: rec }, 502);
-    return json({ data: rec });
-  } catch (e) { return errResp(e); }
+    if (rec.status === "failed") return json({ error: who.admin ? `${rec.error || "Payout failed"} (admin view)` : USER_MSG, data: safe(rec, who.admin) }, 502);
+    return json({ data: safe(rec, who.admin) });
+  } catch (e) { return errResp(e, who.admin); }
 };

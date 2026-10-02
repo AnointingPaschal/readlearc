@@ -26,6 +26,15 @@ export async function listBanks(env: Env, p?: Provider): Promise<{ name: string;
 
 /** Confirm a NUBAN account and return the holder's name (and the bank code that worked). */
 export async function resolveAccount(env: Env, accountNumber: string, bankCode: string, bankName = ""): Promise<{ name: string; code: string }> {
+  try { return await resolveRaw(env, accountNumber, bankCode, bankName); }
+  catch (e) {
+    const be = e as BankError;
+    // a 4xx from the provider means "that account/bank isn't valid" — say so plainly; the technical text is for admins only
+    if (be instanceof BankError && be.upstream && be.status >= 400 && be.status < 500 && be.status !== 401 && be.status !== 403) throw new BankError("We couldn't verify that account — check the number and bank", 400, undefined, false, be.message);
+    throw e;
+  }
+}
+async function resolveRaw(env: Env, accountNumber: string, bankCode: string, bankName: string): Promise<{ name: string; code: string }> {
   const { provider } = await bankCfg(env);
   if (provider === "paystack") {
     const d = await paystack(env, `/bank/resolve${qs({ account_number: accountNumber, bank_code: bankCode })}`);

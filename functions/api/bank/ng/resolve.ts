@@ -13,5 +13,5 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
   try {
     const d = await resolveAccount(env, p.accountNumber, p.bankCode, p.bankName || "");
     return json({ accountName: d.name, bankCode: d.code });
-  } catch (e) { return errResp(e); }
+  } catch (e) { return errResp(e, who.admin); }
 };

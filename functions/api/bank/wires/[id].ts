@@ -17,5 +17,5 @@ export const onRequestGet: PagesFunction<Env> = async ({ request, env, params })
       circle(env, `/v1/banks/wires/${id}/instructions${qs({ accountId: c.circleAccount, currency })}`).catch(() => null),
     ]);
     return json({ account: acct?.data, instructions: instr?.data ?? null });
-  } catch (e) { return errResp(e); }
+  } catch (e) { return errResp(e, who.admin); }
 };

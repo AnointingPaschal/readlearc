@@ -13,7 +13,7 @@ export interface Env {
   CIRCLE_API_KEY?: string; CIRCLE_ENV?: string; CIRCLE_BASE?: string; CIRCLE_ACCOUNT_ID?: string; CIRCLE_CLIENT_ENTITY_ID?: string;
   /** Managed (Circle developer-controlled) wallets. CIRCLE_ENTITY_SECRET must be a Pages *secret* — never put it in KV or the repo. */
   CIRCLE_ENTITY_SECRET?: string; CIRCLE_DCW_API_KEY?: string; CIRCLE_WALLET_SET_ID?: string; DCW_BASE?: string; DCW_BLOCKCHAIN?: string;
-  PAYSTACK_SECRET_KEY?: string; PAYSTACK_BASE?: string; NGN_PROVIDER?: string; FLUTTERWAVE_SECRET_KEY?: string; FLUTTERWAVE_BASE?: string; FLUTTERWAVE_WEBHOOK_HASH?: string;
+  PAYSTACK_SECRET_KEY?: string; PAYSTACK_BASE?: string; NGN_PROVIDER?: string; PAYOUT_RELAY_URL?: string; PAYOUT_RELAY_TOKEN?: string; FLUTTERWAVE_SECRET_KEY?: string; FLUTTERWAVE_BASE?: string; FLUTTERWAVE_WEBHOOK_HASH?: string;
   START_BLOCK?: string; CHUNK_BYTES?: string; TX_BYTES?: string;
 }
 

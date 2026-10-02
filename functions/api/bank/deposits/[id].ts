@@ -13,5 +13,5 @@ export const onRequestGet: PagesFunction<Env> = async ({ request, env, params })
     const mine = (await kvList<WireLink>(env, wiresKey(who.address))).some((w) => w.id === dep?.source?.id);
     if (!who.admin && !mine) return err("Not your deposit", 403);
     return json({ data: dep });
-  } catch (e) { return errResp(e); }
+  } catch (e) { return errResp(e, who.admin); }
 };
