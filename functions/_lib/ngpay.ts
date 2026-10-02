@@ -52,13 +52,18 @@ async function resolveRaw(env: Env, accountNumber: string, bankCode: string, ban
   throw new BankError(((last as Error)?.message || "We couldn't verify that account") + ` (bank code ${bankCode})`, 400);
 }
 
-/** The bank code to use with the ACTIVE provider for a saved account (re-mapped by bank name if it was saved under the other provider). */
+/** Whose bank code a saved account carries. Accounts saved before the provider switch have no marker: ones with only a Paystack recipient are Paystack's, the rest Flutterwave's. */
+const origin = (a: NgAccount): Provider => a.provider ?? (a.recipientCode && !a.accountNumber ? "paystack" : "flutterwave");
+
+/** The bank code to use with the ACTIVE provider for a saved account. Codes differ between providers (and the lookup may have
+ *  fallen back to an alternate code), so unless the account was saved under this provider it is re-mapped by bank name. */
 async function codeFor(env: Env, acct: NgAccount, prov: Provider): Promise<string> {
-  if (!acct.provider || acct.provider === prov) return acct.bankCode;
+  if (origin(acct) === prov) return acct.bankCode;
   const list = await listBanks(env, prov), n = norm(acct.bankName);
   const m = list.find((b) => norm(b.name) === n) || list.find((b) => n && (norm(b.name).includes(n) || n.includes(norm(b.name))));
-  if (!m) throw new BankError("Please remove this bank account and add it again — the payout provider changed", 400);
-  return m.code;
+  if (m) return m.code;
+  if (list.some((b) => b.code === acct.bankCode)) return acct.bankCode;
+  throw new BankError("Please remove this bank account and add it again — the payout provider changed", 400);
 }
 
 /** Start a payout. `reference` is derived from the on-chain tx hash, so repeating it can never pay twice. */
