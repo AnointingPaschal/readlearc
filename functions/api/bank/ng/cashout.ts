@@ -5,7 +5,7 @@ import { chainFor } from "../../../_lib/chain";
 import { getManaged } from "../../../_lib/dcw";
 
 /** Plain-language reason for a failed payout (the raw Flutterwave text is kept in the record for admins). */
-const friendly = (m?: string) => /balance|insufficient|funds/i.test(m || "") ? "Payouts are temporarily unavailable. Your USDC is safe — press Retry in a little while." : /third.?party|not enabled|disabled|permission|otp|ip |whitelist|not allowed|unauthori/i.test(m || "") ? "Bank transfers aren't enabled on the payout account yet. Your USDC is safe — contact support." : (m || "The bank payout failed") + " — your USDC is safe; press Retry.";
+const friendly = (m?: string) => /balance|insufficient|funds/i.test(m || "") ? "Payouts are temporarily unavailable. Your USDC is safe — press Retry in a little while." : /administrator|cannot be processed|third.?party|not enabled|disabled|permission|otp|ip |whitelist|not allowed|unauthori/i.test(m || "") ? "Bank transfers aren't enabled on the payout account yet. Your USDC is safe — contact support." : (m || "The bank payout failed") + " — your USDC is safe; press Retry.";
 const TRANSFER = ethers.id("Transfer(address,address,uint256)");
 const ERC20 = ["function decimals() view returns (uint8)"];
 
