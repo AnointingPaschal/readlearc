@@ -358,6 +358,21 @@ textarea.admin-input { height:auto; resize:vertical; line-height:1.55; padding:1
 .rbd hr  { border: none; border-top: 1px solid #ccc; margin: 10px 0; }
 .rbd pre { font-family: "Courier New", monospace; font-size: 10pt; background: #f8f8f8; border: 1px solid #ddd; padding: 8px; overflow-x: auto; border-radius: 3px; }
 
+/* Paper reader pages — fixed font sizes (not viewport-based), themeable colours */
+.pg .rbd { color: var(--paper-fg, #000); font-size: inherit; }
+.pg .rbd h1 { font-size: 1.45em; font-weight: bold; text-align: center; margin: 0 0 8px; }
+.pg .rbd h2 { font-size: 1.17em; margin: 14px 0 5px; border-bottom: 1.5px solid var(--paper-fg, #444); }
+.pg .rbd h3 { font-size: 1.04em; } .pg .rbd h4 { font-size: 1em; }
+.pg .rbd table { font-size: .85em; } .pg .rbd td, .pg .rbd th { border-color: var(--paper-line, #bbb); }
+.pg .rbd th { background: color-mix(in srgb, var(--paper-fg, #000) 8%, var(--paper-bg, #fff)); }
+.pg .rbd blockquote { color: inherit; opacity: .85; border-left-color: var(--paper-fg, #777); }
+.pg .rbd pre { background: color-mix(in srgb, var(--paper-fg, #000) 6%, var(--paper-bg, #fff)); border-color: var(--paper-line, #ddd); font-size: .8em; white-space: pre-wrap; }
+.pg .rbd :first-child { margin-top: 0; }
+.pg .rbd p, .pg .rbd li { orphans: 2; widows: 2; }
+.paper-reader mark.hit { background: #fde68a; color: #000; border-radius: 2px; padding: 0 1px; }
+.paper-reader mark.hit.on { background: #fb923c; outline: 2px solid #ea580c; }
+.paper-reader button:disabled { opacity: .35; cursor: not-allowed !important; }
+
 /* ══════════════════════════════════════════════════════
    AppNav — bottom bar (mobile) + side nav (desktop)
    ══════════════════════════════════════════════════════ */

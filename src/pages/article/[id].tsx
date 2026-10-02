@@ -105,7 +105,7 @@ export default function ArticlePage() {
 
   const priceNum   = parseFloat(article.price)||0;
   const unlocked   = paid || article.hasPaid;
-  const isResearch = article.isResearch;
+  const isResearch = article.isResearch || /research/i.test(article.category || "");
   const isPending  = article.status==="pending";
   const clearHtml  = toHtml(article.contentPreview||"");
   const blurHtml   = toHtml(article.contentBlur||"");
@@ -237,7 +237,7 @@ export default function ArticlePage() {
           {unlocked ? (
             <>
               {isResearch
-                ? <ResearchViewer content={article.content||""} title={article.title}/>
+                ? <ResearchViewer content={article.content||""} title={article.title} meta={{articleId:article.id,author:article.authorShort,date:article.timestamp,url:typeof window!=="undefined"?window.location.origin+window.location.pathname:undefined}}/>
                 : <div className="article-render"><div dangerouslySetInnerHTML={{__html:fullHtml}}/></div>
               }
               {txHash&&(
