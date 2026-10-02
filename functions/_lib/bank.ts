@@ -4,12 +4,13 @@ import { getSettings } from "./store";
 import { authenticate, type Caller } from "./auth";
 
 /**
- * Banking helpers: Circle (USD bank rails: wire accounts, deposits, withdrawals) and Flutterwave (Nigerian banks, NGN payouts).
+ * Banking helpers: Circle (USD bank rails: wire accounts, deposits, withdrawals) and Flutterwave and/or Paystack (Nigerian banks, NGN payouts — switchable in Admin).
  * Credentials come from Cloudflare env vars or, if unset, from Admin → Finance → Banking (saved in KV, never sent to the browser).
  */
 export interface BankCfg {
   circleKey: string; circleBase: string; circleAccount: string; clientEntityId: string;
-  flwKey: string; flwBase: string; flwHash: string;
+  flwKey: string; flwBase: string; flwHash: string; paystackKey: string; paystackBase: string;
+  provider: "flutterwave" | "paystack"; providerReady: boolean;
   rate: number; feePct: number; minUsd: number; maxUsd: number; ngEnabled: boolean;
 }
 
@@ -17,12 +18,18 @@ export async function bankCfg(env: Env): Promise<BankCfg> {
   const s = await getSettings(env);
   const prod = (s.circle_env || env.CIRCLE_ENV || "sandbox").toLowerCase() === "production";
   const num = (v: string | undefined, d: number) => { const n = Number(v); return Number.isFinite(n) && v !== "" && v !== undefined ? n : d; };
+  const flwKey = s.flutterwave_secret_key || env.FLUTTERWAVE_SECRET_KEY || "", paystackKey = s.paystack_secret_key || env.PAYSTACK_SECRET_KEY || "";
+  const want = (s.ngn_provider || env.NGN_PROVIDER || "").toLowerCase();
+  // the admin's choice; if none is chosen, use whichever has a key (Flutterwave first)
+  const provider: "flutterwave" | "paystack" = want === "paystack" ? "paystack" : want === "flutterwave" ? "flutterwave" : flwKey || !paystackKey ? "flutterwave" : "paystack";
   return {
+    provider, providerReady: Boolean(provider === "paystack" ? paystackKey : flwKey),
+    paystackKey, paystackBase: env.PAYSTACK_BASE || "https://api.paystack.co",
     circleKey: s.circle_api_key || env.CIRCLE_API_KEY || "",
     circleBase: env.CIRCLE_BASE || (prod ? "https://api.circle.com" : "https://api-sandbox.circle.com"),
     circleAccount: s.circle_account_id || env.CIRCLE_ACCOUNT_ID || "",
     clientEntityId: s.circle_client_entity_id || env.CIRCLE_CLIENT_ENTITY_ID || "",
-    flwKey: s.flutterwave_secret_key || env.FLUTTERWAVE_SECRET_KEY || "",
+    flwKey,
     flwBase: env.FLUTTERWAVE_BASE || "https://api.flutterwave.com/v3",
     flwHash: s.flutterwave_webhook_secret || env.FLUTTERWAVE_WEBHOOK_HASH || "",
     rate: num(s.ngn_per_usd, 0), feePct: num(s.ngn_fee_pct, 1), minUsd: num(s.ngn_min_usd, 1), maxUsd: num(s.ngn_max_usd, 1000),
@@ -40,7 +47,7 @@ async function call(base: string, key: string, who: string, path: string, init: 
   } catch (e) { throw new BankError(`${who} is unreachable: ${(e as Error).message}`, 502); }
   let data: any = null;
   try { data = await res.json(); } catch { /* empty */ }
-  if (!res.ok || (who === "Flutterwave" && data && data.status === "error")) {
+  if (!res.ok || ((who === "Flutterwave" && data && data.status === "error") || (who === "Paystack" && data && data.status === false))) {
     const msg = data?.externalMessage || data?.message || data?.data?.complete_message || `${who} error ${res.status}`;
     throw new BankError(String(msg), res.status >= 400 && res.status < 500 ? res.status : 502, data);
   }
@@ -48,23 +55,8 @@ async function call(base: string, key: string, who: string, path: string, init: 
 }
 
 export const circle = async (env: Env, path: string, init?: RequestInit) => { const c = await bankCfg(env); return call(c.circleBase, c.circleKey, "Circle", path, init); };
+export const paystack = async (env: Env, path: string, init?: RequestInit) => { const c = await bankCfg(env); return call(c.paystackBase, c.paystackKey, "Paystack", path, init); };
 export const flutterwave = async (env: Env, path: string, init?: RequestInit) => { const c = await bankCfg(env); return call(c.flwBase, c.flwKey, "Flutterwave", path, init); };
-
-/** Some wallet-style banks (OPay, PalmPay) are listed under different codes by different providers — if Flutterwave rejects the code, try the known alternates. */
-const ALT_CODES: Record<string, string[]> = { opay: ["999992", "305", "100004"], paycom: ["305", "999992", "100004"], palmpay: ["999991", "100033"] };
-export async function resolveNg(env: Env, accountNumber: string, bankCode: string, bankName = ""): Promise<{ name: string; code: string }> {
-  const key = Object.keys(ALT_CODES).find((k) => bankName.toLowerCase().includes(k));
-  const codes = [bankCode, ...(key ? ALT_CODES[key].filter((c) => c !== bankCode) : [])];
-  let last: unknown;
-  for (const code of codes) {
-    try {
-      const r = await flutterwave(env, "/accounts/resolve", { method: "POST", body: JSON.stringify({ account_number: accountNumber, account_bank: code }) });
-      if (r?.data?.account_name) return { name: String(r.data.account_name), code };
-    } catch (e) { last = e; if (!/bank code|unknown bank/i.test((e as Error).message)) throw e; }
-  }
-  const m = ((last as Error)?.message || "We couldn't verify that account") + ` (bank code ${bankCode})`;
-  throw new BankError(m, 400);
-}
 
 export const qs = (o: Record<string, string | number | undefined | null>) => {
   const p = new URLSearchParams();
@@ -94,10 +86,11 @@ export async function kvPatch<T extends { id: string }>(env: Env, key: string, i
 }
 
 export interface WireLink { id: string; description: string; trackingRef?: string; status?: string; holder?: string; createdAt: number }
-/** accountNumber is kept server-side only (Flutterwave pays by bank code + number) and is stripped before anything is sent to the browser. */
-export interface NgAccount { id: string; bankCode: string; bankName: string; accountName: string; last4: string; accountNumber?: string; createdAt: number }
-export const publicAcct = ({ accountNumber, ...rest }: NgAccount) => ({ ...rest, ready: Boolean(accountNumber) });
-export interface Cashout { id: string; txHash: string; address: string; amountUsd: number; feeUsd: number; rate: number; ngn: number; bankName: string; accountName: string; last4: string; status: "processing" | "success" | "failed" | "reversed"; transferCode?: string; error?: string; createdAt: number; updatedAt?: number }
+/** accountNumber is kept server-side only (providers pay by bank code + number) and is stripped before anything is sent to the browser.
+ *  `provider` = whose bank code `bankCode` is; `recipientCode` = Paystack transfer-recipient cache (created on first payout). Old Paystack-only accounts have no accountNumber. */
+export interface NgAccount { id: string; bankCode: string; bankName: string; accountName: string; last4: string; accountNumber?: string; provider?: "flutterwave" | "paystack"; recipientCode?: string; createdAt: number }
+export const publicAcct = ({ accountNumber, recipientCode, ...rest }: NgAccount) => ({ ...rest, ready: Boolean(accountNumber || recipientCode) });
+export interface Cashout { id: string; txHash: string; address: string; amountUsd: number; feeUsd: number; rate: number; ngn: number; bankName: string; accountName: string; last4: string; status: "processing" | "success" | "failed" | "reversed"; provider?: "flutterwave" | "paystack"; transferCode?: string; error?: string; createdAt: number; updatedAt?: number }
 
 export const wiresKey = (a: string) => `bank:wires:${lc(a)}`;
 export const ngKey = (a: string) => `bank:ng:${lc(a)}`;

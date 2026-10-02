@@ -1,28 +1,26 @@
 import type { Env } from "../../../_lib/env";
 import { err, json } from "../../../_lib/env";
-import { bankCfg, cashKey, CASH_ALL, errResp, ethers, isResp, kvList, kvPush, kvPatch, ngKey, flutterwave, requireUser, type Cashout, type NgAccount } from "../../../_lib/bank";
+import { bankCfg, cashKey, CASH_ALL, errResp, ethers, isResp, kvList, kvPush, kvPatch, ngKey, requireUser, type Cashout, type NgAccount } from "../../../_lib/bank";
+import { payoutStatus, sendPayout } from "../../../_lib/ngpay";
 import { chainFor } from "../../../_lib/chain";
 import { getManaged } from "../../../_lib/dcw";
 
-/** Plain-language reason for a failed payout (the raw Flutterwave text is kept in the record for admins). */
+/** Plain-language reason for a failed payout (the raw the payout provider text is kept in the record for admins). */
 const friendly = (m?: string) => /balance|insufficient|funds/i.test(m || "") ? "Payouts are temporarily unavailable. Your USDC is safe — press Retry in a little while." : /administrator|cannot be processed|third.?party|not enabled|disabled|permission|otp|ip |whitelist|not allowed|unauthori/i.test(m || "") ? "Bank transfers aren't enabled on the payout account yet. Your USDC is safe — contact support." : (m || "The bank payout failed") + " — your USDC is safe; press Retry.";
 const TRANSFER = ethers.id("Transfer(address,address,uint256)");
 const ERC20 = ["function decimals() view returns (uint8)"];
 
-/** GET  /api/bank/ng/cashout — the caller's cash-out history (statuses refreshed from Flutterwave while processing).
+/** GET  /api/bank/ng/cashout — the caller's cash-out history (statuses refreshed from the payout provider while processing).
  *  POST /api/bank/ng/cashout {txHash, accountId} — the user has already sent USDC to the treasury; verify that transfer on-chain,
- *       convert at the admin-set rate (minus fee) and pay the NGN into their saved bank account via Flutterwave.
+ *       convert at the admin-set rate (minus fee) and pay the NGN into their saved bank account via the payout provider.
  *  Safety: the on-chain transfer must come FROM the signed-in wallet TO the treasury, each tx hash is honoured once, and the
- *  Flutterwave reference is derived from the tx hash so a retry can never pay twice. */
+ *  the payout provider reference is derived from the tx hash so a retry can never pay twice. */
 export const onRequestGet: PagesFunction<Env> = async ({ request, env }) => {
   const who = await requireUser(request, env); if (isResp(who)) return who;
   const list = await kvList<Cashout>(env, cashKey(who.address));
   await Promise.all(list.filter((c) => c.status === "processing").map(async (c) => {
     try {
-      if (!c.transferCode) return;
-      const d = await flutterwave(env, `/transfers/${encodeURIComponent(c.transferCode)}`);
-      const st = String(d?.data?.status || "").toUpperCase();
-      const next = st === "SUCCESSFUL" ? "success" : st === "FAILED" ? "failed" : null;
+      const next = await payoutStatus(env, c);
       if (next) { c.status = next; await kvPatch<Cashout>(env, cashKey(who.address), c.id, { status: next, updatedAt: Date.now() }); await kvPatch<Cashout>(env, CASH_ALL, c.id, { status: next, updatedAt: Date.now() }); }
     } catch { /* leave as is */ }
   }));
@@ -39,13 +37,12 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
     const c = await bankCfg(env);
     const chain = await chainFor(env);
     const treasury = chain.cfg.treasury, usdc = chain.cfg.usdc;
-    if (!c.flwKey || c.rate <= 0 || !treasury || !usdc) return err("NGN cash-out isn't enabled yet", 503);
+    if (!c.providerReady || c.rate <= 0 || !treasury || !usdc) return err("NGN cash-out isn't enabled yet", 503);
     const acct = (await kvList<NgAccount>(env, ngKey(who.address))).find((a) => a.id === p.accountId);
     if (!acct) return err("Choose one of your saved bank accounts");
-    if (!acct.accountNumber) return err("Please remove this bank account and add it again — we've changed payout provider");
-    const id = "rl_" + txHash.slice(2, 42).toLowerCase();                      // Flutterwave reference (unique per transfer)
-    // A tx hash is honoured once. If an earlier attempt ended before Flutterwave accepted a transfer (crash, or Flutterwave refused), it may be retried:
-    // the Flutterwave reference is derived from the tx hash, so a retry can never pay twice.
+    const id = "rl_" + txHash.slice(2, 42).toLowerCase();                      // the payout provider reference (unique per transfer)
+    // A tx hash is honoured once. If an earlier attempt ended before the payout provider accepted a transfer (crash, or the payout provider refused), it may be retried:
+    // the the payout provider reference is derived from the tx hash, so a retry can never pay twice.
     const prior = (await kvList<Cashout>(env, cashKey(who.address))).find((x) => x.id === id);
     if (prior && (prior.status !== "failed" || prior.transferCode)) return json({ data: prior });          // already handled → idempotent answer
     if (!prior && (await env.RL_KV.get(`bank:cash-tx:${txHash.toLowerCase()}`)) && (await env.RL_KV.get(`bank:cash-tx:${txHash.toLowerCase()}`)) !== who.address) return err("That transaction was already cashed out", 409);
@@ -82,10 +79,8 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
 
     const rec: Cashout = { id, txHash, address: who.address, amountUsd, feeUsd, rate: c.rate, ngn, bankName: acct.bankName, accountName: acct.accountName, last4: acct.last4, status: "processing", createdAt: Date.now() };
     try {
-      const t = await flutterwave(env, "/transfers", { method: "POST", body: JSON.stringify({ account_bank: acct.bankCode, account_number: acct.accountNumber, amount: ngn, currency: "NGN", debit_currency: "NGN", narration: "Readlearc cash-out", reference: id }) });
-      rec.transferCode = t?.data?.id != null ? String(t.data.id) : undefined;
-      const st = String(t?.data?.status || "").toUpperCase();
-      rec.status = st === "SUCCESSFUL" ? "success" : st === "FAILED" ? "failed" : "processing";
+      const t = await sendPayout(env, acct, ngn, id);
+      rec.provider = t.provider; rec.transferCode = t.code; rec.status = t.status;
     } catch (e) {
       rec.status = "failed"; rec.error = (e as Error).message;
     }

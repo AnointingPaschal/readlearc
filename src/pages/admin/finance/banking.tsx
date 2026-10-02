@@ -7,7 +7,7 @@ import { StatusChip } from "@/components/wallet/Sheet";
 
 const NATURE = ["otherOperatingCompanies", "eCommercePlatform", "paymentProcessorPlatform", "cryptoSoftwareProvider", "otherCryptoServices", "marketing", "education", "nonProfit", "web3GamingSocial", "tokenProject", "p2p", "trading", "banking", "assetManager", "insurance", "healthCare", "realEstate", "construction", "agriculture", "art", "film", "accounting", "manufacturingOther", "transportation", "utilities", "cryptoExchange", "cryptoInvesting", "cryptoCustodian", "nftMarketplace", "stakingServices"];
 const INST = ["privateCo", "publicCo", "soleTrader", "partnership", "coop", "foundation", "trust", "associationOrConsortium", "governmentBody"];
-interface Status { circle: { ok: boolean; error?: string; env?: string }; flutterwave: { ok: boolean; error?: string; data?: { currency: string; balance: number }[] }; webhookSecret?: boolean; cashouts: Cashout[] }
+interface Status { provider?: string; paystack?: { ok: boolean; error?: string; data?: { currency: string; balance: number }[] }; circle: { ok: boolean; error?: string; env?: string }; flutterwave: { ok: boolean; error?: string; data?: { currency: string; balance: number }[] }; webhookSecret?: boolean; cashouts: Cashout[] }
 const F = ({ l, hint, children }: { l: string; hint?: string; children: React.ReactNode }) => (
   <div><label style={{ fontSize: 11, fontWeight: 700, color: "var(--text-3)", display: "block", marginBottom: 4 }}>{l}</label>{children}{hint && <div style={{ fontSize: 11, color: "var(--text-4)", marginTop: 3, lineHeight: 1.5 }}>{hint}</div>}</div>
 );
@@ -56,7 +56,7 @@ export default function BankingAdmin() {
 
   async function save() {
     if (!signer) return; setSaving(true); setMsg("");
-    const keys = ["dcw_api_key", "dcw_blockchain", "dcw_max_send_usd", "dcw_enabled", "circle_env", "circle_api_key", "circle_account_id", "circle_client_entity_id", "flutterwave_secret_key", "flutterwave_webhook_secret", "ngn_enabled", "ngn_per_usd", "ngn_fee_pct", "ngn_min_usd", "ngn_max_usd"];
+    const keys = ["dcw_api_key", "dcw_blockchain", "dcw_max_send_usd", "dcw_enabled", "circle_env", "circle_api_key", "circle_account_id", "circle_client_entity_id", "ngn_provider", "flutterwave_secret_key", "flutterwave_webhook_secret", "paystack_secret_key", "ngn_enabled", "ngn_per_usd", "ngn_fee_pct", "ngn_min_usd", "ngn_max_usd"];
     const r = await signedJson(signer, "POST", "/api/admin/settings", Object.fromEntries(keys.map((k) => [k, s[k] ?? ""])));
     setMsg(r.ok ? "Saved" : (r.data as any)?.error || "Save failed");
     setSaving(false); if (r.ok) { void test(); setTimeout(() => setMsg(""), 2500); }
@@ -68,7 +68,8 @@ export default function BankingAdmin() {
       <div><div style={{ fontSize: 13, fontWeight: 700, color: "var(--text)" }}>{label}</div>{!ok && err && <div style={{ fontSize: 11, color: "var(--text-4)" }}>{err}</div>}</div>
     </div>
   );
-  const bal = st?.flutterwave.data?.find((b) => b.currency === "NGN");
+  const balF = st?.flutterwave.data?.find((b) => b.currency === "NGN"), balP = st?.paystack?.data?.find((b) => b.currency === "NGN");
+  const active = s.ngn_provider || (s.flutterwave_secret_key || !s.paystack_secret_key ? "flutterwave" : "paystack");
   const input = (k: string, ph = "", pw = false) => <input className="input" type={pw && !show ? "password" : "text"} value={s[k] ?? ""} onChange={set(k)} placeholder={ph} autoComplete="off" />;
 
   return (
@@ -80,7 +81,8 @@ export default function BankingAdmin() {
 
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(260px,1fr))", gap: 10 }}>
         {pill(st?.circle.ok, `Circle (${st?.circle.env || s.circle_env || "sandbox"})`, st?.circle.error)}
-        {pill(st?.flutterwave.ok, bal ? `Flutterwave · balance ${fmtNgn(bal.balance / 100)}` : "Flutterwave", st?.flutterwave.error)}
+        {pill(st?.flutterwave.ok, balF ? `Flutterwave${active === "flutterwave" ? " (active)" : ""} · ${fmtNgn(balF.balance / 100)}` : `Flutterwave${active === "flutterwave" ? " (active)" : ""}`, st?.flutterwave.error)}
+        {pill(st?.paystack?.ok, balP ? `Paystack${active === "paystack" ? " (active)" : ""} · ${fmtNgn(balP.balance / 100)}` : `Paystack${active === "paystack" ? " (active)" : ""}`, st?.paystack?.error)}
       </div>
 
       <div className="card" style={{ padding: 18, display: "flex", flexDirection: "column", gap: 12 }}>
@@ -113,10 +115,14 @@ export default function BankingAdmin() {
       </div>
 
       <div className="card" style={{ padding: 18, display: "flex", flexDirection: "column", gap: 12 }}>
-        <div style={{ fontFamily: "Outfit,sans-serif", fontSize: 15, fontWeight: 800, color: "var(--text)" }}>Nigerian banks — Naira cash-out (Flutterwave)</div>
-        <div style={{ fontSize: 12, color: "var(--text-4)", lineHeight: 1.6 }}>Users send USDC to the treasury address; the server verifies it on-chain and pays Naira to their bank through Flutterwave Transfers. Your Flutterwave NGN balance must cover payouts, and Transfers must be enabled on the account (Flutterwave may also require your server IP to be whitelisted under Settings → API). The treasury address is set under Finance → Contracts.</div>
+        <div style={{ fontFamily: "Outfit,sans-serif", fontSize: 15, fontWeight: 800, color: "var(--text)" }}>Nigerian banks — Naira cash-out</div>
+        <div style={{ fontSize: 12, color: "var(--text-4)", lineHeight: 1.6 }}>Users send USDC to the treasury address; the server verifies it on-chain and pays Naira to their bank through the provider chosen below. That provider's NGN balance must cover payouts, and Transfers must be enabled on its account (Flutterwave may also need IP whitelisting off). The treasury address is set under Finance → Contracts.</div>
+        <F l="Payout provider in use" hint="Switch any time — new cash-outs use this one. Payouts already in progress keep being tracked by the provider that made them. Saved bank accounts carry over (OPay/others may need re-adding if the bank isn't found at the other provider).">
+          <select className="input" value={active} onChange={set("ngn_provider")}><option value="flutterwave">Flutterwave</option><option value="paystack">Paystack</option></select>
+        </F>
         <F l="Flutterwave secret key"><div style={{ display: "flex", gap: 6 }}>{input("flutterwave_secret_key", "FLWSECK-…", true)}<button className="btn btn-ghost btn-sm" onClick={() => setShow((v) => !v)}>{show ? <EyeOff size={14} /> : <Eye size={14} />}</button></div></F>
-        <F l="Webhook secret hash" hint="Any long random string you choose. Enter the same value here and in Flutterwave → Settings → Webhooks → Secret hash.">{input("flutterwave_webhook_secret", "my-long-random-string", true)}</F>
+        <F l="Flutterwave webhook secret hash" hint="Any long random string you choose. Enter the same value here and in Flutterwave → Settings → Webhooks → Secret hash.">{input("flutterwave_webhook_secret", "my-long-random-string", true)}</F>
+        <F l="Paystack secret key" hint="Paystack needs Transfers enabled and a funded balance.">{input("paystack_secret_key", "sk_live_…", true)}</F>
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(130px,1fr))", gap: 10 }}>
           <F l="₦ per $1" hint="Your payout rate.">{input("ngn_per_usd", "1500")}</F>
           <F l="Fee %">{input("ngn_fee_pct", "1")}</F>
@@ -126,7 +132,7 @@ export default function BankingAdmin() {
         <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13, color: "var(--text-3)" }}>
           <input type="checkbox" checked={(s.ngn_enabled ?? "true") !== "false"} onChange={(e) => setS((p) => ({ ...p, ngn_enabled: e.target.checked ? "true" : "false" }))} />Cash-out enabled
         </label>
-        <F l="Webhook URL" hint="Paste into Flutterwave → Settings → Webhooks (with the secret hash above) so payout statuses update instantly.">
+        <F l="Webhook URL" hint="One URL for both: paste it into Flutterwave → Settings → Webhooks (with the secret hash above) and/or Paystack → Settings → API Keys & Webhooks, so payout statuses update instantly.">
           <div style={{ display: "flex", gap: 6 }}><input className="input" readOnly value={webhook} style={{ fontFamily: "JetBrains Mono,monospace", fontSize: 12 }} /><button className="btn btn-ghost btn-sm" onClick={() => navigator.clipboard?.writeText(webhook)}><Copy size={14} /></button></div>
         </F>
       </div>
