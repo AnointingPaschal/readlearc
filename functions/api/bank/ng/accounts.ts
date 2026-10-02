@@ -1,6 +1,6 @@
 import type { Env } from "../../../_lib/env";
 import { err, json } from "../../../_lib/env";
-import { errResp, isResp, kvList, ngKey, flutterwave, publicAcct, requireUser, type NgAccount } from "../../../_lib/bank";
+import { errResp, isResp, kvList, ngKey, publicAcct, resolveNg, requireUser, type NgAccount } from "../../../_lib/bank";
 
 /** GET    /api/bank/ng/accounts           — the caller's saved Nigerian bank accounts
  *  POST   /api/bank/ng/accounts           — {accountNumber, bankCode, bankName}: verify the account at Flutterwave and save it
@@ -21,11 +21,9 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
     const cur = await kvList<NgAccount>(env, ngKey(who.address));
     if (cur.length >= 5) return err("You can save up to 5 bank accounts — remove one first");
     if (cur.some((a) => a.bankCode === p.bankCode && a.last4 === accountNumber.slice(-4) && (!a.accountNumber || a.accountNumber === accountNumber))) return err("That account is already saved");
-    const r = await flutterwave(env, "/accounts/resolve", { method: "POST", body: JSON.stringify({ account_number: accountNumber, account_bank: p.bankCode }) });
-    const name = r?.data?.account_name;
-    if (!name) return err("We couldn't verify that account — check the number and bank");
+    const { name, code } = await resolveNg(env, accountNumber, p.bankCode, p.bankName);
     const acct: NgAccount = {
-      id: `ng${Date.now().toString(36)}${accountNumber.slice(-4)}`, bankCode: p.bankCode, bankName: p.bankName,
+      id: `ng${Date.now().toString(36)}${accountNumber.slice(-4)}`, bankCode: code, bankName: p.bankName,
       accountName: name, last4: accountNumber.slice(-4), accountNumber, createdAt: Date.now(),
     };
     await env.RL_KV.put(ngKey(who.address), JSON.stringify([acct, ...cur]));

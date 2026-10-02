@@ -1,6 +1,6 @@
 import type { Env } from "../../../_lib/env";
 import { err, json } from "../../../_lib/env";
-import { errResp, isResp, flutterwave, requireUser } from "../../../_lib/bank";
+import { errResp, isResp, requireUser, resolveNg } from "../../../_lib/bank";
 
 /** POST /api/bank/ng/resolve {accountNumber, bankCode} → {accountName}. Confirms the account (NUBAN) before anything is saved. */
 export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
@@ -10,7 +10,7 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
   if (!/^\d{10}$/.test(String(p?.accountNumber || ""))) return err("Account number must be 10 digits");
   if (!p?.bankCode) return err("Choose a bank");
   try {
-    const d = await flutterwave(env, "/accounts/resolve", { method: "POST", body: JSON.stringify({ account_number: p.accountNumber, account_bank: p.bankCode }) });
-    return json({ accountName: d?.data?.account_name });
+    const d = await resolveNg(env, p.accountNumber, p.bankCode, p.bankName || "");
+    return json({ accountName: d.name, bankCode: d.code });
   } catch (e) { return errResp(e); }
 };

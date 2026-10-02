@@ -19,7 +19,7 @@ export default function NgAccountForm({ signer, onSaved }: { signer: ethers.Sign
     setName(""); setErr("");
     if (!/^\d{10}$/.test(num) || !code) return;
     let off = false; setLooking(true);
-    bankCall<{ accountName: string }>(signer, "POST", "/api/bank/ng/resolve", { accountNumber: num, bankCode: code })
+    bankCall<{ accountName: string }>(signer, "POST", "/api/bank/ng/resolve", { accountNumber: num, bankCode: code, bankName: banks.find((b) => b.code === code)?.name || "" })
       .then((d) => { if (!off) setName(d.accountName); })
       .catch((e) => { if (!off) setErr(e.message); })
       .finally(() => { if (!off) setLooking(false); });

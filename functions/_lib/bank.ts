@@ -50,6 +50,22 @@ async function call(base: string, key: string, who: string, path: string, init: 
 export const circle = async (env: Env, path: string, init?: RequestInit) => { const c = await bankCfg(env); return call(c.circleBase, c.circleKey, "Circle", path, init); };
 export const flutterwave = async (env: Env, path: string, init?: RequestInit) => { const c = await bankCfg(env); return call(c.flwBase, c.flwKey, "Flutterwave", path, init); };
 
+/** Some wallet-style banks (OPay, PalmPay) are listed under different codes by different providers — if Flutterwave rejects the code, try the known alternates. */
+const ALT_CODES: Record<string, string[]> = { opay: ["999992", "305", "100004"], paycom: ["305", "999992", "100004"], palmpay: ["999991", "100033"] };
+export async function resolveNg(env: Env, accountNumber: string, bankCode: string, bankName = ""): Promise<{ name: string; code: string }> {
+  const key = Object.keys(ALT_CODES).find((k) => bankName.toLowerCase().includes(k));
+  const codes = [bankCode, ...(key ? ALT_CODES[key].filter((c) => c !== bankCode) : [])];
+  let last: unknown;
+  for (const code of codes) {
+    try {
+      const r = await flutterwave(env, "/accounts/resolve", { method: "POST", body: JSON.stringify({ account_number: accountNumber, account_bank: code }) });
+      if (r?.data?.account_name) return { name: String(r.data.account_name), code };
+    } catch (e) { last = e; if (!/bank code|unknown bank/i.test((e as Error).message)) throw e; }
+  }
+  const m = ((last as Error)?.message || "We couldn't verify that account") + ` (bank code ${bankCode})`;
+  throw new BankError(m, 400);
+}
+
 export const qs = (o: Record<string, string | number | undefined | null>) => {
   const p = new URLSearchParams();
   for (const [k, v] of Object.entries(o)) if (v !== undefined && v !== null && v !== "") p.set(k, String(v));
