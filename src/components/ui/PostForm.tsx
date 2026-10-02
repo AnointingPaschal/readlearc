@@ -2,7 +2,7 @@ import { useRef, useState } from "react";
 import { ImagePlus, X, Send, Loader2 } from "lucide-react";
 import { apiFetch } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
-import { compressImage, encodePost, IMAGE_BUDGET, MAX_IMAGES, MAX_TEXT } from "@/lib/post";
+import { compressImage, encodePost, uploadPhoto, PHOTO_BUDGET, MAX_IMAGES, MAX_TEXT } from "@/lib/post";
 
 interface Props {
   groupId: number | string;
@@ -13,9 +13,9 @@ interface Props {
   allowAnnouncement?: boolean;
 }
 
-/** Facebook-style composer: text + photo uploads (compressed in the browser, stored on-chain with the post). */
+/** Facebook-style composer: text + photo uploads (compressed in the browser, stored off-chain; the post carries a short link). */
 export default function PostForm({ groupId, onPosted, placeholder = "What's on your mind?", rows = 4, allowAnnouncement }: Props) {
-  const { isAuth, requireAuth } = useAuth();
+  const { isAuth, requireAuth, signer } = useAuth();
   const [text, setText] = useState("");
   const [images, setImages] = useState<string[]>([]);
   const [busy, setBusy] = useState(false);
@@ -23,8 +23,6 @@ export default function PostForm({ groupId, onPosted, placeholder = "What's on y
   const [announce, setAnnounce] = useState(false);
   const [error, setError] = useState("");
   const fileRef = useRef<HTMLInputElement>(null);
-
-  const used = images.reduce((n, i) => n + i.length, 0);
 
   async function addFiles(list: FileList | null) {
     const files = Array.from(list || []).filter((f) => f.type.startsWith("image/"));
@@ -34,13 +32,10 @@ export default function PostForm({ groupId, onPosted, placeholder = "What's on y
     const room = MAX_IMAGES - images.length;
     if (room <= 0) { setError(`You can add up to ${MAX_IMAGES} photos.`); return; }
     const take = files.slice(0, room);
-    const remaining = IMAGE_BUDGET - used;
-    if (remaining < 6000) { setError("Photo limit reached for one post."); return; }
     setBusy(true);
     try {
-      const each = Math.floor(remaining / take.length);
       const out: string[] = [];
-      for (const f of take) out.push(await compressImage(f, each));
+      for (const f of take) out.push(await compressImage(f, PHOTO_BUDGET));
       setImages((x) => [...x, ...out]);
       if (files.length > room) setError(`Only ${MAX_IMAGES} photos per post — added the first ${room}.`);
     } catch (e) { setError((e as Error).message); }
@@ -52,9 +47,12 @@ export default function PostForm({ groupId, onPosted, placeholder = "What's on y
     if (!text.trim() && !images.length) return;
     setPosting(true); setError("");
     try {
+      // photos live off-chain: upload them first, then post only their short links
+      let links: string[] = [];
+      if (images.length) { if (!signer) { requireAuth(); setPosting(false); return; } links = await Promise.all(images.map((d) => uploadPhoto(signer, d))); }
       const r = await apiFetch(`/api/groups/${groupId}/posts`, {
         method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ content: encodePost({ text: text.trim(), images }), type: announce ? "announcement" : "discussion" }),
+        body: JSON.stringify({ content: encodePost({ text: text.trim(), images: links }), type: announce ? "announcement" : "discussion" }),
       });
       const d = await r.json().catch(() => ({}));
       if (!r.ok) throw new Error(d.error || "Couldn't post. Are you a member of this community?");
