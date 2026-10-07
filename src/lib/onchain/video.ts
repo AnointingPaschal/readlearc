@@ -42,12 +42,14 @@ export interface SegmentOptions { transcode: boolean; height: number; segSeconds
 
 export async function segmentWithFfmpeg(file: File, opt: SegmentOptions, update?: Progress): Promise<Segmented> {
   const { FFmpeg } = await import("@ffmpeg/ffmpeg");
-  const { fetchFile, toBlobURL } = await import("@ffmpeg/util");
+  const { fetchFile } = await import("@ffmpeg/util");
   const ff = new FFmpeg();
   update?.("Loading video engine (first time ~30 MB)…", 2);
+  // Pass CDN URLs directly — no toBlobURL needed, no SharedArrayBuffer / COEP required.
+  // ffmpeg.wasm 0.12.x fetches these on its own and runs single-threaded in any browser.
   await ff.load({
-    coreURL: await toBlobURL(`${CORE}/ffmpeg-core.js`, "text/javascript"),
-    wasmURL: await toBlobURL(`${CORE}/ffmpeg-core.wasm`, "application/wasm"),
+    coreURL: `${CORE}/ffmpeg-core.js`,
+    wasmURL: `${CORE}/ffmpeg-core.wasm`,
   });
   ff.on("progress", ({ progress }) => update?.(opt.transcode ? "Compressing & segmenting…" : "Segmenting…", 5 + Math.min(1, Math.max(0, progress)) * 40));
   await ff.writeFile("in", await fetchFile(file));

@@ -1,9 +1,3 @@
-# COOP/COEP only on the video upload page — SharedArrayBuffer required for ffmpeg.wasm
-# Applying require-corp site-wide breaks CDN resources (images, embeds) that don't send CORP headers
-/contribute/video
-  Cross-Origin-Opener-Policy: same-origin
-  Cross-Origin-Embedder-Policy: require-corp
-
 /index.html
   Cache-Control: no-cache
 /assets/*
