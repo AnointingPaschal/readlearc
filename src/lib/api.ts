@@ -160,22 +160,21 @@ on(/^\/api\/moderation$/, async (c) => {
 });
 
 // ═══════════════════════ Videos ═══════════════════════
+// GET /api/videos and GET /api/stream/meta/:slug are handled by Cloudflare Pages Functions so
+// that KV tombstones (admin removals) are respected. The Symbol sentinel tells apiFetch to skip
+// the local handler and let the request fall through to the real network.
+const PASSTHROUGH = Symbol("passthrough");
 on(/^\/api\/videos$/, async (c) => {
-  if (c.method !== "GET") return err("Upload videos from Contribute → Video (on-chain upload).", 400);
-  const cards = await content.listCards({
-    kind: 1, category: c.q.get("category") || undefined, author: c.q.get("creator") || undefined,
-    featured: c.q.get("featured") === "true" || undefined, status: "public",
-    limit: num(c.q.get("limit") || "20"), offset: num(c.q.get("offset") || "0"),
-  });
-  const vids = await Promise.all(cards.map(async (x) => content.videoJson(x, await content.thumbDataUrl(x).catch(() => null))));
-  return { videos: vids };
+  if (c.method === "GET") return PASSTHROUGH as unknown as Response;
+  return err("Upload videos from Contribute → Video (on-chain upload).", 400);
 });
 on(/^\/api\/(?:videos|stream\/meta)\/([a-z0-9-]+)$/, async (c) => {
+  if (c.method === "GET") return PASSTHROUGH as unknown as Response;
   const slug = c.params[0];
   const v = await content.getContentBySlug(slug);
   if (!v || v.kind !== 1) return err("Video not found", 404);
   if (c.method === "DELETE") { await content.removeContent(await requireSigner(), v.id); return { ok: true }; }
-  return { video: content.videoJson(v, await content.thumbDataUrl(v).catch(() => null)) };
+  return err("Method not allowed", 405);
 });
 
 // ═══════════════════════ Profiles ═══════════════════════
@@ -490,8 +489,13 @@ export async function apiFetch(input: RequestInfo | URL, init: RequestInit = {})
     if (!isFn && !isConfigured()) return err("Contracts aren’t configured yet. An admin must set them in Admin → Finance → Contracts.", 503);
     const run = async () => handler({ path: url.pathname, method, params: m.slice(1), q: url.searchParams, body });
     try {
-      if (method === "GET" && SWR.some((r) => r.test(url.pathname))) { const v = await swr(url.pathname + url.search, run); return v instanceof Response ? v : json(v); }
+      if (method === "GET" && SWR.some((r) => r.test(url.pathname))) {
+        const v = await swr(url.pathname + url.search, run);
+        if ((v as unknown) === PASSTHROUGH) break; // fall through to real fetch
+        return v instanceof Response ? v : json(v);
+      }
       const out = await run();
+      if ((out as unknown) === PASSTHROUGH) break; // fall through to real fetch
       if (method !== "GET") dropApiCache();
       return out instanceof Response ? out : json(out);
     } catch (e) {
