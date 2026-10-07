@@ -9,7 +9,7 @@ import { useCallback, useEffect, useState } from "react";
 import { ethers } from "ethers";
 import { BadgeDollarSign, Users, Sparkles, UserCheck, Loader2, Check, X, Ban, RotateCcw } from "lucide-react";
 import { useAuth } from "@/lib/auth";
-import { explainError, shortAddr } from "@/lib/chain";
+import { cfg, explainError, shortAddr } from "@/lib/chain";
 import { getRules, adminSetAll, adminSetAuto, adminSetCreator, listCreatorStatuses, MON_STATUS, type MonRules, type CreatorMon } from "@/lib/onchain/money";
 import { getProfiles } from "@/lib/onchain/social";
 import { withActivity } from "@/lib/activity";
@@ -29,13 +29,25 @@ export default function MonetizationAdmin() {
 
   const load = useCallback(async () => {
     try {
+      if (!cfg.monetization) {
+        setErr("Contracts are not configured yet. Go to Admin → Finance → Contracts to set the Monetization contract address.");
+        return;
+      }
       const r = await getRules();
       setRules(r);
       setDraft({ auto: r.auto, minFollowers: r.minFollowers, minPosts: r.minPosts, minAccountDays: r.minAccountDays });
       const list = await listCreatorStatuses();
       const profs = await getProfiles(list.map((x) => x.address));
       setRows(list.map((x) => ({ ...x, name: profs.get(x.address.toLowerCase())?.username ?? undefined })).sort((a, b) => b.at - a.at));
-    } catch (e) { setErr(explainError(e, "Could not load monetization settings")); }
+    } catch (e) {
+      const msg = explainError(e, "Could not load monetization settings");
+      // Surface a cleaner message when the RPC call fails because the contract address is wrong/empty
+      setErr(
+        msg.startsWith("Network error") && !cfg.monetization
+          ? "Contracts are not configured yet. Go to Admin → Finance → Contracts to set the Monetization contract address."
+          : msg
+      );
+    }
   }, []);
   useEffect(() => { load(); }, [load]);
 
