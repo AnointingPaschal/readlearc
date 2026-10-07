@@ -27,7 +27,7 @@ export default function VideoUploadPage() {
   const [blurb,            setBlurb]            = useState("");
   const [slug,             setSlug]             = useState("");
   const [category,         setCategory]         = useState("General");
-  const [freePick,         setFreePick]         = useState(false);
+  const [freePick,         setFreePick]         = useState(true);
   const isFree = freePick || !monetized;
   const setIsFree = setFreePick;
   const [pricePerSec,      setPricePerSec]      = useState("0.0001");
