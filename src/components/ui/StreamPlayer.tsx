@@ -20,6 +20,7 @@ import { C, explainError, send, usdcRateToNative, nativeToUsdc } from "@/lib/cha
 import { txUrl } from "@/lib/config";
 import { getContent } from "@/lib/onchain/content";
 import { loadManifest, makeChainLoader, type PlayerCtx, type VideoManifest } from "@/lib/onchain/video";
+import { VIDEO_R2_MIME } from "@/lib/onchain/video-r2";
 import { generateSessionKey, signVoucher, calcAmountOwed } from "@/lib/onchain/voucher";
 import type { SessionProof } from "@/lib/onchain/keys";
 
@@ -66,13 +67,29 @@ export default function StreamPlayer({
   }, []);
   useEffect(() => teardown, [teardown]);
 
-  /** Load the manifest from chain and attach hls.js to the <video>. */
+  /** Load the video — either from R2 (direct src) or from chain (hls.js + custom loader). */
   const attach = useCallback(async () => {
-    if (hlsRef.current) return;
     const v = videoRef.current;
     if (!v) return;
     const content = await getContent(videoId);
     if (!content) throw new Error("Video not found on-chain");
+
+    // R2-backed video: just set the src directly — browser handles range requests, seeking, etc.
+    if (content.mime === VIDEO_R2_MIME) {
+      if (v.src && v.src.includes(`/api/video/stream/${videoId}`)) return; // already attached
+      v.src = `/api/video/stream/${videoId}`;
+      v.load();
+      await new Promise<void>((res, rej) => {
+        const onOk = () => { v.removeEventListener("canplay", onOk); v.removeEventListener("error", onErr); res(); };
+        const onErr = () => { v.removeEventListener("canplay", onOk); v.removeEventListener("error", onErr); rej(new Error("Could not load video")); };
+        v.addEventListener("canplay", onOk);
+        v.addEventListener("error", onErr);
+      });
+      return;
+    }
+
+    // Legacy on-chain HLS path
+    if (hlsRef.current) return;
     const manifest = await loadManifest(content);
     manifestRef.current = manifest;
     const { default: Hls } = await import("hls.js");
@@ -81,7 +98,6 @@ export default function StreamPlayer({
       content, manifest, signer: signerRef.current,
       getSession: () => proofRef.current,
       onDenied: () => {
-        // paid-through point reached: pause and let the viewer top up / re-open
         v.pause(); setPlaying(false);
         if (!isFree && sessionRef.current == null) setPhase("idle");
       },

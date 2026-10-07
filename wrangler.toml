@@ -13,6 +13,12 @@ pages_build_output_dir = "dist"
 binding = "RL_KV"
 id = "a85a0d39982a4dec87dc3e6aa3ab71c2"
 
+# R2 bucket for video storage — create bucket "readlearc-videos" in Cloudflare R2,
+# then bind it here. Videos are stored in R2 (free for creators); only metadata goes on-chain.
+[[r2_buckets]]
+binding = "RL_R2"
+bucket_name = "readlearc-videos"
+
 # Optional, set as secrets / dashboard variables instead of here:
 #   ADMIN_ADDRESSES         comma-separated wallets that may administer before on-chain roles exist
 #   CONTENT_MASTER_SECRET   secret for deriving content keys (else auto-generated in KV)

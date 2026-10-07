@@ -1,6 +1,8 @@
 export interface Env {
   /** Workers KV namespace: admin-editable config, settings, AI keys, analysis results. */
   RL_KV: KVNamespace;
+  /** R2 bucket for video storage — videos stored here are free to upload (no on-chain gas). */
+  RL_R2?: R2Bucket;
   /** Optional secret used to derive content-encryption keys. If unset, one is generated and kept in KV. */
   CONTENT_MASTER_SECRET?: string;
   /** Comma-separated wallet addresses that may use the admin API before on-chain roles exist (bootstrap). */
