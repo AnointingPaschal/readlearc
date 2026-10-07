@@ -9,7 +9,7 @@ import {
   Zap, LayoutDashboard, Settings, Palette, BookOpen, Flag, Bell,
   Users, PenTool, UserCheck, Percent, Landmark, CreditCard, FileCode, Rocket, Sparkles,
   Lock, Bot, Cpu, FileText, Globe, Search as SearchIcon,
-  DollarSign, Shield, BadgeDollarSign, Menu, X, Sun, Moon, ChevronRight, LogOut, MessageSquare,
+  DollarSign, Shield, BadgeDollarSign, Menu, X, Sun, Moon, ChevronRight, LogOut, MessageSquare, Video,
 } from "lucide-react";
 
 const NAV = [
@@ -18,6 +18,7 @@ const NAV = [
   ]},
   { label:"Content",  items:[
     { href:"/admin/content/moderation", icon:BookOpen,        label:"All Articles"     },
+    { href:"/admin/content/videos",     icon:Video,           label:"All Videos"       },
     { href:"/write/article",            icon:PenTool,         label:"Write Article"    },
     { href:"/admin/content/ai",         icon:Sparkles,        label:"AI Writer"        },
     { href:"/admin/content/bulk",       icon:FileText,        label:"Bulk Write"       },
