@@ -42,17 +42,21 @@ export interface SegmentOptions { transcode: boolean; height: number; segSeconds
 
 export async function segmentWithFfmpeg(file: File, opt: SegmentOptions, update?: Progress): Promise<Segmented> {
   const { FFmpeg } = await import("@ffmpeg/ffmpeg");
-  const { fetchFile } = await import("@ffmpeg/util");
   const ff = new FFmpeg();
+
+  // Read the file bytes BEFORE ff.load() — Android Chrome drops the File handle
+  // during the long async WASM download, causing "File could not be read! Code=-1".
+  update?.("Reading file…", 1);
+  const fileBytes = new Uint8Array(await file.arrayBuffer());
+
   update?.("Loading video engine (first time ~30 MB)…", 2);
   // Pass CDN URLs directly — no toBlobURL needed, no SharedArrayBuffer / COEP required.
-  // ffmpeg.wasm 0.12.x fetches these on its own and runs single-threaded in any browser.
   await ff.load({
     coreURL: `${CORE}/ffmpeg-core.js`,
     wasmURL: `${CORE}/ffmpeg-core.wasm`,
   });
   ff.on("progress", ({ progress }) => update?.(opt.transcode ? "Compressing & segmenting…" : "Segmenting…", 5 + Math.min(1, Math.max(0, progress)) * 40));
-  await ff.writeFile("in", await fetchFile(file));
+  await ff.writeFile("in", fileBytes);
 
   const hls = [
     "-f", "hls", "-hls_time", String(opt.segSeconds), "-hls_playlist_type", "vod",
