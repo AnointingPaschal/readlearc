@@ -1,7 +1,11 @@
 /**
- * /contribute/video — Creator video upload page. Videos are always free for viewers.
+ * /contribute/video — Creator video upload page.
+ * Creators can choose free or paid (per-second) for viewers.
+ * Gas (upload cost) is paid by the site wallet — not the creator.
  */
 import { useState } from "react";
+import { useMonetization } from "@/lib/useMonetization";
+import MonetizationPanel from "@/components/ui/MonetizationPanel";
 import { withActivity } from "@/lib/activity";
 import { explainError } from "@/lib/chain";
 import { publishVideo, segmentWithFfmpeg, captureThumb } from "@/lib/onchain/video";
@@ -10,26 +14,32 @@ import Navbar from "@/components/ui/Navbar";
 import SetupBanner from "@/components/ui/SetupBanner";
 import ConnectGate from "@/components/ui/ConnectGate";
 import { useAuth } from "@/lib/auth";
-import { Video, Upload, CheckCircle2, AlertCircle, Loader2 } from "lucide-react";
+import { Video, Upload, CheckCircle2, AlertCircle, Loader2, DollarSign, Eye } from "lucide-react";
 import { Link } from "@/lib/nav";
 
 export default function VideoUploadPage() {
-  const { signer, isAuth, requireAuth } = useAuth();
+  const { signer, address, isAuth, requireAuth } = useAuth();
+  const { monetized, loading: monLoading } = useMonetization(address);
 
-  const [title,        setTitle]        = useState("");
-  const [blurb,        setBlurb]        = useState("");
-  const [slug,         setSlug]         = useState("");
-  const [category,     setCategory]     = useState("General");
-  const [file,         setFile]         = useState<File | null>(null);
-  const [transcode,    setTranscode]    = useState(true);
-  const [height,       setHeight]       = useState(240);
-  const [durationSecs, setDurationSecs] = useState(0);
-  const [saving,       setSaving]       = useState(false);
-  const [saved,        setSaved]        = useState(false);
-  const [error,        setError]        = useState("");
+  const [title,           setTitle]           = useState("");
+  const [blurb,           setBlurb]           = useState("");
+  const [slug,            setSlug]            = useState("");
+  const [category,        setCategory]        = useState("General");
+  const [isFree,          setIsFree]          = useState(true);
+  const [pricePerSec,     setPricePerSec]     = useState("0.0001");
+  const [freePreviewSecs, setFreePreviewSecs] = useState(30);
+  const [file,            setFile]            = useState<File | null>(null);
+  const [transcode,       setTranscode]       = useState(true);
+  const [height,          setHeight]          = useState(240);
+  const [durationSecs,    setDurationSecs]    = useState(0);
+  const [saving,          setSaving]          = useState(false);
+  const [saved,           setSaved]           = useState(false);
+  const [error,           setError]           = useState("");
 
   const CATEGORIES = ["General","Technology","Science","DeFi","Web3","AI","Business","Education","Art","Music","Gaming","Lifestyle"];
   const autoSlug = (t: string) => t.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+  const effectivePrice = isFree ? "0" : pricePerSec;
+  const totalCost = isFree || !durationSecs ? 0 : parseFloat(pricePerSec) * durationSecs;
 
   function pickFile(f: File | null) {
     setFile(f); setDurationSecs(0);
@@ -53,7 +63,7 @@ export default function VideoUploadPage() {
         if (!seg.thumb) { try { seg.thumb = await captureThumb(file); } catch { /* optional */ } }
         await publishVideo(signer, {
           title: title.trim(), blurb: blurb.trim(), slug: finalSlug, category,
-          pricePerSec: "0", freePreviewSecs: 0,
+          pricePerSec: effectivePrice, freePreviewSecs: isFree ? 0 : freePreviewSecs,
         }, seg, update);
       }, { batch: "Uploads your video to the blockchain. After processing it is written in many transactions, all signed automatically once you approve." });
       setSaved(true);
@@ -78,7 +88,7 @@ export default function VideoUploadPage() {
         <CheckCircle2 size={48} style={{ color: "var(--accent)", marginBottom: 16 }} />
         <h2 style={{ fontFamily: "Outfit,sans-serif", fontSize: 24, fontWeight: 900, color: "var(--text)", marginBottom: 8 }}>Video submitted!</h2>
         <p style={{ fontSize: 14, color: "var(--text-3)", marginBottom: 24, lineHeight: 1.6 }}>
-          Your video is stored on-chain. Once approved, viewers can watch it for free.
+          Your video is stored on-chain. Once approved, viewers can {isFree ? "watch it for free" : "stream it per second"}.
         </p>
         <div style={{ display: "flex", gap: 10, justifyContent: "center" }}>
           <Link href="/videos" className="btn btn-primary btn-sm">Browse videos</Link>
@@ -102,7 +112,7 @@ export default function VideoUploadPage() {
             </h1>
           </div>
           <p style={{ fontSize: 13, color: "var(--text-3)" }}>
-            Share your video with the community — stored on the blockchain and free for all viewers.
+            Share your video with the community. Choose free for everyone, or charge viewers per second watched.
           </p>
         </div>
 
@@ -144,7 +154,7 @@ export default function VideoUploadPage() {
               <div style={{ marginTop: 10, padding: "8px 12px", background: "rgba(217,119,6,.06)", border: "1px solid rgba(217,119,6,.2)", borderRadius: "var(--r)", display: "flex", gap: 8 }}>
                 <AlertCircle size={13} style={{ color: "#d97706", flexShrink: 0, marginTop: 1 }} />
                 <p style={{ fontSize: 11, color: "#b45309", margin: 0, lineHeight: 1.5 }}>
-                  Higher resolution = more gas. For a {(file.size / 1e6).toFixed(0)} MB file, use <b>240p</b> to minimise upload time. Increase only if video quality is critical.
+                  Higher resolution = more gas. For a {(file.size / 1e6).toFixed(0)} MB file, use <b>240p</b> to minimise upload time.
                 </p>
               </div>
             )}
@@ -152,6 +162,51 @@ export default function VideoUploadPage() {
               Your video is compressed in your browser then written to the blockchain in multiple transactions.
               Each transaction carries up to {Math.round(cfg.txBytes / 1000)} KB — <b>keep videos short and use 240p</b> to reduce the number of transactions needed.
             </p>
+          </div>
+
+          {/* Pricing */}
+          <div className="card" style={{ padding: 18 }}>
+            <label style={{ fontSize: 12, fontWeight: 700, color: "var(--text-3)", display: "block", marginBottom: 10 }}>PRICING</label>
+            {!monetized && !monLoading && <div style={{ marginBottom: 12 }}><MonetizationPanel compact /></div>}
+
+            {/* Free toggle — always unlocked; paid options only visible when monetized */}
+            <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13, color: "var(--text-2)", marginBottom: isFree ? 0 : 14, cursor: "pointer" }}>
+              <input
+                type="checkbox"
+                checked={isFree}
+                onChange={e => setIsFree(e.target.checked)}
+                disabled={!monetized}
+                style={{ width: 16, height: 16, accentColor: "var(--brand)" }}
+              />
+              Make this video free (no USDC required to watch)
+            </label>
+
+            {!isFree && monetized && (
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14, marginTop: 14 }}>
+                <div>
+                  <label style={{ fontSize: 11, fontWeight: 600, color: "var(--text-4)", display: "block", marginBottom: 5 }}>PRICE PER SECOND (USDC)</label>
+                  <div style={{ position: "relative" }}>
+                    <DollarSign size={12} style={{ position: "absolute", left: 10, top: "50%", transform: "translateY(-50%)", color: "var(--text-4)" }} />
+                    <input type="number" min="0" step="0.00001" value={pricePerSec} onChange={e => setPricePerSec(e.target.value)}
+                      style={{ width: "100%", paddingLeft: 28, paddingRight: 12, paddingTop: 8, paddingBottom: 8, background: "var(--bg-alt)", border: "1.5px solid var(--border)", borderRadius: "var(--r)", fontSize: 13, color: "var(--text)", boxSizing: "border-box" as const }} />
+                  </div>
+                  {durationSecs > 0 && (
+                    <p style={{ fontSize: 10, color: "var(--text-4)", marginTop: 4 }}>
+                      Max cost: ${totalCost.toFixed(4)} USDC for full video
+                    </p>
+                  )}
+                </div>
+                <div>
+                  <label style={{ fontSize: 11, fontWeight: 600, color: "var(--text-4)", display: "block", marginBottom: 5 }}>FREE PREVIEW (seconds)</label>
+                  <div style={{ position: "relative" }}>
+                    <Eye size={12} style={{ position: "absolute", left: 10, top: "50%", transform: "translateY(-50%)", color: "var(--text-4)" }} />
+                    <input type="number" min="0" value={freePreviewSecs} onChange={e => setFreePreviewSecs(parseInt(e.target.value) || 0)}
+                      style={{ width: "100%", paddingLeft: 28, paddingRight: 12, paddingTop: 8, paddingBottom: 8, background: "var(--bg-alt)", border: "1.5px solid var(--border)", borderRadius: "var(--r)", fontSize: 13, color: "var(--text)", boxSizing: "border-box" as const }} />
+                  </div>
+                  <p style={{ fontSize: 10, color: "var(--text-4)", marginTop: 4 }}>Viewers watch this many seconds free before paying</p>
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Category + Slug */}
@@ -180,7 +235,7 @@ export default function VideoUploadPage() {
           {saving && (
             <div style={{ padding: "10px 14px", background: "var(--brand-muted)", borderRadius: "var(--r)", border: "1px solid var(--brand-border)" }}>
               <p style={{ fontSize: 12, color: "var(--brand)", margin: 0, lineHeight: 1.6 }}>
-                <strong>Keep this tab open.</strong> The video is being processed and written to the blockchain in several transactions — all signed automatically once you approve.
+                <strong>Keep this tab open.</strong> The video is being processed and written to the blockchain — all transactions are signed automatically once you approve.
               </p>
             </div>
           )}
@@ -191,6 +246,7 @@ export default function VideoUploadPage() {
               ? <><Loader2 size={16} style={{ animation: "spin 1s linear infinite" }} /> Uploading…</>
               : <><Upload size={15} /> Upload to Blockchain</>}
           </button>
+
         </div>
       </div>
     </div>
