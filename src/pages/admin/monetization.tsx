@@ -7,7 +7,7 @@
  */
 import { useCallback, useEffect, useState } from "react";
 import { ethers } from "ethers";
-import { BadgeDollarSign, Users, Sparkles, UserCheck, Loader2, Check, X, Ban, RotateCcw } from "lucide-react";
+import { BadgeDollarSign, Users, Sparkles, UserCheck, Loader2, Check, X, Ban, RotateCcw, RefreshCw, AlertTriangle } from "lucide-react";
 import { useAuth } from "@/lib/auth";
 import { cfg, explainError, shortAddr } from "@/lib/chain";
 import { getRules, adminSetAll, adminSetAuto, adminSetCreator, listCreatorStatuses, MON_STATUS, type MonRules, type CreatorMon } from "@/lib/onchain/money";
@@ -22,39 +22,54 @@ export default function MonetizationAdmin() {
   const [rules, setRules] = useState<MonRules | null>(null);
   const [draft, setDraft] = useState({ auto: false, minFollowers: 0, minPosts: 0, minAccountDays: 0 });
   const [rows, setRows] = useState<(CreatorMon & { name?: string })[]>([]);
+  const [rowsErr, setRowsErr] = useState("");
+  const [rowsLoading, setRowsLoading] = useState(false);
   const [filter, setFilter] = useState<"pending" | "approved" | "blocked" | "all">("pending");
   const [addr, setAddr] = useState("");
   const [busy, setBusy] = useState("");
   const [err, setErr] = useState("");
 
-  const load = useCallback(async () => {
+  /** Load rules only — fast contract call, never fails from log-scan timeouts. */
+  const loadRules = useCallback(async () => {
+    if (!cfg.monetization) {
+      setErr("Contracts are not configured yet. Go to Admin → Finance → Contracts to set the Monetization contract address.");
+      return;
+    }
     try {
-      if (!cfg.monetization) {
-        setErr("Contracts are not configured yet. Go to Admin → Finance → Contracts to set the Monetization contract address.");
-        return;
-      }
       const r = await getRules();
       setRules(r);
       setDraft({ auto: r.auto, minFollowers: r.minFollowers, minPosts: r.minPosts, minAccountDays: r.minAccountDays });
+      setErr("");
+    } catch (e) {
+      setErr(explainError(e, "Could not load monetization rules"));
+    }
+  }, []);
+
+  /** Load creator list separately — may time out on large chains; errors shown inline with retry. */
+  const loadRows = useCallback(async () => {
+    if (!cfg.monetization) return;
+    setRowsLoading(true);
+    setRowsErr("");
+    try {
       const list = await listCreatorStatuses();
       const profs = await getProfiles(list.map((x) => x.address));
       setRows(list.map((x) => ({ ...x, name: profs.get(x.address.toLowerCase())?.username ?? undefined })).sort((a, b) => b.at - a.at));
     } catch (e) {
-      const msg = explainError(e, "Could not load monetization settings");
-      // Surface a cleaner message when the RPC call fails because the contract address is wrong/empty
-      setErr(
-        msg.startsWith("Network error") && !cfg.monetization
-          ? "Contracts are not configured yet. Go to Admin → Finance → Contracts to set the Monetization contract address."
-          : msg
-      );
+      setRowsErr(explainError(e, "Could not load creator list — the RPC scan may have timed out"));
+    } finally {
+      setRowsLoading(false);
     }
   }, []);
-  useEffect(() => { load(); }, [load]);
+
+  useEffect(() => {
+    loadRules();
+    loadRows();
+  }, [loadRules, loadRows]);
 
   async function run(label: string, fn: () => Promise<unknown>) {
     if (!signer) { setErr("Connect an admin wallet."); return; }
     setBusy(label); setErr("");
-    try { await withActivity(label, async () => { await fn(); }); await load(); }
+    try { await withActivity(label, async () => { await fn(); }); await loadRules(); await loadRows(); }
     catch (e) { setErr(explainError(e, "Transaction failed")); }
     setBusy("");
   }
@@ -123,21 +138,43 @@ export default function MonetizationAdmin() {
             <button className="btn btn-primary btn-sm" disabled={!ethers.isAddress(addr) || !!busy} onClick={() => setStatus(addr, 2).then(() => setAddr(""))}><Check size={13} /> Enable</button>
             <button className="btn btn-secondary btn-sm" disabled={!ethers.isAddress(addr) || !!busy} onClick={() => setStatus(addr, 4).then(() => setAddr(""))}><Ban size={13} /> Block</button>
           </div>
-          <div style={{ display: "flex", gap: 6, marginBottom: 10, flexWrap: "wrap" }}>
+          <div style={{ display: "flex", gap: 6, marginBottom: 10, flexWrap: "wrap", alignItems: "center" }}>
             {(["pending", "approved", "blocked", "all"] as const).map((f) => (
               <button key={f} onClick={() => setFilter(f)} style={{ padding: "5px 12px", borderRadius: 99, border: `1.5px solid ${filter === f ? "var(--brand)" : "var(--border)"}`, background: filter === f ? "var(--brand-muted)" : "transparent", color: filter === f ? "var(--brand)" : "var(--text-3)", fontSize: 12, fontWeight: 600, cursor: "pointer", textTransform: "capitalize" }}>
                 {f}{f === "pending" ? ` (${rows.filter((r) => r.status === 1).length})` : ""}
               </button>
             ))}
+            <button onClick={loadRows} disabled={rowsLoading} style={{ marginLeft: "auto", padding: "5px 10px", borderRadius: 99, border: "1.5px solid var(--border)", background: "transparent", color: "var(--text-4)", fontSize: 12, cursor: "pointer", display: "flex", alignItems: "center", gap: 4 }}>
+              <RefreshCw size={11} style={{ animation: rowsLoading ? "spin 1s linear infinite" : undefined }} /> Refresh
+            </button>
           </div>
-          {shown.length === 0 ? <div style={{ padding: "26px 0", textAlign: "center", fontSize: 13, color: "var(--text-4)" }}>Nothing here.</div> : (
+
+          {rowsErr && (
+            <div style={{ display: "flex", alignItems: "flex-start", gap: 8, padding: "10px 12px", background: "rgba(234,179,8,.08)", border: "1px solid rgba(234,179,8,.3)", borderRadius: "var(--r)", marginBottom: 10 }}>
+              <AlertTriangle size={13} style={{ color: "#ca8a04", flexShrink: 0, marginTop: 1 }} />
+              <div style={{ flex: 1 }}>
+                <p style={{ fontSize: 12, color: "#92400e", margin: 0 }}>{rowsErr}</p>
+                <button onClick={loadRows} style={{ marginTop: 6, fontSize: 11, color: "var(--brand)", background: "none", border: "none", cursor: "pointer", padding: 0, fontWeight: 600 }}>Try again</button>
+              </div>
+            </div>
+          )}
+
+          {rowsLoading ? (
+            <div style={{ padding: "20px 0", textAlign: "center", fontSize: 13, color: "var(--text-4)", display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}>
+              <Loader2 size={14} style={{ animation: "spin 1s linear infinite" }} /> Scanning on-chain events…
+            </div>
+          ) : shown.length === 0 ? (
+            <div style={{ padding: "26px 0", textAlign: "center", fontSize: 13, color: "var(--text-4)" }}>
+              {rowsErr ? "Could not load — press Refresh to try again." : "Nothing here."}
+            </div>
+          ) : (
             <div style={{ display: "flex", flexDirection: "column" }}>
               {shown.map((r) => (
                 <div key={r.address} style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 0", borderTop: "1px solid var(--border)", flexWrap: "wrap" }}>
                   <div style={{ flex: 1, minWidth: 200 }}>
                     <Link href={`/profile/${r.address}`} style={{ fontSize: 13, fontWeight: 600, color: "var(--text)", textDecoration: "none" }}>{r.name ? `@${r.name}` : shortAddr(r.address)}</Link>
                     <div style={{ fontFamily: "JetBrains Mono,monospace", fontSize: 10, color: "var(--text-4)" }}>{r.address}</div>
-                    {r.note && <div style={{ fontSize: 12, color: "var(--text-3)", marginTop: 3, fontStyle: "italic" }}>“{r.note}”</div>}
+                    {r.note && <div style={{ fontSize: 12, color: "var(--text-3)", marginTop: 3, fontStyle: "italic" }}>"{r.note}"</div>}
                   </div>
                   <span style={{ fontSize: 10, fontWeight: 700, color: STATUS_COLOR[r.status], background: `${STATUS_COLOR[r.status]}14`, border: `1px solid ${STATUS_COLOR[r.status]}33`, padding: "2px 9px", borderRadius: 99, textTransform: "uppercase" }}>{MON_STATUS[r.status]}</span>
                   <div style={{ display: "flex", gap: 6 }}>

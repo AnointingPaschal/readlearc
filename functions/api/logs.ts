@@ -1,6 +1,6 @@
 import type { Env } from "../_lib/env";
 import { err } from "../_lib/env";
-import { chainFor } from "../_lib/chain";
+import { chainFor, ensureStartBlock } from "../_lib/chain";
 
 /**
  * GET /api/logs?a=<contract>&t=<topics JSON>&f=<fromBlock>&v=<cache stamp> — read-only, edge-cached event logs
@@ -31,8 +31,9 @@ export const onRequestGet: PagesFunction<Env> = async ({ request, env, waitUntil
     if (!allowed.includes(address.toLowerCase())) return err("Unknown contract", 400);
     const topics = JSON.parse(url.searchParams.get("t") || "[]");
     if (!Array.isArray(topics) || topics.length > 4) return err("Bad topics", 400);
-    const startBlock = Number(ch.cfg.startBlock || 0);
-    const from = Math.max(Number(url.searchParams.get("f") || 0), 0);
+    // Use ensureStartBlock so we never scan from block 0 on a chain with millions of blocks.
+    const startBlock = await ensureStartBlock(env, ch.cfg);
+    const from = Math.max(Number(url.searchParams.get("f") || 0), startBlock);
 
     const latest = await ch.provider.getBlockNumber();
     const getLogs = async (a: number, b: number, depth = 0): Promise<any[]> => {

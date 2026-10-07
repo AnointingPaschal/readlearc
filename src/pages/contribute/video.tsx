@@ -264,6 +264,14 @@ export default function VideoUploadPage() {
             </div>
           )}
 
+          {saving && (
+            <div style={{ padding: "10px 14px", background: "var(--brand-muted)", borderRadius: "var(--r)", border: "1px solid var(--brand-border)" }}>
+              <p style={{ fontSize: 12, color: "var(--brand)", margin: 0, lineHeight: 1.6 }}>
+                <strong>Keep this tab open and your wallet unlocked.</strong> Uploading a video requires several blockchain transactions — your wallet will ask you to approve each one. Accept them all as they appear.
+              </p>
+            </div>
+          )}
+
           <button
             onClick={submit}
             disabled={saving}
@@ -271,7 +279,7 @@ export default function VideoUploadPage() {
             style={{ height: 44, fontWeight: 700, fontSize: 14, justifyContent: "center" }}
           >
             {saving
-              ? <><Loader2 size={16} style={{ animation: "spin 1s linear infinite" }} /> Uploading — keep this tab open…</>
+              ? <><Loader2 size={16} style={{ animation: "spin 1s linear infinite" }} /> Uploading — approve wallet prompts…</>
               : <><Upload size={15} /> Upload to Blockchain</>}
           </button>
         </div>
