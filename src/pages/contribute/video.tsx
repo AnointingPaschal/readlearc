@@ -34,7 +34,7 @@ export default function VideoUploadPage() {
   const [freePreviewSecs,  setFreePreviewSecs]  = useState(30);
   const [file,             setFile]             = useState<File | null>(null);
   const [transcode,        setTranscode]        = useState(true);
-  const [height,           setHeight]           = useState(480);
+  const [height,           setHeight]           = useState(240);
   const [durationSecs,     setDurationSecs]     = useState(0);
   const [saving,           setSaving]           = useState(false);
   const [saved,            setSaved]            = useState(false);
@@ -65,7 +65,7 @@ export default function VideoUploadPage() {
     setError("");
     try {
       await withActivity("Uploading video to the blockchain", async (update) => {
-        const seg = await segmentWithFfmpeg(file, { transcode, height, segSeconds: 6 }, update);
+        const seg = await segmentWithFfmpeg(file, { transcode, height, segSeconds: 30 }, update);
         if (!seg.thumb) { try { seg.thumb = await captureThumb(file); } catch { /* optional */ } }
         await publishVideo(signer, {
           title: title.trim(), blurb: blurb.trim(), slug: finalSlug, category,
@@ -162,13 +162,20 @@ export default function VideoUploadPage() {
               Compress for on-chain storage (recommended)
               <select value={height} onChange={e => setHeight(Number(e.target.value))} disabled={!transcode}
                 style={{ marginLeft: "auto", padding: "4px 8px", background: "var(--bg-alt)", border: "1.5px solid var(--border)", borderRadius: "var(--r)", fontSize: 12, color: "var(--text)" }}>
-                {[240, 360, 480, 720].map(h => <option key={h} value={h}>{h}p</option>)}
+                {[240, 360, 480, 720].map(h => <option key={h} value={h}>{h === 240 ? "240p (recommended)" : `${h}p`}</option>)}
               </select>
             </label>
+            {file && transcode && height > 240 && (
+              <div style={{ marginTop: 10, padding: "8px 12px", background: "rgba(217,119,6,.06)", border: "1px solid rgba(217,119,6,.2)", borderRadius: "var(--r)", display: "flex", gap: 8 }}>
+                <AlertCircle size={13} style={{ color: "#d97706", flexShrink: 0, marginTop: 1 }} />
+                <p style={{ fontSize: 11, color: "#b45309", margin: 0, lineHeight: 1.5 }}>
+                  Higher resolution = more gas. For a {(file.size / 1e6).toFixed(0)} MB file, use <b>240p</b> to minimise cost and upload time. Increase only if video quality is critical.
+                </p>
+              </div>
+            )}
             <p style={{ fontSize: 11, color: "var(--text-4)", marginTop: 8, lineHeight: 1.6 }}>
-              Your video is cut into small segments in your browser, {isFree ? "" : "encrypted, "}and stored directly on the blockchain — there is no file server.
-              Storing data on-chain costs gas in proportion to its size, so shorter / lower-resolution videos are cheaper.
-              {file ? <> Your file is about <b>{(file.size / 1e6).toFixed(0)} MB</b>{transcode ? " before compression" : ""}; each upload transaction carries up to {Math.round(cfg.txBytes / 1000)} KB.</> : null}
+              Your video is compressed in your browser, {isFree ? "" : "encrypted, "}then written to the blockchain in multiple transactions.
+              Each transaction carries up to {Math.round(cfg.txBytes / 1000)} KB — <b>keep videos short and use 240p</b> to reduce the number of transactions needed.
             </p>
           </div>
 
