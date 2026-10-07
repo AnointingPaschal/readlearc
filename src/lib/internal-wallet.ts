@@ -8,6 +8,11 @@ import { cfg } from "@/lib/config";
 import { markWrite } from "@/lib/freshness";
 import { approveTransaction } from "@/lib/tx-approval";
 
+/** Read lazily from cfg so the remote config (KV) values are used, not the build-time defaults. */
+export const getArcRpc      = () => cfg.rpcUrl;
+export const getArcChainId  = () => cfg.chainId;
+export const getUsdcAddr    = () => cfg.usdc;
+// Keep exported constants as getters so existing imports don't break.
 export const ARC_RPC      = cfg.rpcUrl;
 export const ARC_CHAIN_ID = cfg.chainId;
 export const USDC_ADDR    = cfg.usdc;
@@ -132,7 +137,9 @@ export async function addWallet(
 export class ApprovalWallet extends ethers.Wallet {
   override async sendTransaction(tx: ethers.TransactionRequest): Promise<ethers.TransactionResponse> {
     await approveTransaction(tx, this);
-    const resp = await super.sendTransaction(tx);
+    // Reconnect to a fresh provider so any config update (RPC URL, chain ID from KV) is used.
+    const w = this.connect(getProvider());
+    const resp = await ethers.Wallet.prototype.sendTransaction.call(w, tx);
     markWrite();
     resp.wait().then(markWrite, () => {});
     return resp;
@@ -141,8 +148,9 @@ export class ApprovalWallet extends ethers.Wallet {
 }
 
 export function getProvider(): ethers.JsonRpcProvider {
-  // cacheTimeout:-1 — never reuse a cached nonce/block: chains with sub-second blocks would otherwise see "nonce too low" on back-to-back transactions.
-  return new ethers.JsonRpcProvider(ARC_RPC, { chainId: ARC_CHAIN_ID, name: cfg.chainName }, { staticNetwork: true, cacheTimeout: -1 });
+  // Read cfg lazily so the remote config loaded from /api/config is used, not the build-time default.
+  // cacheTimeout:-1 — never reuse a cached nonce/block: Arc's sub-second blocks would cause "nonce too low" errors.
+  return new ethers.JsonRpcProvider(cfg.rpcUrl, { chainId: cfg.chainId, name: cfg.chainName }, { staticNetwork: true, cacheTimeout: -1 });
 }
 
 export async function getSigner(
@@ -156,7 +164,7 @@ export async function getSigner(
 export async function getUsdcBalance(address: string): Promise<string> {
   try {
     const prov = getProvider();
-    const usdc = new ethers.Contract(USDC_ADDR, USDC_ABI, prov);
+    const usdc = new ethers.Contract(cfg.usdc, USDC_ABI, prov);
     const [bal, dec] = await Promise.all([usdc.balanceOf(address), usdc.decimals()]);
     return parseFloat(ethers.formatUnits(bal, dec)).toFixed(4);
   } catch { return "0.0000"; }
